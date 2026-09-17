@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Trang-1" id="RhFlQFBzK_7PdpHBcdWX">
-    <mxGraphModel dx="547" dy="2961" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1717" dy="3273" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -88,8 +88,14 @@
         <mxCell id="CDlTwnUJrQLh6ELHIQbA-35" parent="1" style="whiteSpace=wrap;html=1;strokeWidth=2;rounded=0;" value="Gửi yêu cầu đến manager/HR" vertex="1">
           <mxGeometry height="30" width="120" x="623.5" y="-1680" as="geometry" />
         </mxCell>
-        <mxCell id="CDlTwnUJrQLh6ELHIQbA-39" parent="1" style="rhombus;whiteSpace=wrap;html=1;shapeInside=1;strokeWidth=2;rounded=0;" value="Manager/HR&amp;nbsp;&lt;div&gt;&lt;br/&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="140" width="100" x="643.5" y="-1610" as="geometry" />
+        <mxCell id="9sQt9xlJGRsMoUdk_zE--2" edge="1" parent="1" source="CDlTwnUJrQLh6ELHIQbA-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="9sQt9xlJGRsMoUdk_zE--1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="CDlTwnUJrQLh6ELHIQbA-39" parent="1" style="rhombus;whiteSpace=wrap;html=1;shapeInside=1;strokeWidth=2;rounded=0;" value="Manager/HR duyệt&amp;nbsp;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="100" x="633.5" y="-1610" as="geometry" />
+        </mxCell>
+        <mxCell id="9sQt9xlJGRsMoUdk_zE--1" parent="1" style="whiteSpace=wrap;html=1;strokeWidth=2;rounded=0;" value="" vertex="1">
+          <mxGeometry height="60" width="120" x="430" y="-1480" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
