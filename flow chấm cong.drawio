@@ -1,11 +1,11 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Trang-1" id="ud0FdH_ZWHv6GA-9f_El">
-    <mxGraphModel dx="2047" dy="1870" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2440" dy="2603" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="F82TV8HjGUrI1eT3LGoe-1" parent="1" style="swimlane;startSize=20;whiteSpace=wrap;html=1;dashed=1;shadow=1;fontFamily=Times New Roman;fontSize=16;" value="USER" vertex="1">
-          <mxGeometry height="1410" width="520" x="-20" y="-1120" as="geometry" />
+          <mxGeometry height="1370" width="504" x="252" y="-1172" as="geometry" />
         </mxCell>
         <mxCell id="F82TV8HjGUrI1eT3LGoe-6" edge="1" parent="F82TV8HjGUrI1eT3LGoe-1" source="HgwuCG2UPmU7QKOqRaTf-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;shadow=1;fontFamily=Times New Roman;fontSize=16;" target="HgwuCG2UPmU7QKOqRaTf-6">
           <mxGeometry relative="1" as="geometry" />
@@ -23,7 +23,7 @@
           <mxGeometry height="60" width="120" x="180" y="210" as="geometry" />
         </mxCell>
         <mxCell id="F82TV8HjGUrI1eT3LGoe-12" parent="F82TV8HjGUrI1eT3LGoe-1" style="whiteSpace=wrap;html=1;fontSize=16;fontFamily=Times New Roman;rounded=0;labelBorderColor=none;shadow=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Quét QR động" vertex="1">
-          <mxGeometry height="60" width="120" x="265" y="310" as="geometry" />
+          <mxGeometry height="60" width="120" x="180" y="310" as="geometry" />
         </mxCell>
         <mxCell id="F82TV8HjGUrI1eT3LGoe-18" parent="F82TV8HjGUrI1eT3LGoe-1" style="whiteSpace=wrap;html=1;fontSize=16;fontFamily=Times New Roman;rounded=0;labelBorderColor=none;shadow=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Mở camera và chụp ảnh" vertex="1">
           <mxGeometry height="60" width="120" x="265" y="420" as="geometry" />
@@ -31,8 +31,8 @@
         <mxCell id="F82TV8HjGUrI1eT3LGoe-33" parent="F82TV8HjGUrI1eT3LGoe-1" style="whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=16;textShadow=1;labelBorderColor=none;shadow=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Chọn&amp;nbsp;&lt;div&gt;Check-in/Check-out&lt;/div&gt;" vertex="1">
           <mxGeometry height="60" width="120" x="280" y="740" as="geometry" />
         </mxCell>
-        <mxCell id="F82TV8HjGUrI1eT3LGoe-2" parent="1" style="swimlane;startSize=20;whiteSpace=wrap;html=1;dashed=1;shadow=1;fontFamily=Times New Roman;fontSize=16;textShadow=1;labelBackgroundColor=none;labelBorderColor=none;" value="SYSTEM" vertex="1">
-          <mxGeometry height="1400" width="570" x="500" y="-1120" as="geometry" />
+        <mxCell id="F82TV8HjGUrI1eT3LGoe-2" parent="1" style="swimlane;startSize=20;whiteSpace=wrap;html=1;dashed=1;shadow=1;fontFamily=Times New Roman;fontSize=16;textShadow=1;labelBackgroundColor=none;labelBorderColor=none;convertToSvg=0;svgWhiteSpace=wrap;" value="SYSTEM" vertex="1">
+          <mxGeometry height="1370" width="570" x="756" y="-1172" as="geometry" />
         </mxCell>
         <mxCell id="F82TV8HjGUrI1eT3LGoe-10" edge="1" parent="F82TV8HjGUrI1eT3LGoe-2" source="F82TV8HjGUrI1eT3LGoe-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;shadow=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Times New Roman;fontSize=16;" target="F82TV8HjGUrI1eT3LGoe-9" value="">
           <mxGeometry relative="1" as="geometry" />
