@@ -26,5 +26,5 @@ Hệ thống Quản lý Nhân sự Doanh nghiệp & Tính lương Tự động
 
 ### 1. Clone repository
 ```bash
-git clone [https://github.com/gihan160306/HRFlow.git](https://github.com/gihan160306/HRFlow.git)
+git clone https://github.com/gihan160306/HRFlow.git
 cd HRFlow
