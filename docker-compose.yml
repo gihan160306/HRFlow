@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hrflow_postgres
+    environment:
+      POSTGRES_DB: hrflow_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - hrflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - hrflow_default
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrflow_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hrflow_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=your_secure_password
+    depends_on:
+      - postgres
+    networks:
+      - hrflow_default
+
+volumes:
+  hrflow_postgres_data:
+
+networks:
+  hrflow_default:
+    driver: bridge
