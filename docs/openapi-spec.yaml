@@ -1,0 +1,321 @@
+openapi: 3.1.0
+info:
+  title: Enterprise HR & Automated Payroll System API
+  description: API cho hệ thống Quản lý Nhân sự & Tính lương Tự động
+  version: 1.0.0
+  contact:
+    name: GiHan - Product Owner & Backend Lead
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: http://localhost:8080
+    description: Docker environment
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: employee
+        password:
+          type: string
+          format: password
+          example: Emp@123
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          example: 86400
+        role:
+          type: string
+          enum: [EMPLOYEE, MANAGER, HR, ADMIN]
+        employeeId:
+          type: integer
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+        employeeCode:
+          type: string
+        fullName:
+          type: string
+        departmentId:
+          type: integer
+        managerId:
+          type: integer
+          nullable: true
+        baseSalary:
+          type: number
+        status:
+          type: string
+          enum: [ACTIVE, TERMINATED]
+
+    PtoRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        leaveType:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+
+    CreatePtoRequest:
+      type: object
+      required: [startDate, endDate, leaveType]
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        leaveType:
+          type: string
+          example: ANNUAL
+        reason:
+          type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Đăng nhập
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Sai thông tin đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      summary: Lấy thông tin user hiện tại
+      responses:
+        '200':
+          description: Thông tin user + role
+        '401':
+          description: Chưa đăng nhập
+
+  /api/v1/employees:
+    get:
+      tags: [Employees]
+      summary: Lấy danh sách nhân viên
+      description: |
+        - Employee: không được gọi
+        - Manager: chỉ thấy team của mình
+        - HR/Admin: thấy tất cả
+      responses:
+        '200':
+          description: Danh sách nhân viên
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Employee'
+        '403':
+          description: Không có quyền
+
+    post:
+      tags: [Employees]
+      summary: Tạo nhân viên mới (HR/Admin)
+      responses:
+        '201':
+          description: Tạo thành công
+        '403':
+          description: Chỉ HR/Admin được tạo
+
+  /api/v1/employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Xem chi tiết nhân viên
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Chi tiết nhân viên
+        '403':
+          description: Không có quyền xem nhân viên này
+        '404':
+          description: Không tìm thấy
+
+  /api/v1/pto-requests:
+    get:
+      tags: [PTO]
+      summary: Lấy danh sách đơn nghỉ phép
+      description: |
+        - Employee: chỉ thấy đơn của mình
+        - Manager: thấy đơn của team
+        - HR/Admin: thấy tất cả
+      responses:
+        '200':
+          description: Danh sách đơn PTO
+
+    post:
+      tags: [PTO]
+      summary: Tạo đơn nghỉ phép
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePtoRequest'
+      responses:
+        '201':
+          description: Tạo đơn thành công
+        '400':
+          description: Số ngày phép không đủ hoặc dữ liệu không hợp lệ
+
+  /api/v1/pto-requests/{id}/approve:
+    patch:
+      tags: [PTO]
+      summary: Duyệt đơn nghỉ phép (Manager/HR/Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Duyệt thành công
+        '403':
+          description: Không có quyền duyệt đơn này
+
+  /api/v1/pto-requests/{id}/reject:
+    patch:
+      tags: [PTO]
+      summary: Từ chối đơn nghỉ phép
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Từ chối thành công
+
+  /api/v1/payrolls/periods:
+    get:
+      tags: [Payroll]
+      summary: Danh sách kỳ lương
+      responses:
+        '200':
+          description: Danh sách kỳ lương
+
+  /api/v1/payrolls/calculate:
+    post:
+      tags: [Payroll]
+      summary: Chạy tính lương batch (HR/Admin)
+      responses:
+        '202':
+          description: Job tính lương đã được chấp nhận
+        '403':
+          description: Chỉ HR/Admin
+
+  /api/v1/employees/{id}/payslips:
+    get:
+      tags: [Payslips]
+      summary: Lấy danh sách phiếu lương của nhân viên
+      description: Employee chỉ được xem của chính mình
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Danh sách phiếu lương
+        '403':
+          description: Không có quyền
+
+  /api/v1/audit-logs:
+    get:
+      tags: [Audit]
+      summary: Xem nhật ký kiểm toán (HR/Admin)
+      responses:
+        '200':
+          description: Danh sách audit log
+        '403':
+          description: Chỉ HR/Admin
