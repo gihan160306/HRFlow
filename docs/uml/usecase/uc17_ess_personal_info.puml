@@ -1,0 +1,39 @@
+@startuml
+
+left to right direction
+skinparam shadowing false
+
+actor "Employee" as Employee
+
+rectangle "UC-17 - Tra cứu thông tin cá nhân qua ESS" {
+
+    usecase "UC-17\nTra cứu thông tin\ncá nhân qua ESS" as UC17
+
+    usecase "Xác thực JWT" as Authenticate
+    usecase "Lấy employee_id\nngười đăng nhập" as GetEmployeeId
+    usecase "Lọc dữ liệu theo\nemployee_id" as FilterData
+
+    usecase "Xem hồ sơ cá nhân" as ViewProfile
+    usecase "Xem hợp đồng" as ViewContract
+    usecase "Xem bảng công" as ViewTimecard
+    usecase "Xem phép còn lại" as ViewPTO
+    usecase "Xem đơn đã gửi" as ViewRequests
+
+    usecase "Từ chối truy cập\nchéo dữ liệu" as DenyAccess
+}
+
+Employee --> UC17
+
+UC17 ..> Authenticate : <<include>>
+Authenticate ..> GetEmployeeId : <<include>>
+GetEmployeeId ..> FilterData : <<include>>
+
+UC17 ..> ViewProfile : <<include>>
+UC17 ..> ViewContract : <<include>>
+UC17 ..> ViewTimecard : <<include>>
+UC17 ..> ViewPTO : <<include>>
+UC17 ..> ViewRequests : <<include>>
+
+DenyAccess ..> FilterData : <<extend>>
+
+@enduml

@@ -1,0 +1,31 @@
+@startuml
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "HR" as HR
+actor "Admin" as Admin
+
+rectangle "Phân hệ 1 - Hồ sơ Nhân sự" {
+
+    usecase "UC-01\nQuản lý hồ sơ nhân viên" as UC01
+
+    usecase "UC-02\nOnboarding nhân viên" as UC02
+
+    usecase "UC-03\nQuản lý hợp đồng\n& cảnh báo hết hạn" as UC03
+
+    usecase "UC-04\nOffboarding /\nTerminate nhân viên" as UC04
+}
+
+HR --> UC01
+Admin --> UC01
+
+HR --> UC02
+
+HR --> UC03
+
+HR --> UC04
+
+
+@enduml

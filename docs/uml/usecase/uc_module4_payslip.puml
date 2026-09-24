@@ -1,0 +1,26 @@
+@startuml
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Employee" as Employee
+actor "HR" as HR
+actor "System" as System
+
+rectangle "Phân hệ 4 - Phiếu lương & ESS" {
+
+    usecase "UC-15\nXuất phiếu lương PDF" as UC15
+
+    usecase "UC-16\nXem / tải phiếu lương\nqua ESS" as UC16
+
+    usecase "UC-17\nTra cứu thông tin\ncá nhân qua ESS" as UC17
+}
+
+HR --> UC15
+System --> UC15
+
+Employee --> UC16
+Employee --> UC17
+
+@enduml

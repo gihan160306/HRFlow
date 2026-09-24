@@ -1,0 +1,35 @@
+@startuml
+
+left to right direction
+skinparam shadowing false
+
+actor "Employee" as Employee
+
+rectangle "UC-16 - Xem / tải phiếu lương qua ESS" {
+
+    usecase "UC-16\nXem / tải phiếu lương\nqua ESS" as UC16
+
+    usecase "Xác thực JWT" as Authenticate
+    usecase "Lấy employee_id\ntừ token" as GetEmployeeId
+    usecase "Kiểm tra quyền\ntruy cập payslip" as CheckAccess
+
+    usecase "Tra cứu danh sách\nphiếu lương" as ViewPayslips
+    usecase "Xem chi tiết\nphiếu lương" as ViewDetail
+    usecase "Tải file PDF" as DownloadPDF
+
+    usecase "Từ chối truy cập\nchéo dữ liệu" as DenyAccess
+}
+
+Employee --> UC16
+
+UC16 ..> Authenticate : <<include>>
+Authenticate ..> GetEmployeeId : <<include>>
+GetEmployeeId ..> CheckAccess : <<include>>
+
+UC16 ..> ViewPayslips : <<include>>
+ViewPayslips ..> ViewDetail : <<include>>
+ViewDetail ..> DownloadPDF : <<extend>>
+
+DenyAccess ..> CheckAccess : <<extend>>
+
+@enduml

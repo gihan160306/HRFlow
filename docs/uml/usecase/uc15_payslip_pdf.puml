@@ -1,0 +1,44 @@
+@startuml
+
+left to right direction
+skinparam shadowing false
+
+actor "HR" as HR
+actor "System" as System
+
+rectangle "UC-15 - Xuất phiếu lương PDF" {
+
+    usecase "UC-15\nXuất phiếu lương PDF" as UC15
+
+    usecase "Kiểm tra kỳ lương\nđã Locked" as CheckLocked
+    usecase "Lấy dữ liệu\nPayrollLine" as GetPayrollData
+
+    usecase "Lấy thông tin\nnhân viên" as GetEmployee
+    usecase "Lấy Gross / Net" as GetSalary
+    usecase "Lấy thuế & bảo hiểm" as GetTaxInsurance
+    usecase "Lấy OT" as GetOT
+    usecase "Lấy phụ cấp" as GetAllowance
+
+    usecase "Sinh file PDF" as GeneratePDF
+    usecase "Lưu phiếu lương" as SavePayslip
+    usecase "Gửi email thông báo" as SendEmail
+}
+
+HR --> UC15
+System --> UC15
+
+UC15 ..> CheckLocked : <<include>>
+UC15 ..> GetPayrollData : <<include>>
+
+GetPayrollData ..> GetEmployee : <<include>>
+GetPayrollData ..> GetSalary : <<include>>
+GetPayrollData ..> GetTaxInsurance : <<include>>
+GetPayrollData ..> GetOT : <<include>>
+GetPayrollData ..> GetAllowance : <<include>>
+
+UC15 ..> GeneratePDF : <<include>>
+UC15 ..> SavePayslip : <<include>>
+UC15 ..> SendEmail : <<include>>
+
+
+@enduml

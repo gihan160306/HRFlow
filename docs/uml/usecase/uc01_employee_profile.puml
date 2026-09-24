@@ -1,0 +1,41 @@
+@startuml
+title UC-01 - Quản lý hồ sơ nhân viên
+
+left to right direction
+skinparam shadowing false
+
+actor "HR" as HR
+actor "Admin" as Admin
+
+rectangle "UC-01 - Quản lý hồ sơ nhân viên" {
+
+    usecase "UC-01\nQuản lý hồ sơ nhân viên" as UC01
+
+    usecase "Tạo hồ sơ nhân viên" as Create
+    usecase "Tra cứu hồ sơ nhân viên" as Search
+    usecase "Cập nhật hồ sơ nhân viên" as Update
+
+    usecase "Kiểm tra dữ liệu\nbắt buộc & hợp lệ" as Validate
+    usecase "Kiểm tra CCCD /\nmã số thuế" as ValidateIdentity
+    usecase "Ghi Audit Log" as Audit
+
+    usecase "Báo lỗi dữ liệu\nkhông hợp lệ" as ValidationError
+}
+
+HR --> UC01
+Admin --> UC01
+
+UC01 ..> Create : <<include>>
+UC01 ..> Search : <<include>>
+UC01 ..> Update : <<include>>
+
+Create ..> Validate : <<include>>
+Update ..> Validate : <<include>>
+
+Validate ..> ValidateIdentity : <<include>>
+
+ValidationError ..> Validate : <<extend>>
+
+Update ..> Audit : <<include>>
+
+@enduml

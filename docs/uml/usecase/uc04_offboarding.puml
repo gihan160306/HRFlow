@@ -1,0 +1,35 @@
+@startuml
+
+left to right direction
+skinparam shadowing false
+
+actor "HR" as HR
+
+rectangle "UC-04 - Offboarding / Terminate nhân viên" {
+
+    usecase "UC-04\nOffboarding /\nTerminate nhân viên" as UC04
+
+    usecase "Ghi nhận ngày nghỉ việc" as RecordDate
+    usecase "Ghi nhận lý do nghỉ việc" as RecordReason
+    usecase "Ghi nhận trạng thái\nchốt sổ BHXH" as RecordInsurance
+
+    usecase "Tính lương còn lại\nở kỳ cuối" as FinalSalary
+    usecase "Tính trợ cấp thôi việc\n(nếu có)" as FinalAllowance
+
+    usecase "Deactivate tài khoản ESS" as DeactivateESS
+    usecase "Giữ dữ liệu lịch sử" as KeepHistory
+}
+
+HR --> UC04
+
+UC04 ..> RecordDate : <<include>>
+UC04 ..> RecordReason : <<include>>
+UC04 ..> RecordInsurance : <<include>>
+
+UC04 ..> FinalSalary : <<include>>
+UC04 ..> FinalAllowance : <<include>>
+
+UC04 ..> DeactivateESS : <<include>>
+UC04 ..> KeepHistory : <<include>>
+
+@enduml

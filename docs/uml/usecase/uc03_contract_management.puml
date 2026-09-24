@@ -1,0 +1,43 @@
+@startuml
+
+left to right direction
+skinparam shadowing false
+
+actor "HR" as HR
+
+rectangle "UC-03 - Quản lý hợp đồng & cảnh báo hết hạn" {
+
+    usecase "UC-03\nQuản lý hợp đồng\n& cảnh báo hết hạn" as UC03
+
+    usecase "Tạo hợp đồng" as CreateContract
+    usecase "Xem hợp đồng" as ViewContract
+    usecase "Cập nhật hợp đồng" as UpdateContract
+    usecase "Kiểm tra ngày hết hạn" as CheckExpiry
+
+    usecase "Phân loại trạng thái\nhợp đồng" as ClassifyStatus
+    usecase "Active" as Active
+    usecase "Expiring Soon\n(<= 30 ngày)" as ExpiringSoon
+    usecase "Expired" as Expired
+
+    usecase "Gửi cảnh báo\ncho HR" as NotifyHR
+    usecase "Gia hạn hợp đồng" as RenewContract
+}
+
+HR --> UC03
+
+UC03 ..> CreateContract : <<include>>
+UC03 ..> ViewContract : <<include>>
+UC03 ..> UpdateContract : <<include>>
+UC03 ..> CheckExpiry : <<include>>
+
+CheckExpiry ..> ClassifyStatus : <<include>>
+
+ClassifyStatus ..> Active : <<include>>
+ClassifyStatus ..> ExpiringSoon : <<include>>
+ClassifyStatus ..> Expired : <<include>>
+
+NotifyHR ..> ExpiringSoon : <<extend>>
+
+RenewContract ..> UC03 : <<extend>>
+
+@enduml
