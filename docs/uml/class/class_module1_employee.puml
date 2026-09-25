@@ -1,0 +1,184 @@
+@startuml
+title Class Diagram - Phân hệ 1: Hồ sơ Nhân sự
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+' =========================================================
+' CLASS: NHÂN VIÊN
+' =========================================================
+
+class "Nhân viên" as NhanVien {
+
+    ' ===== Thông tin định danh =====
+    - maNhanVien: Long
+    - maNhanVienCode: String
+    - hoTen: String
+    - ngaySinh: Date
+    - soCCCD: String
+    - maSoThue: String
+
+    ' ===== Thông tin liên hệ =====
+    - soDienThoai: String
+    - email: String
+    - diaChi: String
+
+    ' ===== Thông tin công việc =====
+    - maPhongBan: Long
+    - chucDanh: String
+    - ngayVaoLam: Date
+    - ngayNghiViec: Date
+    - trangThai: String
+
+    ' ===== Thông tin lương =====
+    - luongCoBan: Decimal
+
+    ' ===== Tài khoản ESS =====
+    - taiKhoanESS: String
+    - trangThaiESS: String
+
+    ' ===== Methods =====
+    + taoHoSo(): void
+    + xemHoSo(): NhanVien
+    + capNhatHoSo(): void
+    + kiemTraDuLieu(): Boolean
+    + capNhatLuongCoBan(): void
+    + capNhatTrangThai(): void
+    + nghiViec(): void
+}
+
+
+' =========================================================
+' CLASS: PHÒNG BAN
+' =========================================================
+
+class "Phòng ban" as PhongBan {
+
+    - maPhongBan: Long
+    - maPhongBanCode: String
+    - tenPhongBan: String
+    - maQuanLy: Long
+    - trangThai: String
+
+    + taoPhongBan(): void
+    + capNhatPhongBan(): void
+    + themNhanVien(): void
+    + xoaNhanVien(): void
+    + xemDanhSachNhanVien(): List<NhanVien>
+}
+
+
+' =========================================================
+' CLASS: HỢP ĐỒNG
+' =========================================================
+
+class "Hợp đồng" as HopDong {
+
+    - maHopDong: Long
+    - maNhanVien: Long
+
+    ' ===== Thông tin hợp đồng =====
+    - loaiHopDong: String
+    - ngayBatDau: Date
+    - ngayKetThuc: Date
+    - trangThai: String
+
+    ' ===== Thông tin lương =====
+    - luongCoBan: Decimal
+    - luongDongBaoHiem: Decimal
+
+    ' ===== Thông tin gia hạn =====
+    - ngayGiaHan: Date
+    - ghiChu: String
+
+    ' ===== Methods =====
+    + taoHopDong(): void
+    + xemHopDong(): HopDong
+    + capNhatHopDong(): void
+    + giaHanHopDong(): void
+    + kiemTraHetHan(): Boolean
+    + tinhSoNgayConLai(): Integer
+    + capNhatTrangThai(): void
+}
+
+
+' =========================================================
+' CLASS: TÀI KHOẢN ESS
+' =========================================================
+
+class "Tài khoản ESS" as TaiKhoanESS {
+
+    - maTaiKhoan: Long
+    - maNhanVien: Long
+    - tenDangNhap: String
+    - matKhauHash: String
+    - trangThai: String
+    - ngayTao: DateTime
+    - ngayVoHieuHoa: DateTime
+
+    + taoTaiKhoan(): void
+    + kichHoat(): void
+    + voHieuHoa(): void
+    + dangNhap(): Boolean
+    + doiMatKhau(): void
+}
+
+
+' =========================================================
+' CLASS: AUDIT LOG
+' =========================================================
+
+class "Nhật ký kiểm toán" as AuditLog {
+
+    - maAuditLog: Long
+    - userId: Long
+    - hanhDong: String
+    - bangDuLieu: String
+    - giaTriCu: String
+    - giaTriMoi: String
+    - thoiGian: DateTime
+
+    + ghiNhan(): void
+    + xemLichSu(): List<AuditLog>
+}
+
+
+' =========================================================
+' CLASS: THÔNG BÁO
+' =========================================================
+
+class "Thông báo" as ThongBao {
+
+    - maThongBao: Long
+    - maNhanVien: Long
+    - tieuDe: String
+    - noiDung: String
+    - loaiThongBao: String
+    - daDoc: Boolean
+    - thoiGianTao: DateTime
+
+    + taoThongBao(): void
+    + guiThongBao(): void
+    + danhDauDaDoc(): void
+}
+
+
+' =========================================================
+' QUAN HỆ
+' =========================================================
+
+PhongBan "1" -- "0..*" NhanVien : quản lý >
+
+NhanVien "1" -- "0..*" HopDong : có >
+
+NhanVien "1" -- "0..1" TaiKhoanESS : sử dụng >
+
+NhanVien "1" -- "0..*" AuditLog : có lịch sử >
+
+NhanVien "1" -- "0..*" ThongBao : nhận >
+
+
+
+@enduml

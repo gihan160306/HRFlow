@@ -1,0 +1,209 @@
+@startuml
+title Class Diagram - Phân hệ 4: Phiếu lương & ESS
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+' =========================================================
+' CLASS: NHÂN VIÊN
+' =========================================================
+
+class "Nhân viên" as NhanVien {
+
+    - maNhanVien: Long
+    - maNhanVienCode: String
+    - hoTen: String
+    - email: String
+    - trangThai: String
+
+    + xemPhieuLuong(): List<PhieuLuong>
+    + xemThongTinCaNhan(): NhanVien
+    + xemHopDong(): HopDong
+    + xemBangCong(): List<BangCong>
+    + xemPhepConLai(): Decimal
+    + xemDonDaGui(): List<DonTu>
+}
+
+
+' =========================================================
+' CLASS: PHIẾU LƯƠNG
+' =========================================================
+
+class "Phiếu lương" as PhieuLuong {
+
+    - maPhieuLuong: Long
+    - maNhanVien: Long
+    - maKyLuong: Long
+
+    ' ===== Thu nhập =====
+    - luongGross: Decimal
+    - tienOT: Decimal
+    - tienPhuCap: Decimal
+
+    ' ===== Khoản giảm trừ =====
+    - tienBaoHiem: Decimal
+    - tienThue: Decimal
+    - tienKhauTru: Decimal
+
+    ' ===== Thực nhận =====
+    - luongNet: Decimal
+
+    ' ===== PDF =====
+    - duongDanPDF: String
+    - trangThaiPDF: String
+    - thoiGianTao: DateTime
+
+    + taoPhieuLuong(): void
+    + tinhLuongNet(): Decimal
+    + taoPDF(): File
+    + xemPDF(): File
+    + taiPDF(): File
+    + kiemTraTrangThaiKyLuong(): Boolean
+}
+
+
+' =========================================================
+' CLASS: KỲ LƯƠNG
+' =========================================================
+
+class "Kỳ lương" as KyLuong {
+
+    - maKyLuong: Long
+    - tenKyLuong: String
+    - ngayBatDau: Date
+    - ngayKetThuc: Date
+
+    ' ===== Trạng thái =====
+    - trangThai: String
+    - thoiGianTinh: DateTime
+    - thoiGianDuyet: DateTime
+    - thoiGianKhoa: DateTime
+
+    + taoKyLuong(): void
+    + tinhLuong(): void
+    + duyetKyLuong(): void
+    + khoaKyLuong(): void
+    + kiemTraDaKhoa(): Boolean
+}
+
+
+' =========================================================
+' CLASS: TÀI KHOẢN ESS
+' =========================================================
+
+class "Tài khoản ESS" as TaiKhoanESS {
+
+    - maTaiKhoan: Long
+    - maNhanVien: Long
+    - tenDangNhap: String
+    - tokenJWT: String
+    - trangThai: String
+
+    + dangNhap(): Boolean
+    + xacThucToken(): Boolean
+    + truyCapESS(): Boolean
+    + kiemTraQuyen(): Boolean
+    + dangXuat(): void
+}
+
+
+' =========================================================
+' CLASS: HỢP ĐỒNG
+' =========================================================
+
+class "Hợp đồng" as HopDong {
+
+    - maHopDong: Long
+    - maNhanVien: Long
+    - loaiHopDong: String
+    - ngayBatDau: Date
+    - ngayKetThuc: Date
+    - trangThai: String
+
+    + xemHopDong(): HopDong
+    + kiemTraTrangThai(): Boolean
+}
+
+
+' =========================================================
+' CLASS: BẢNG CÔNG
+' =========================================================
+
+class "Bảng công" as BangCong {
+
+    - maBangCong: Long
+    - maNhanVien: Long
+    - ngay: Date
+    - gioCheckIn: DateTime
+    - gioCheckOut: DateTime
+    - soNgayCong: Decimal
+    - soPhutDiTre: Integer
+    - soPhutVeSom: Integer
+    - trangThai: String
+
+    + xemBangCong(): List<BangCong>
+    + tinhNgayCong(): Decimal
+}
+
+
+' =========================================================
+' CLASS: ĐƠN TỪ
+' =========================================================
+
+class "Đơn từ" as DonTu {
+
+    - maDon: Long
+    - maNhanVien: Long
+    - loaiDon: String
+    - ngayBatDau: Date
+    - ngayKetThuc: Date
+    - trangThai: String
+    - lyDo: String
+
+    + xemDonDaGui(): List<DonTu>
+    + xemTrangThai(): String
+}
+
+
+' =========================================================
+' CLASS: THÔNG BÁO
+' =========================================================
+
+class "Thông báo" as ThongBao {
+
+    - maThongBao: Long
+    - maNhanVien: Long
+    - tieuDe: String
+    - noiDung: String
+    - loaiThongBao: String
+    - daDoc: Boolean
+    - thoiGianTao: DateTime
+
+    + taoThongBao(): void
+    + guiThongBao(): void
+    + danhDauDaDoc(): void
+}
+
+
+' =========================================================
+' QUAN HỆ CHÍNH
+' =========================================================
+
+NhanVien "1" -- "0..*" PhieuLuong : sở hữu >
+
+KyLuong "1" -- "0..*" PhieuLuong : tạo ra >
+
+NhanVien "1" -- "0..1" TaiKhoanESS : sử dụng >
+
+NhanVien "1" -- "0..*" HopDong : có >
+
+NhanVien "1" -- "0..*" BangCong : có >
+
+NhanVien "1" -- "0..*" DonTu : gửi >
+
+NhanVien "1" -- "0..*" ThongBao : nhận >
+
+
+@enduml
