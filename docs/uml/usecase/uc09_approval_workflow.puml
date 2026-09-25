@@ -1,0 +1,53 @@
+@startuml uc09_approval_workflow
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #333333
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #000000
+    FontColor #000000
+    BackgroundColor #FFFFFF
+}
+
+left to right direction
+
+actor "Manager\n(Quản lý trực tiếp)" as Manager
+actor "HR\n(Nhân sự)" as HR
+
+HR .up.|> Manager : <<kế thừa khi khuyết Manager>>
+
+package "UC-09 - Quy trình phê duyệt đơn từ (PTO / OT)" {
+    usecase "UC-09\nPhê duyệt đơn từ" as UC09
+    usecase "Xem chi tiết đơn chờ duyệt (Pending)" as UC_View
+    usecase "Phê duyệt (Approve) đơn" as UC_Approve
+    usecase "Từ chối (Reject) đơn" as UC_Reject
+    usecase "Nhập lý do từ chối" as UC_Reason
+    usecase "Ghi nhật ký kiểm toán (Approval Log)" as UC_Log
+    usecase "Gửi thông báo kết quả (In-app / Email)" as UC_Notif
+}
+
+Manager --> UC09
+HR --> UC09
+
+UC09 ..> UC_View : <<include>>
+UC09 ..> UC_Approve : <<include>>
+UC09 ..> UC_Reject : <<include>>
+UC_Reason ..> UC_Reject : <<extend>>
+UC09 ..> UC_Log : <<include>>
+UC09 ..> UC_Notif : <<include>>
+
+@enduml

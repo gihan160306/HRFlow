@@ -1,0 +1,48 @@
+@startuml uc08_ot_registration
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #333333
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #000000
+    FontColor #000000
+    BackgroundColor #FFFFFF
+}
+
+left to right direction
+
+actor "Employee\n(Nhân viên)" as Employee
+actor "Manager / HR" as Approver
+
+package "UC-08 - Quản lý làm thêm giờ (OT)" {
+    usecase "Tạo & công bố lịch OT" as UC_Publish
+    usecase "UC-08\nĐăng ký làm thêm giờ" as UC08
+    usecase "Xem danh sách lịch OT phù hợp" as UC_ViewList
+    usecase "Kiểm tra điều kiện / đối tượng phân công" as UC_CheckEligible
+    usecase "Tạo yêu cầu OT trạng thái Pending" as UC_CreateOT
+    usecase "Báo lỗi không thuộc đối tượng được đăng ký" as UC_ErrEligible
+}
+
+Approver --> UC_Publish
+Employee --> UC08
+
+UC08 ..> UC_ViewList : <<include>>
+UC08 ..> UC_CheckEligible : <<include>>
+UC08 ..> UC_CreateOT : <<include>>
+UC_ErrEligible ..> UC_CheckEligible : <<extend>>
+
+@enduml

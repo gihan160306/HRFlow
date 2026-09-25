@@ -1,0 +1,45 @@
+@startuml uc07_pto_request
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #333333
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #000000
+    FontColor #000000
+    BackgroundColor #FFFFFF
+}
+
+left to right direction
+
+actor "Employee\n(Nhân viên)" as Employee
+
+package "UC-07 - Quản lý nghỉ phép (PTO)" {
+    usecase "UC-07\nTạo yêu cầu nghỉ phép" as UC07
+    usecase "Nhập thông tin nghỉ phép\n(ngày, loại phép, lý do)" as UC_Input
+    usecase "Kiểm tra số dư ngày phép" as UC_CheckBalance
+    usecase "Khởi tạo đơn trạng thái Pending" as UC_Pending
+    usecase "Báo lỗi không đủ ngày phép còn lại" as UC_ErrBalance
+}
+
+Employee --> UC07
+
+UC07 ..> UC_Input : <<include>>
+UC07 ..> UC_CheckBalance : <<include>>
+UC07 ..> UC_Pending : <<include>>
+UC_ErrBalance ..> UC_CheckBalance : <<extend>>
+
+@enduml
