@@ -1,0 +1,49 @@
+@startuml uc06_qr_attendance
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #333333
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #000000
+    FontColor #000000
+    BackgroundColor #FFFFFF
+}
+
+left to right direction
+
+actor "Employee\n(Nhân viên)" as Employee
+
+package "UC-06 - Chấm công nâng cao (QR & Ảnh selfie)" {
+    usecase "UC-06\nChấm công nâng cao" as UC06
+    usecase "Quét mã QR động" as UC_Scan
+    usecase "Xác thực hiệu lực QR (10-15s)" as UC_AuthQR
+    usecase "Bật camera selfie & chụp ảnh" as UC_Selfie
+    usecase "Nén ảnh minh chứng (≤ 200KB)" as UC_Compress
+    usecase "Lưu bản ghi thời gian & ảnh kiểm toán" as UC_Save
+    usecase "Báo lỗi QR hết hạn / không hợp lệ" as UC_ErrQR
+}
+
+Employee --> UC06
+
+UC06 ..> UC_Scan : <<include>>
+UC_Scan ..> UC_AuthQR : <<include>>
+UC06 ..> UC_Selfie : <<include>>
+UC_Selfie ..> UC_Compress : <<include>>
+UC06 ..> UC_Save : <<include>>
+UC_ErrQR ..> UC_AuthQR : <<extend>>
+
+@enduml

@@ -1,0 +1,47 @@
+@startuml uc05_basic_attendance
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #333333
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #000000
+    FontColor #000000
+    BackgroundColor #FFFFFF
+}
+
+left to right direction
+
+actor "Employee\n(Nhân viên)" as Employee
+
+package "UC-05 - Chấm công thời gian cơ bản" {
+    usecase "UC-05\nChấm công thời gian cơ bản" as UC05
+    usecase "Ghi nhận Check-in" as UC_In
+    usecase "Ghi nhận Check-out" as UC_Out
+    usecase "Tính số phút đi trễ" as UC_Late
+    usecase "Tính số phút về sớm" as UC_Early
+    usecase "Báo lỗi chấm công trùng lặp" as UC_Err
+}
+
+Employee --> UC05
+
+UC05 ..> UC_In : <<include>>
+UC05 ..> UC_Out : <<include>>
+UC_In ..> UC_Late : <<include>>
+UC_Out ..> UC_Early : <<include>>
+UC_Err ..> UC05 : <<extend>>
+
+@enduml

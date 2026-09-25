@@ -1,0 +1,55 @@
+@startuml uc_module2_overview
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 13
+skinparam backgroundColor #FFFFFF
+
+skinparam actor {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+}
+
+skinparam usecase {
+    BorderColor #0288D1
+    BackgroundColor #E1F5FE
+    FontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam package {
+    BorderColor #333333
+    FontColor #000000
+    BackgroundColor #FAFAFA
+}
+
+left to right direction
+
+' ================= ACTORS =================
+actor "Employee\n(Nhân viên)" as Employee
+actor "Manager\n(Quản lý trực tiếp)" as Manager
+actor "HR\n(Nhân sự)" as HR
+
+' HR thay Manager duyệt khi nhân viên khuyết Quản lý trực tiếp
+HR .up.|> Manager : <<kế thừa quyền duyệt khi khuyết Manager>>
+
+' ================= SYSTEM BOUNDARY =================
+package "USE CASE DIAGRAM - PHÂN HỆ 2: CHẤM CÔNG & NGHỈ PHÉP" {
+    usecase "UC-05\nChấm công thời gian cơ bản" as UC05
+    usecase "UC-06\nChấm công nâng cao\n(QR động + Ảnh)" as UC06
+    usecase "UC-07\nQuản lý nghỉ phép (PTO)" as UC07
+    usecase "UC-08\nQuản lý tăng ca (OT)" as UC08
+    usecase "UC-09\nPhê duyệt đơn từ\n(Workflow PTO / OT)" as UC09
+}
+
+' ================= TƯƠNG TÁC =================
+Employee --> UC05
+Employee --> UC06
+Employee --> UC07
+Employee --> UC08
+
+Manager --> UC09
+HR --> UC08 : <<công bố lịch OT>>
+HR --> UC09
+
+@enduml
