@@ -1,0 +1,155 @@
+@startuml class_module2
+skinparam defaultFontColor #000000
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+skinparam roundcorner 5
+
+skinparam class {
+    BorderColor #333333
+    BackgroundColor #FFFFFF
+    FontColor #000000
+    AttributeFontColor #000000
+    ArrowColor #333333
+    ArrowFontColor #000000
+}
+
+skinparam enum {
+    BorderColor #333333
+    BackgroundColor #F5F5F5
+    FontColor #000000
+}
+
+' ================= THỰC THỂ PHÂN HỆ 2 =================
+class Timecard {
+    - id : Long
+    - employeeId : Long
+    - workDate : LocalDate
+    - checkInTime : LocalDateTime
+    - checkOutTime : LocalDateTime
+    - lateMinutes : int
+    - earlyLeaveMinutes : int
+    - status : AttendanceStatus
+    - selfiePhotoUrl : String
+    - qrValidationCode : String
+    + recordCheckIn(time: LocalDateTime, qrCode: String, photoUrl: String) : void
+    + recordCheckOut(time: LocalDateTime) : void
+    + calculateDiscrepancy(standardStartTime: LocalTime, standardEndTime: LocalTime) : void
+}
+
+class PTORequest {
+    - id : Long
+    - employeeId : Long
+    - startDate : LocalDate
+    - endDate : LocalDate
+    - ptoType : PTOType
+    - durationDays : BigDecimal
+    - reason : String
+    - status : RequestStatus
+    - createdAt : LocalDateTime
+    + submitRequest() : void
+    + cancelRequest() : void
+    + validateBalance(remainingDays: BigDecimal) : boolean
+}
+
+class OTSchedule {
+    - id : Long
+    - otDate : LocalDate
+    - startTime : LocalTime
+    - endTime : LocalTime
+    - maxHours : BigDecimal
+    - taskDescription : String
+    - dayType : DayType
+    - departmentId : Long
+    - isPublished : Boolean
+    - createdBy : Long
+    + publishSchedule() : void
+    + isEligible(empId: Long) : boolean
+}
+
+class OTRequest {
+    - id : Long
+    - employeeId : Long
+    - otScheduleId : Long
+    - otDate : LocalDate
+    - otHours : BigDecimal
+    - dayType : DayType
+    - reason : String
+    - status : RequestStatus
+    - createdAt : LocalDateTime
+    + registerOT(scheduleId: Long, hours: BigDecimal, reason: String) : void
+    + calculateOTMultiplier() : BigDecimal
+}
+
+class ApprovalLog {
+    - id : Long
+    - requestType : String
+    - requestId : Long
+    - approverId : Long
+    - action : ApprovalAction
+    - reason : String
+    - timestamp : LocalDateTime
+    + logApproval(approverId: Long, action: ApprovalAction, reason: String) : void
+}
+
+' ================= CÁC ENUM =================
+enum AttendanceStatus {
+    ON_TIME
+    LATE
+    EARLY_LEAVE
+    LATE_AND_EARLY
+    ABSENT
+}
+
+enum RequestStatus {
+    DRAFT
+    PENDING
+    APPROVED
+    REJECTED
+    CANCELLED
+}
+
+enum PTOType {
+    ANNUAL_LEAVE
+    UNPAID_LEAVE
+    SICK_LEAVE
+    MATERNITY_LEAVE
+}
+
+enum DayType {
+    WEEKDAY_150
+    WEEKEND_200
+    HOLIDAY_300
+}
+
+enum ApprovalAction {
+    APPROVE
+    REJECT
+}
+
+' ================= THỰC THỂ NGOÀI LIÊN KẾT =================
+class Employee <<external>> {
+    - id : Long
+    - fullName : String
+    - departmentId : Long
+    - managerId : Long
+}
+
+' ================= MỐI QUAN HỆ =================
+Employee "1" --> "0..*" Timecard : sở hữu
+Employee "1" --> "0..*" PTORequest : tạo đơn
+Employee "1" --> "0..*" OTRequest : đăng ký
+
+OTSchedule "1" <-- "0..*" OTRequest : dựa trên lịch công bố
+
+PTORequest "1" *-- "0..*" ApprovalLog : ghi vết phê duyệt
+OTRequest "1" *-- "0..*" ApprovalLog : ghi vết phê duyệt
+
+Timecard ..> AttendanceStatus : sử dụng
+PTORequest ..> RequestStatus : sử dụng
+PTORequest ..> PTOType : sử dụng
+OTSchedule ..> DayType : sử dụng
+OTRequest ..> RequestStatus : sử dụng
+OTRequest ..> DayType : sử dụng
+ApprovalLog ..> ApprovalAction : sử dụng
+
+@enduml
