@@ -1,0 +1,604 @@
+@startuml class_domain_overview
+
+title CLASS DOMAIN TỔNG THỂ - HRFLOW
+
+left to right direction
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam linetype ortho
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #555555
+    FontColor #222222
+    AttributeFontColor #333333
+    ArrowColor #555555
+    ArrowFontColor #333333
+}
+
+skinparam enum {
+    BackgroundColor #F7F7F7
+    BorderColor #777777
+    FontColor #222222
+}
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #999999
+    FontColor #333333
+    FontStyle bold
+}
+
+skinparam nodesep 35
+skinparam ranksep 45
+
+
+' =========================================================
+' 1. NHÂN SỰ - TỔ CHỨC
+' =========================================================
+
+package "NHÂN SỰ - TỔ CHỨC" {
+
+    class "Phòng ban" as PhongBan {
+        -maPhongBan : Long
+        -tenPhongBan : String
+        -moTa : String
+    }
+
+    class "Nhân viên" as NhanVien {
+        -maNhanVien : Long
+        -maPhongBan : Long
+        -maQuanLyTrucTiep : Long
+        -hoTen : String
+        -ngaySinh : Date
+        -gioiTinh : String
+        -email : String
+        -soDienThoai : String
+        -diaChi : String
+        -ngayVaoLam : Date
+        -ngayNghiViec : Date
+        -tyLeNghiViec : String
+        -trangThai : String
+    }
+
+    class "Hợp đồng" as HopDong {
+        -maHopDong : Long
+        -maNhanVien : Long
+        -loaiHopDong : String
+        -ngayBatDau : Date
+        -ngayKetThuc : Date
+        -luongCoBan : Decimal
+        -trangThai : String
+    }
+}
+
+
+' =========================================================
+' 2. TÀI KHOẢN - RBAC - HỖ TRỢ
+' =========================================================
+
+package "TÀI KHOẢN - PHÂN QUYỀN - HỖ TRỢ" {
+
+    class "Người dùng" as NguoiDung {
+        -maNguoiDung : Long
+        -maNhanVien : Long
+        -tenDangNhap : String
+        -email : String
+        -matKhauMaHoa : String
+        -trangThai : TrangThaiNguoiDung
+        -ngayTao : Date
+        -ngayCapNhat : Date
+
+        +dangNhap() : Boolean
+        +dangXuat() : Void
+        +doiMatKhau(matKhauCu : String, matKhauMoi : String) : Boolean
+        +capNhatHoSo() : Void
+    }
+
+    class "Vai trò" as VaiTro {
+        -maVaiTro : Long
+        -tenVaiTro : String
+        -moTa : String
+        -danhSachQuyen : List<String>
+
+        +themQuyen(quyen : String) : Void
+        +xoaQuyen(quyen : String) : Void
+        +kiemTraQuyen(quyen : String) : Boolean
+    }
+
+    class "Nhật ký hệ thống" as NhatKyHeThong {
+        -maNhatKy : Long
+        -maNguoiDung : Long
+        -hanhDong : String
+        -tenBang : String
+        -maThucThe : Long
+        -giaTriCu : String
+        -giaTriMoi : String
+        -diaChiIP : String
+        -thoiGian : DateTime
+
+        +ghiNhatKy() : Void
+    }
+
+    class "Thông báo" as ThongBao {
+        -maThongBao : Long
+        -maNguoiDung : Long
+        -tieuDe : String
+        -noiDung : String
+        -loaiThongBao : LoaiThongBao
+        -kenhThongBao : String
+        -daDoc : Boolean
+        -ngayTao : DateTime
+
+        +danhDauDaDoc() : Void
+        +guiThongBao() : Void
+    }
+}
+
+
+' =========================================================
+' 3. CHẤM CÔNG - NGHỈ PHÉP - OT
+' =========================================================
+
+package "CHẤM CÔNG - NGHỈ PHÉP - OT" {
+
+    class "Bảng công" as BangCong {
+        -maBangCong : Long
+        -maNhanVien : Long
+        -ngayLamViec : Date
+        -thoiGianVao : DateTime
+        -thoiGianRa : DateTime
+        -soPhutDiTre : int
+        -soPhutVeSom : int
+        -trangThai : TrangThaiChamCong
+        -anhSelfie : String
+        -maXacThucQR : String
+
+        +ghiNhanCheckIn(
+            thoiGian : DateTime,
+            maQR : String,
+            anh : String
+        ) : Void
+
+        +ghiNhanCheckOut(
+            thoiGian : DateTime
+        ) : Void
+
+        +tinhSaiLech(
+            gioBatDauChuan : Time,
+            gioKetThucChuan : Time
+        ) : Void
+    }
+
+    class "Đơn nghỉ phép" as DonNghiPhep {
+        -maDon : Long
+        -maNhanVien : Long
+        -ngayBatDau : Date
+        -ngayKetThuc : Date
+        -loaiNghi : LoaiNghi
+        -soNgayNghi : Decimal
+        -lyDo : String
+        -trangThai : TrangThaiDon
+        -ngayTao : DateTime
+
+        +guiDon() : Void
+        +huyDon() : Void
+        +kiemTraSoDu(
+            soNgayConLai : Decimal
+        ) : Boolean
+    }
+
+    class "Lịch OT" as LichOT {
+        -maLichOT : Long
+        -ngayOT : Date
+        -gioBatDau : Time
+        -gioKetThuc : Time
+        -soGioToiDa : Decimal
+        -moTaCongViec : String
+        -loaiNgay : LoaiNgay
+        -maPhongBan : Long
+        -daCongBo : Boolean
+        -nguoiTao : Long
+
+        +congBoLich() : Void
+        +kiemTraDuDieuKien(
+            maNhanVien : Long
+        ) : Boolean
+    }
+
+    class "Đơn đăng ký OT" as DonDangKyOT {
+        -maDon : Long
+        -maNhanVien : Long
+        -maLichOT : Long
+        -ngayOT : Date
+        -soGioOT : Decimal
+        -loaiNgay : LoaiNgay
+        -lyDo : String
+        -trangThai : TrangThaiDon
+        -ngayTao : DateTime
+
+        +dangKyOT(
+            maLich : Long,
+            soGio : Decimal,
+            lyDo : String
+        ) : Void
+
+        +tinhHeSoOT() : Decimal
+    }
+
+    class "Nhật ký phê duyệt" as NhatKyPheDuyet {
+        -maNhatKy : Long
+        -loaiDon : String
+        -maDon : Long
+        -nguoiPheDuyet : Long
+        -hanhDong : HanhDongPheDuyet
+        -lyDo : String
+        -thoiGian : DateTime
+
+        +ghiNhanPheDuyet(
+            nguoiPheDuyet : Long,
+            hanhDong : HanhDongPheDuyet,
+            lyDo : String
+        ) : Void
+    }
+}
+
+
+' =========================================================
+' 4. PAYROLL
+' =========================================================
+
+package "PAYROLL" {
+
+    class "Kỳ lương" as KyLuong {
+        -maKyLuong : Long
+        -tenKyLuong : String
+        -ngayBatDau : Date
+        -ngayKetThuc : Date
+        -trangThai : String
+        -thoiGianPheDuyet : DateTime
+        -thoiGianKhoa : DateTime
+
+        +tinhLuong() : Void
+        +xemTruocBangLuong() : Void
+        +pheDuyet() : Void
+        +khoa() : Void
+        +kiemTraKhoa() : Boolean
+    }
+
+    class "Dòng lương" as DongLuong {
+        -maDongLuong : Long
+        -maKyLuong : Long
+        -maNhanVien : Long
+        -luongCoBan : Decimal
+        -ngayCong : Decimal
+        -tienOT : Decimal
+        -tongPhuCap : Decimal
+        -luongGross : Decimal
+        -baoHiemXaHoi : Decimal
+        -baoHiemYTe : Decimal
+        -baoHiemThatNghiep : Decimal
+        -thueTNCN : Decimal
+        -tongKhauTru : Decimal
+        -luongNet : Decimal
+
+        +tinhGross() : Decimal
+        +tinhOT() : Decimal
+        +tinhProration() : Decimal
+        +tinhBaoHiem() : Decimal
+        +tinhThue() : Decimal
+        +tinhNet() : Decimal
+    }
+
+    class "Phiếu lương" as PhieuLuong {
+        -maPhieuLuong : Long
+        -maNhanVien : Long
+        -maKyLuong : Long
+        -luongGross : Decimal
+        -tienOT : Decimal
+        -tienPhuCap : Decimal
+        -tienBaoHiem : Decimal
+        -tienThue : Decimal
+        -tongKhauTru : Decimal
+        -luongNet : Decimal
+        -trangThai : String
+        -duongDanPDF : String
+        -ngayTao : DateTime
+
+        +taoPhieuLuong() : Void
+        +tinhPhieuLuong() : Void
+        +taoPDF() : Void
+        +xemPDF() : Void
+        +taiPDF() : Void
+        +kiemTraTrangThaiKyLuong() : Boolean
+    }
+
+    class "Điều chỉnh hồi tố" as DieuChinhHoiTo {
+        -maDieuChinh : Long
+        -maNhanVien : Long
+        -maKyLuongTruoc : Long
+        -maKyLuongHienTai : Long
+        -loaiDieuChinh : String
+        -soTienChenhLech : Decimal
+        -lyDo : String
+        -trangThai : String
+        -ngayDieuChinh : Date
+
+        +kiemTraChenhLech() : Decimal
+        +tinhChenhLech() : Decimal
+        +taoDieuChinh() : Void
+    }
+
+    class "Phụ cấp" as PhuCap {
+        -maPhuCap : Long
+        -tenPhuCap : String
+        -soTien : Decimal
+        -trangThai : String
+        -maNhanVien : Long
+        -maPhongBan : Long
+        -loaiPhuCap : String
+        -dangApDung : Boolean
+
+        +tinhPhuCap() : Decimal
+    }
+
+    class "Khấu trừ" as KhauTru {
+        -maKhauTru : Long
+        -tenKhauTru : String
+        -soTien : Decimal
+        -trangThai : String
+        -maNhanVien : Long
+        -loaiKhauTru : String
+        -dangApDung : Boolean
+
+        +tinhSoTien() : Decimal
+    }
+
+    class "Cấu hình thuế" as CauHinhThue {
+        -maCauHinhThue : Long
+        -ngayHieuLuc : Date
+        -bacThue : int
+        -mucThue : Decimal
+        -mucGiamTruBanThan : Decimal
+        -mucGiamTruNguoiPhuThuoc : Decimal
+        -giamTru : Decimal
+        -trangThai : String
+
+        +tinhThue(
+            luongChiuThue : Decimal
+        ) : Decimal
+
+        +layThueSuat() : Decimal
+    }
+
+    class "Cấu hình bảo hiểm" as CauHinhBaoHiem {
+        -maCauHinhBaoHiem : Long
+        -ngayHieuLuc : Date
+        -tyLeBHXH : Decimal
+        -tyLeBHYT : Decimal
+        -tyLeBHTN : Decimal
+        -mucLuongToiDa : Decimal
+
+        +tinhBHXH(luong : Decimal) : Decimal
+        +tinhBHYT(luong : Decimal) : Decimal
+        +tinhBHTN(luong : Decimal) : Decimal
+    }
+}
+
+
+' =========================================================
+' 5. ENUM
+' =========================================================
+
+enum TrangThaiNguoiDung {
+    HOAT_DONG
+    KHONG_HOAT_DONG
+    BI_KHOA
+}
+
+enum LoaiThongBao {
+    HE_THONG
+    BAO_MAT
+    GIAO_DICH
+    CANH_BAO
+}
+
+enum TrangThaiChamCong {
+    DUNG_GIO
+    DI_TRE
+    VE_SOM
+    DI_TRE_VA_VE_SOM
+    VANG
+}
+
+enum TrangThaiDon {
+    NHAP
+    CHO_DUYET
+    DA_DUYET
+    TU_CHOI
+    DA_HUY
+}
+
+enum LoaiNghi {
+    NGHI_PHEP_NAM
+    NGHI_KHONG_LUONG
+    NGHI_OM
+    NGHI_THAI_SAN
+}
+
+enum LoaiNgay {
+    NGAY_THUONG_150
+    CUOI_TUAN_200
+    NGAY_LE_300
+}
+
+enum HanhDongPheDuyet {
+    DUYET
+    TU_CHOI
+}
+
+
+' =========================================================
+' 6. QUAN HỆ NHÂN SỰ
+' =========================================================
+
+PhongBan "1" -- "0..*" NhanVien : quản lý
+
+NhanVien "1" -- "0..*" HopDong : có
+
+NhanVien "1" -- "0..1" NguoiDung : sử dụng tài khoản
+
+' Quản lý trực tiếp của nhân viên
+NhanVien "0..*" --> "0..1" NhanVien : quản lý trực tiếp
+
+
+' =========================================================
+' 7. QUAN HỆ RBAC - HỖ TRỢ
+' =========================================================
+
+NguoiDung "0..*" -- "0..*" VaiTro : được gán
+
+NguoiDung "1" -- "0..*" NhatKyHeThong : thực hiện
+
+NguoiDung "1" -- "0..*" ThongBao : nhận
+
+
+' =========================================================
+' 8. QUAN HỆ CHẤM CÔNG
+' =========================================================
+
+NhanVien "1" -- "0..*" BangCong : có
+
+
+' =========================================================
+' 9. QUAN HỆ NGHỈ PHÉP
+' =========================================================
+
+NhanVien "1" -- "0..*" DonNghiPhep : tạo đơn
+
+DonNghiPhep "1" -- "0..*" NhatKyPheDuyet : có lịch sử duyệt
+
+
+' =========================================================
+' 10. QUAN HỆ OT
+' =========================================================
+
+NguoiDung "1" -- "0..*" LichOT : tạo
+
+NhanVien "1" -- "0..*" DonDangKyOT : đăng ký
+
+LichOT "1" -- "0..*" DonDangKyOT : được đăng ký từ
+
+DonDangKyOT "1" -- "0..*" NhatKyPheDuyet : có lịch sử duyệt
+
+NguoiDung "1" -- "0..*" NhatKyPheDuyet : thực hiện phê duyệt
+
+
+' =========================================================
+' 11. QUAN HỆ PAYROLL
+' =========================================================
+
+KyLuong "1" -- "1..*" DongLuong : bao gồm
+
+NhanVien "1" -- "0..*" DongLuong : có
+
+KyLuong "1" -- "0..*" PhieuLuong : phát hành
+
+NhanVien "1" -- "0..*" PhieuLuong : nhận
+
+
+' =========================================================
+' 12. ĐIỀU CHỈNH HỒI TỐ
+' =========================================================
+
+DieuChinhHoiTo "0..*" -- "1" KyLuong : kỳ trước
+
+DieuChinhHoiTo "0..*" -- "1" KyLuong : kỳ áp dụng
+
+
+' =========================================================
+' 13. PHỤ CẤP - KHẤU TRỪ
+' =========================================================
+
+NhanVien "1" -- "0..*" PhuCap : được áp dụng
+
+PhongBan "1" -- "0..*" PhuCap : áp dụng theo phòng ban
+
+NhanVien "1" -- "0..*" KhauTru : có khoản khấu trừ
+
+
+' =========================================================
+' 14. QUAN HỆ TÍNH LƯƠNG
+' =========================================================
+
+DongLuong ..> BangCong : lấy ngày công thực tế
+
+DongLuong ..> DonDangKyOT : lấy OT đã duyệt
+
+DongLuong ..> PhuCap : sử dụng
+
+DongLuong ..> KhauTru : sử dụng
+
+DongLuong ..> CauHinhThue : tính thuế
+
+DongLuong ..> CauHinhBaoHiem : tính bảo hiểm
+
+
+' =========================================================
+' 15. QUAN HỆ ENUM
+' =========================================================
+
+NguoiDung ..> TrangThaiNguoiDung : sử dụng
+
+ThongBao ..> LoaiThongBao : sử dụng
+
+BangCong ..> TrangThaiChamCong : sử dụng
+
+DonNghiPhep ..> TrangThaiDon : sử dụng
+
+DonNghiPhep ..> LoaiNghi : sử dụng
+
+LichOT ..> LoaiNgay : sử dụng
+
+DonDangKyOT ..> TrangThaiDon : sử dụng
+
+DonDangKyOT ..> LoaiNgay : sử dụng
+
+NhatKyPheDuyet ..> HanhDongPheDuyet : sử dụng
+
+
+' =========================================================
+' 16. HỖ TRỢ LAYOUT
+' Chỉ dùng để định vị, không phải quan hệ nghiệp vụ.
+' =========================================================
+
+PhongBan -[hidden]right- NhanVien
+NhanVien -[hidden]right- HopDong
+
+NguoiDung -[hidden]right- VaiTro
+VaiTro -[hidden]right- ThongBao
+ThongBao -[hidden]right- NhatKyHeThong
+
+BangCong -[hidden]right- DonNghiPhep
+DonNghiPhep -[hidden]right- LichOT
+LichOT -[hidden]right- DonDangKyOT
+DonDangKyOT -[hidden]right- NhatKyPheDuyet
+
+KyLuong -[hidden]right- DongLuong
+DongLuong -[hidden]right- PhieuLuong
+
+CauHinhThue -[hidden]right- CauHinhBaoHiem
+
+PhuCap -[hidden]right- KhauTru
+
+TrangThaiNguoiDung -[hidden]right- LoaiThongBao
+TrangThaiChamCong -[hidden]right- TrangThaiDon
+LoaiNghi -[hidden]right- LoaiNgay
+LoaiNgay -[hidden]right- HanhDongPheDuyet
+
+@enduml
