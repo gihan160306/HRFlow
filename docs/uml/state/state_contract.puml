@@ -1,0 +1,33 @@
+
+@startuml state_contract
+title Vòng đời hợp đồng lao động (Contract)
+
+hide empty description
+top to bottom direction
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 250
+skinparam ranksep 100
+skinparam state {
+  FontSize 12
+  RoundCorner 10
+}
+
+state "Đang hiệu lực\n(Active)" as Active
+state "Sắp hết hạn\n(Expiring Soon)" as ExpiringSoon
+state "Đã hết hạn\n(Expired)" as Expired
+state "Đã chấm dứt\n(Terminated)" as Terminated
+
+[*] --> Active : HR tạo\nhợp đồng
+Active -right-> ExpiringSoon : Còn <= 30 ngày
+ExpiringSoon -right-> Expired : Đã qua ngày\nkết thúc
+ExpiringSoon -left-> Active : Gia hạn thành công
+
+Active -down-> Terminated : Nhân viên\nnghỉ việc
+ExpiringSoon -down-> Terminated : Chấm dứt\nhợp đồng
+
+Expired --> [*]
+Terminated --> [*]
+
+@enduml

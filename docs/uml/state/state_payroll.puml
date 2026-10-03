@@ -1,0 +1,21 @@
+@startuml state_payroll
+title Kỳ lương (Payroll Period)
+hide empty description
+left to right direction
+
+[*] --> Draft : HR tạo kỳ lương
+Draft --> Calculated : Chạy tính lương\n[bảng công đã chốt]
+Calculated --> Draft : Tính lại
+Calculated --> Approved : HR duyệt bảng lương
+Approved --> Locked : Chốt kỳ lương
+Locked --> [*]
+
+Draft : Chỉnh sửa công, OT, phụ cấp
+Draft : Batch lỗi → rollback, giữ Draft
+Calculated : Xem trước bảng lương
+Approved : Chờ chốt kỳ
+Locked : Khóa dữ liệu, sinh phiếu lương
+Locked : Sai sót → tạo Adjustment kỳ sau
+
+footer BR-01 · SR-11.2 · SR-12.1 · NFR-12
+@enduml

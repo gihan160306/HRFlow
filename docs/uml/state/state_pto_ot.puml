@@ -1,0 +1,23 @@
+
+@startuml state_pto_ot
+title Đơn PTO / Đăng ký OT
+hide empty description
+
+[*] --> Draft : Nhân viên tạo đơn
+
+Draft --> Pending : Gửi đơn\n[đủ điều kiện]
+Draft --> Cancelled : Hủy nháp
+
+Pending --> Approved : Duyệt
+Pending --> Rejected : Từ chối\n[có lý do]
+Pending --> Cancelled : Rút đơn
+
+Approved --> [*]
+Rejected --> [*]
+Cancelled --> [*]
+
+Pending : Manager duyệt (HR nếu không có Manager)
+Rejected : Bắt buộc ghi lý do
+
+footer BR-05 · SR-04 · SR-05 · SR-07 · SR-14 · SR-15
+@enduml
