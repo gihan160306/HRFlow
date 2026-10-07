@@ -88,7 +88,7 @@ Chi tiết trong `CONTRIBUTING.md`.
 
 | File | Nội dung |
 |---|---|
-| [docs/SRS.pdf](docs/SRS.pdf) | Đặc tả yêu cầu phần mềm |
+| [docs/SRS.md](docs/SRS.md) | Đặc tả yêu cầu phần mềm |
 | [docs/openapi-spec.yaml](docs/openapi-spec.yaml) | Hợp đồng API (OpenAPI 3.1) |
 | [docs/PERMISSION-MATRIX.md](docs/PERMISSION-MATRIX.md) | Ma trận phân quyền vai trò × chức năng |
 | [docs/PAYROLL-RULES.md](docs/PAYROLL-RULES.md) | Công thức lương, thuế, bảo hiểm, OT kèm ví dụ số |
