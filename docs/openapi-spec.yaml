@@ -1,16 +1,1298 @@
 openapi: 3.1.0
 info:
-  title: Enterprise HR & Automated Payroll System API
-  description: API cho hệ thống Quản lý Nhân sự & Tính lương Tự động
-  version: 1.0.0
-  contact:
-    name: GiHan - Product Owner & Backend Lead
+  title: Enterprise HR & Automated Payroll API
+  version: 0.1.0
+  description: |
+    Hợp đồng API (Contract-First, SR-22.1). Đổi API phải sửa file này trước, qua Pull Request (SR-22.2).
 
+    Quy ước:
+    - Tiền: số nguyên VND. Ngày: `YYYY-MM-DD`. Thời điểm: ISO 8601 (UTC).
+    - Lỗi trả JSON `{ message }`, lỗi validate trả 422 `{ message, errors }`.
+    - `x-roles` ghi vai trò được phép; chi tiết phạm vi dữ liệu xem `docs/PERMISSION-MATRIX.md`.
+    - `x-sr` ghi mã yêu cầu hệ thống trong SRS để truy vết.
+    - Quy tắc công thức lương xem `docs/PAYROLL-RULES.md`.
 servers:
-  - url: http://localhost:8080
-    description: Local development
-  - url: http://localhost:8080
-    description: Docker environment
+  - url: http://localhost:8000/api/v1
+    description: Local (TODO đổi theo cấu hình thực tế)
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: Employees
+  - name: Contracts
+  - name: Attendance
+  - name: PTO
+  - name: Overtime
+  - name: Approvals
+  - name: Payroll
+  - name: Payslips
+  - name: Notifications
+  - name: Config
+  - name: Reports
+  - name: Audit
+  - name: System
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Kiểm tra tình trạng dịch vụ
+      security: []
+      responses:
+        '200':
+          description: Dịch vụ hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, examples: [ok] }
+
+  # ---------------------------------------------------------------- Auth
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập
+      security: []
+      x-sr: [SR-19.2, SR-21.1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: JWT }
+                  expires_at: { type: string, format: date-time }
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Đăng xuất (thu hồi token hiện tại)
+      responses:
+        '204': { description: Đã đăng xuất }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Thông tin tài khoản đang đăng nhập
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Đổi mật khẩu của chính mình
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, format: password }
+                new_password: { type: string, format: password, minLength: 8 }
+      responses:
+        '204': { description: Đã đổi mật khẩu }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # --------------------------------------------------------------- Users
+  /users:
+    get:
+      tags: [Users]
+      summary: Danh sách tài khoản
+      x-roles: [Admin]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: role
+          in: query
+          schema: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/User' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{id}:
+    patch:
+      tags: [Users]
+      summary: Đổi vai trò hoặc khóa/mở tài khoản
+      x-roles: [Admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ----------------------------------------------------------- Employees
+  /departments:
+    get:
+      tags: [Employees]
+      summary: Danh sách phòng ban
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Department' } }
+    post:
+      tags: [Employees]
+      summary: Tạo phòng ban
+      x-roles: [HR, Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 100 }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Department' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /employees:
+    get:
+      tags: [Employees]
+      summary: Danh sách nhân viên
+      description: HR/Admin xem tất cả. Manager chỉ thấy nhân viên trong team (trường cơ bản).
+      x-roles: [HR, Admin, Manager]
+      x-sr: [SR-01.1]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: q
+          in: query
+          description: Tìm theo tên, mã nhân viên, email
+          schema: { type: string }
+        - name: department_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, terminated] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Employee' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Employees]
+      summary: Tạo hồ sơ nhân viên và tài khoản đăng nhập (onboarding)
+      x-roles: [HR, Admin]
+      x-sr: [SR-01.1, SR-01.2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeCreate' }
+      responses:
+        '201':
+          description: Đã tạo hồ sơ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Hồ sơ chi tiết
+      description: Employee chỉ xem hồ sơ của mình. Manager xem team nhưng không có lương, CCCD, tài khoản ngân hàng.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Employees]
+      summary: Cập nhật hồ sơ (ghi audit log)
+      x-roles: [HR, Admin]
+      x-sr: [SR-01.3, SR-20.1]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeUpdate' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /employees/{id}/terminate:
+    post:
+      tags: [Employees]
+      summary: Ghi nhận nghỉ việc
+      description: Deactivate tài khoản ESS, giữ dữ liệu lịch sử, tính lương/trợ cấp cuối kỳ.
+      x-roles: [HR]
+      x-sr: [SR-03.1, SR-03.2, SR-03.3]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [termination_date, reason]
+              properties:
+                termination_date: { type: string, format: date }
+                reason: { type: string }
+                social_insurance_closed: { type: boolean, description: Đã chốt sổ BHXH }
+                severance_amount: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Đã ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /employees/{id}/leave-balance:
+    get:
+      tags: [PTO]
+      summary: Số ngày phép còn lại
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: year
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  employee_id: { type: integer }
+                  year: { type: integer }
+                  entitled_days: { type: number }
+                  used_days: { type: number }
+                  remaining_days: { type: number }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /employees/{id}/allowances:
+    get:
+      tags: [Employees]
+      summary: Phụ cấp/khấu trừ đang gán cho nhân viên
+      x-roles: [HR, Admin, Employee]
+      x-sr: [SR-10.2]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/EmployeeAllowance' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Employees]
+      summary: Thay danh sách phụ cấp/khấu trừ của nhân viên
+      x-roles: [HR]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items: { type: array, items: { $ref: '#/components/schemas/EmployeeAllowance' } }
+      responses:
+        '200': { description: Đã cập nhật }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /allowance-types:
+    get:
+      tags: [Employees]
+      summary: Danh mục phụ cấp/khấu trừ
+      x-roles: [HR, Admin]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/AllowanceType' } }
+    post:
+      tags: [Employees]
+      summary: Thêm loại phụ cấp/khấu trừ
+      x-roles: [HR]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllowanceType' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllowanceType' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ----------------------------------------------------------- Contracts
+  /contracts:
+    get:
+      tags: [Contracts]
+      summary: Danh sách hợp đồng
+      x-roles: [HR, Admin]
+      x-sr: [SR-02.1]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, expiring_soon, expired] }
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Contract' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Contracts]
+      summary: Tạo hợp đồng
+      x-roles: [HR]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractInput' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contract' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /contracts/{id}:
+    get:
+      tags: [Contracts]
+      summary: Chi tiết hợp đồng
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contract' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Contracts]
+      summary: Cập nhật hợp đồng
+      x-roles: [HR]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractInput' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contract' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /contracts/{id}/renew:
+    post:
+      tags: [Contracts]
+      summary: Gia hạn hợp đồng (không tạo hồ sơ nhân viên mới)
+      x-roles: [HR]
+      x-sr: [SR-02.3]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_end_date]
+              properties:
+                new_end_date: { type: string, format: date }
+                salary: { type: integer, minimum: 0, description: Lương mới nếu thay đổi }
+                note: { type: string }
+      responses:
+        '200':
+          description: Đã gia hạn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contract' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ---------------------------------------------------------- Attendance
+  /attendance/check-in:
+    post:
+      tags: [Attendance]
+      summary: Check-in
+      description: |
+        Chấm công cơ bản chỉ cần gọi không kèm dữ liệu.
+        Chấm công nâng cao (mở rộng): kèm `qr_token` còn hạn và ảnh selfie (nén ≤ 200KB).
+        QR hết hạn hoặc không hợp lệ trả 422 và không nhận ảnh.
+      x-sr: [SR-06.1, SR-06.3]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                qr_token: { type: string }
+                scanned_at: { type: string, format: date-time }
+                photo: { type: string, format: binary }
+      responses:
+        '201':
+          description: Đã ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /attendance/check-out:
+    post:
+      tags: [Attendance]
+      summary: Check-out
+      x-sr: [SR-06.1]
+      responses:
+        '200':
+          description: Đã ghi nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /attendance/qr-token:
+    get:
+      tags: [Attendance]
+      summary: Lấy mã QR động hiện tại (đổi mỗi 10 đến 15 giây)
+      x-roles: [HR]
+      x-sr: [SR-06.3]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qr_token: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /attendance:
+    get:
+      tags: [Attendance]
+      summary: Bảng công
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Attendance' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ----------------------------------------------------------------- PTO
+  /pto-requests:
+    get:
+      tags: [PTO]
+      summary: Danh sách đơn nghỉ phép
+      description: Employee thấy đơn của mình; Manager thấy team; HR thấy tất cả.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/RequestStatus' }
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/PtoRequest' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+    post:
+      tags: [PTO]
+      summary: Tạo đơn nghỉ phép
+      description: Kiểm tra số ngày phép còn lại trước khi nhận đơn. `employee_id` luôn lấy từ token.
+      x-sr: [SR-04.1, SR-04.2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start_date, end_date, leave_type]
+              properties:
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+                leave_type: { $ref: '#/components/schemas/LeaveType' }
+                reason: { type: string }
+      responses:
+        '201':
+          description: Đã tạo, trạng thái `pending`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PtoRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /pto-requests/{id}:
+    get:
+      tags: [PTO]
+      summary: Chi tiết đơn
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PtoRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [PTO]
+      summary: Duyệt, từ chối hoặc hủy đơn
+      description: |
+        `approve` / `reject`: Manager trực tiếp, hoặc HR nếu nhân viên không có Manager. `reason` bắt buộc khi `reject`.
+        `cancel`: chỉ người gửi, khi đơn còn `pending`.
+        Mỗi thao tác ghi `approval_log` và gửi thông báo cho người gửi.
+      x-roles: [Manager, HR, Employee]
+      x-sr: [SR-05.1, SR-05.2, SR-14.1, SR-15.1]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalAction' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PtoRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ------------------------------------------------------------ Overtime
+  /ot-schedules:
+    get:
+      tags: [Overtime]
+      summary: Lịch OT đã công bố (theo đối tượng được phân công)
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/OtSchedule' } }
+    post:
+      tags: [Overtime]
+      summary: Tạo và công bố lịch OT
+      x-roles: [HR, Manager]
+      x-sr: [SR-07.1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtScheduleInput' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtSchedule' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /ot-registrations:
+    get:
+      tags: [Overtime]
+      summary: Danh sách đăng ký OT
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/RequestStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/OtRegistration' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+    post:
+      tags: [Overtime]
+      summary: Đăng ký OT theo lịch đã công bố
+      x-sr: [SR-07.1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ot_schedule_id]
+              properties:
+                ot_schedule_id: { type: integer }
+                note: { type: string }
+      responses:
+        '201':
+          description: Đã đăng ký, trạng thái `pending`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtRegistration' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /ot-registrations/{id}:
+    patch:
+      tags: [Overtime]
+      summary: Duyệt, từ chối hoặc hủy đăng ký OT
+      x-roles: [Manager, HR, Employee]
+      x-sr: [SR-07.2, SR-07.3]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalAction' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtRegistration' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ----------------------------------------------------------- Approvals
+  /approval-logs:
+    get:
+      tags: [Approvals]
+      summary: Lịch sử duyệt đơn
+      x-sr: [SR-15.2]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ApprovalLog' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ------------------------------------------------------------- Payroll
+  /payroll/periods:
+    get:
+      tags: [Payroll]
+      summary: Danh sách kỳ lương
+      x-roles: [HR, Admin]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/PayrollPeriod' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Payroll]
+      summary: Tạo kỳ lương (trạng thái `draft`)
+      x-roles: [HR, Admin]
+      x-sr: [BR-01]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [month, year]
+              properties:
+                month: { type: integer, minimum: 1, maximum: 12 }
+                year: { type: integer }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollPeriod' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /payroll/periods/{id}:
+    get:
+      tags: [Payroll]
+      summary: Chi tiết kỳ lương
+      x-roles: [HR, Admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollPeriod' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payroll/periods/{id}/calculate:
+    post:
+      tags: [Payroll]
+      summary: Tính lương cả kỳ (batch) hoặc xem trước
+      description: |
+        `preview=true`: tính và trả kết quả, **không** lưu, không đổi trạng thái.
+        `preview=false`: chạy trong 1 transaction, chuyển kỳ sang `calculated`. 500 nhân viên ≤ 5 phút (SR-08.2).
+        Kỳ `locked` trả 409.
+      x-roles: [HR, Admin]
+      x-sr: [SR-08.1, SR-08.2, SR-08.3]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: preview
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Kết quả tính (preview) hoặc kỳ đã chuyển `calculated`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { $ref: '#/components/schemas/PayrollPeriod' }
+                  items: { type: array, items: { $ref: '#/components/schemas/PayrollItem' } }
+        '202':
+          description: Đã nhận, đang chạy nền
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payroll/periods/{id}/approve:
+    post:
+      tags: [Payroll]
+      summary: Duyệt bảng lương (`calculated` sang `approved`)
+      x-roles: [HR, Admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Đã duyệt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollPeriod' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payroll/periods/{id}/lock:
+    post:
+      tags: [Payroll]
+      summary: Khóa kỳ lương (`approved` sang `locked`, không thể đảo ngược)
+      description: Sau khi khóa, hệ thống sinh phiếu lương PDF, gửi email và thông báo in-app (chạy nền).
+      x-roles: [HR, Admin]
+      x-sr: [SR-12.1, SR-12.3]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Đã khóa
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollPeriod' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payroll/periods/{id}/items:
+    get:
+      tags: [Payroll]
+      summary: Bảng lương chi tiết của kỳ
+      x-roles: [HR, Admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/PayrollItem' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payroll/adjustments:
+    get:
+      tags: [Payroll]
+      summary: Danh sách điều chỉnh lương
+      x-roles: [HR, Admin]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/PayrollAdjustment' } }
+    post:
+      tags: [Payroll]
+      summary: Tạo điều chỉnh hồi tố (không sửa kỳ đã khóa)
+      description: Số tiền được cộng/trừ vào kỳ lương kế tiếp.
+      x-roles: [HR]
+      x-sr: [SR-11.2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_id, reference_period_id, amount, reason]
+              properties:
+                employee_id: { type: integer }
+                reference_period_id: { type: integer }
+                amount: { type: integer, description: 'Dương = cộng, âm = trừ (VND)' }
+                reason: { type: string }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollAdjustment' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ------------------------------------------------------------ Payslips
+  /employees/{id}/payslips:
+    get:
+      tags: [Payslips]
+      summary: Danh sách phiếu lương của nhân viên
+      description: Chỉ chủ sở hữu token tương ứng `{id}` hoặc HR.
+      x-sr: [SR-12.2, SR-13.2]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Payslip' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payslips/{id}:
+    get:
+      tags: [Payslips]
+      summary: Chi tiết phiếu lương
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payslip' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payslips/{id}/pdf:
+    get:
+      tags: [Payslips]
+      summary: Tải phiếu lương PDF
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: File PDF
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------- Notifications
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Thông báo của tôi (client polling 30 đến 60 giây)
+      x-sr: [SR-16.1]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: unread
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+                  unread_count: { type: integer }
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Đánh dấu đã đọc
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: Đã đánh dấu }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Tùy chọn nhận thông báo
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreferences' }
+    put:
+      tags: [Notifications]
+      summary: Cập nhật tùy chọn (bật/tắt email)
+      x-sr: [SR-16.2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationPreferences' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreferences' }
+
+  # -------------------------------------------------------------- Config
+  /config/tax-brackets:
+    get:
+      tags: [Config]
+      summary: Biểu thuế TNCN theo ngày hiệu lực
+      x-roles: [Admin, HR]
+      parameters:
+        - name: on_date
+          in: query
+          description: Lấy bộ biểu có hiệu lực tại ngày này
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TaxBracket' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Config]
+      summary: Thêm bộ biểu thuế mới (có `effective_from`)
+      x-roles: [Admin]
+      x-sr: [SR-09.3, BR-04]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [effective_from, brackets]
+              properties:
+                effective_from: { type: string, format: date }
+                brackets:
+                  type: array
+                  items: { $ref: '#/components/schemas/TaxBracketInput' }
+      responses:
+        '201': { description: Đã tạo }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /config/insurance-rates:
+    get:
+      tags: [Config]
+      summary: Tỷ lệ và trần bảo hiểm
+      x-roles: [Admin, HR]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/InsuranceRate' } }
+    post:
+      tags: [Config]
+      summary: Thêm bộ tỷ lệ bảo hiểm mới (có `effective_from`)
+      x-roles: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InsuranceRate' }
+      responses:
+        '201': { description: Đã tạo }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /config/system-params:
+    get:
+      tags: [Config]
+      summary: Tham số hệ thống (hệ số OT, giảm trừ gia cảnh, ngày công chuẩn...)
+      x-roles: [Admin, HR]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/SystemParam' } }
+    put:
+      tags: [Config]
+      summary: Cập nhật tham số (tạo bản ghi mới theo `effective_from`)
+      x-roles: [Admin]
+      x-sr: [BR-03, BR-04]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items: { type: array, items: { $ref: '#/components/schemas/SystemParam' } }
+      responses:
+        '200': { description: Đã cập nhật }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ------------------------------------------------- Reports / Dashboard
+  /dashboard/summary:
+    get:
+      tags: [Reports]
+      summary: Chỉ số tổng quan
+      x-roles: [HR, Admin]
+      x-sr: [SR-17.1, SR-17.2]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/export:
+    get:
+      tags: [Reports]
+      summary: Xuất báo cáo Excel/PDF
+      x-roles: [HR, Admin]
+      x-sr: [SR-18.1, SR-18.2]
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema: { type: string, enum: [payroll, attendance, overtime, leave] }
+        - name: format
+          in: query
+          schema: { type: string, enum: [xlsx, pdf], default: xlsx }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: department
+          in: query
+          schema: { type: integer, description: department_id }
+      responses:
+        '200':
+          description: File báo cáo
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # --------------------------------------------------------------- Audit
+  /audit-logs:
+    get:
+      tags: [Audit]
+      summary: Nhật ký kiểm toán (chỉ đọc, append-only)
+      description: Không có endpoint sửa hoặc xóa (NFR-03).
+      x-roles: [HR, Admin]
+      x-sr: [SR-20.1, SR-20.2]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: user_id
+          in: query
+          schema: { type: integer }
+        - name: table
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
 components:
   securitySchemes:
@@ -19,303 +1301,412 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    From:
+      name: from
+      in: query
+      schema: { type: string, format: date }
+    To:
+      name: to
+      in: query
+      schema: { type: string, format: date }
+
+  responses:
+    Unauthorized:
+      description: Thiếu hoặc hết hạn token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Vai trò không được phép dùng endpoint này
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Không tồn tại hoặc nằm ngoài phạm vi dữ liệu của người gọi
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Xung đột trạng thái (ví dụ kỳ lương đã khóa, đơn đã được xử lý, trùng dữ liệu)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Dữ liệu không hợp lệ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+    TooManyRequests:
+      description: Gọi quá nhiều lần
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
   schemas:
-    LoginRequest:
+    Error:
       type: object
-      required: [username, password]
+      required: [message]
       properties:
-        username:
-          type: string
-          example: employee
-        password:
-          type: string
-          format: password
-          example: Emp@123
+        message: { type: string }
+    ValidationError:
+      type: object
+      required: [message, errors]
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+    PageMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        last_page: { type: integer }
 
-    LoginResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        tokenType:
-          type: string
-          example: Bearer
-        expiresIn:
-          type: integer
-          example: 86400
-        role:
-          type: string
-          enum: [EMPLOYEE, MANAGER, HR, ADMIN]
-        employeeId:
-          type: integer
-          nullable: true
+    Role:
+      type: string
+      enum: [employee, manager, hr, admin]
+    RequestStatus:
+      type: string
+      enum: [draft, pending, approved, rejected, cancelled]
+    LeaveType:
+      type: string
+      enum: [annual, sick, unpaid, other]
 
-    ErrorResponse:
+    User:
       type: object
       properties:
-        timestamp:
-          type: string
-          format: date-time
-        status:
-          type: integer
-        error:
-          type: string
-        message:
-          type: string
-        path:
-          type: string
+        id: { type: integer }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        employee_id: { type: [integer, 'null'] }
+        is_active: { type: boolean }
+
+    Department:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
 
     Employee:
       type: object
       properties:
-        id:
-          type: integer
-        employeeCode:
-          type: string
-        fullName:
-          type: string
-        departmentId:
-          type: integer
-        managerId:
-          type: integer
-          nullable: true
-        baseSalary:
-          type: number
-        status:
-          type: string
-          enum: [ACTIVE, TERMINATED]
+        id: { type: integer }
+        employee_code: { type: string }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: [string, 'null'] }
+        date_of_birth: { type: [string, 'null'], format: date }
+        national_id: { type: [string, 'null'], description: 'CCCD 12 số. Chỉ trả cho HR/Admin hoặc chính chủ' }
+        tax_code: { type: [string, 'null'] }
+        bank_account: { type: [string, 'null'], description: Chỉ trả cho HR hoặc chính chủ }
+        department_id: { type: integer }
+        position: { type: string }
+        manager_id: { type: [integer, 'null'] }
+        hire_date: { type: string, format: date }
+        base_salary: { type: [integer, 'null'], description: Ẩn với Manager }
+        insurance_salary: { type: [integer, 'null'] }
+        dependents_count: { type: integer, minimum: 0 }
+        status: { type: string, enum: [active, terminated] }
+        termination_date: { type: [string, 'null'], format: date }
+    EmployeeCreate:
+      type: object
+      required: [full_name, email, national_id, department_id, position, hire_date, base_salary, role]
+      properties:
+        full_name: { type: string, maxLength: 100 }
+        email: { type: string, format: email }
+        phone: { type: string }
+        date_of_birth: { type: string, format: date }
+        national_id: { type: string, pattern: '^[0-9]{12}$', description: CCCD 12 số }
+        tax_code: { type: string, pattern: '^[0-9]{10}(-[0-9]{3})?$' }
+        bank_account: { type: string }
+        department_id: { type: integer }
+        position: { type: string }
+        manager_id: { type: [integer, 'null'] }
+        hire_date: { type: string, format: date }
+        base_salary: { type: integer, minimum: 0 }
+        insurance_salary: { type: integer, minimum: 0, description: Mặc định bằng base_salary }
+        dependents_count: { type: integer, minimum: 0, default: 0 }
+        role: { $ref: '#/components/schemas/Role' }
+    EmployeeUpdate:
+      type: object
+      description: Các trường như EmployeeCreate nhưng đều tùy chọn (trừ `role`, đổi qua `/users/{id}`)
+      properties:
+        full_name: { type: string }
+        phone: { type: string }
+        date_of_birth: { type: string, format: date }
+        national_id: { type: string, pattern: '^[0-9]{12}$' }
+        tax_code: { type: string }
+        bank_account: { type: string }
+        department_id: { type: integer }
+        position: { type: string }
+        manager_id: { type: [integer, 'null'] }
+        base_salary: { type: integer, minimum: 0 }
+        insurance_salary: { type: integer, minimum: 0 }
+        dependents_count: { type: integer, minimum: 0 }
+
+    AllowanceType:
+      type: object
+      required: [name, kind]
+      properties:
+        id: { type: integer }
+        name: { type: string, examples: [Phụ cấp ăn trưa] }
+        kind: { type: string, enum: [allowance, deduction] }
+        taxable: { type: boolean, default: true }
+    EmployeeAllowance:
+      type: object
+      required: [allowance_type_id, amount]
+      properties:
+        allowance_type_id: { type: integer }
+        amount: { type: integer, minimum: 0 }
+        effective_from: { type: string, format: date }
+        effective_to: { type: [string, 'null'], format: date }
+
+    Contract:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        type: { type: string, enum: [probation, fixed_term, indefinite] }
+        start_date: { type: string, format: date }
+        end_date: { type: [string, 'null'], format: date }
+        salary: { type: integer }
+        status: { type: string, enum: [active, expiring_soon, expired], description: 'expiring_soon: còn ≤ 30 ngày' }
+    ContractInput:
+      type: object
+      required: [employee_id, type, start_date, salary]
+      properties:
+        employee_id: { type: integer }
+        type: { type: string, enum: [probation, fixed_term, indefinite] }
+        start_date: { type: string, format: date }
+        end_date: { type: [string, 'null'], format: date }
+        salary: { type: integer, minimum: 0 }
+
+    Attendance:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        work_date: { type: string, format: date }
+        check_in_time: { type: [string, 'null'], format: date-time }
+        check_out_time: { type: [string, 'null'], format: date-time }
+        late_minutes: { type: integer }
+        early_leave_minutes: { type: integer }
+        status: { type: string, enum: [present, late, early_leave, absent, leave] }
+        photo_url: { type: [string, 'null'], description: Ảnh minh chứng (chấm công nâng cao) }
 
     PtoRequest:
       type: object
       properties:
-        id:
-          type: integer
-        employeeId:
-          type: integer
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-        leaveType:
-          type: string
-        reason:
-          type: string
-        status:
-          type: string
-          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
-
-    CreatePtoRequest:
+        id: { type: integer }
+        employee_id: { type: integer }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        days: { type: number }
+        leave_type: { $ref: '#/components/schemas/LeaveType' }
+        reason: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        approver_id: { type: [integer, 'null'] }
+        decision_reason: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+    ApprovalAction:
       type: object
-      required: [startDate, endDate, leaveType]
+      required: [action]
       properties:
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-        leaveType:
-          type: string
-          example: ANNUAL
-        reason:
-          type: string
+        action: { type: string, enum: [approve, reject, cancel] }
+        reason: { type: string, description: Bắt buộc khi `reject` }
 
-security:
-  - bearerAuth: []
+    OtScheduleInput:
+      type: object
+      required: [work_date, start_time, hours, task, day_type]
+      properties:
+        work_date: { type: string, format: date }
+        start_time: { type: string, examples: ['18:00'] }
+        hours: { type: number, minimum: 0.5 }
+        task: { type: string }
+        day_type: { type: string, enum: [weekday, weekend, holiday] }
+        department_id: { type: [integer, 'null'], description: Giới hạn đối tượng được đăng ký }
+        capacity: { type: [integer, 'null'] }
+    OtSchedule:
+      allOf:
+        - $ref: '#/components/schemas/OtScheduleInput'
+        - type: object
+          properties:
+            id: { type: integer }
+            published: { type: boolean }
+            created_by: { type: integer }
+    OtRegistration:
+      type: object
+      properties:
+        id: { type: integer }
+        ot_schedule_id: { type: integer }
+        employee_id: { type: integer }
+        hours: { type: number }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        approver_id: { type: [integer, 'null'] }
+        decision_reason: { type: [string, 'null'] }
 
-paths:
-  /api/v1/auth/login:
-    post:
-      tags: [Authentication]
-      summary: Đăng nhập
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Đăng nhập thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          description: Sai thông tin đăng nhập
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    ApprovalLog:
+      type: object
+      properties:
+        id: { type: integer }
+        request_type: { type: string, enum: [pto, ot] }
+        request_id: { type: integer }
+        approver_id: { type: integer }
+        action: { type: string, enum: [approve, reject, cancel] }
+        reason: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
 
-  /api/v1/auth/me:
-    get:
-      tags: [Authentication]
-      summary: Lấy thông tin user hiện tại
-      responses:
-        '200':
-          description: Thông tin user + role
-        '401':
-          description: Chưa đăng nhập
+    PayrollPeriod:
+      type: object
+      properties:
+        id: { type: integer }
+        month: { type: integer }
+        year: { type: integer }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        status: { type: string, enum: [draft, calculated, approved, locked] }
+        total_gross: { type: [integer, 'null'] }
+        total_net: { type: [integer, 'null'] }
+        calculated_at: { type: [string, 'null'], format: date-time }
+        locked_at: { type: [string, 'null'], format: date-time }
+    PayrollItem:
+      type: object
+      description: Một dòng lương của một nhân viên trong kỳ. Công thức xem docs/PAYROLL-RULES.md
+      properties:
+        id: { type: integer }
+        period_id: { type: integer }
+        employee_id: { type: integer }
+        standard_days: { type: number }
+        actual_days: { type: number }
+        base_pay: { type: integer }
+        ot_pay: { type: integer }
+        allowance_total: { type: integer }
+        gross_salary: { type: integer }
+        bhxh: { type: integer }
+        bhyt: { type: integer }
+        bhtn: { type: integer }
+        taxable_income: { type: integer }
+        pit_tax: { type: integer }
+        other_deductions: { type: integer }
+        adjustment_amount: { type: integer }
+        net_salary: { type: integer }
+    PayrollAdjustment:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        reference_period_id: { type: integer }
+        applied_period_id: { type: [integer, 'null'] }
+        amount: { type: integer }
+        reason: { type: string }
+        created_by: { type: integer }
+        created_at: { type: string, format: date-time }
 
-  /api/v1/employees:
-    get:
-      tags: [Employees]
-      summary: Lấy danh sách nhân viên
-      description: |
-        - Employee: không được gọi
-        - Manager: chỉ thấy team của mình
-        - HR/Admin: thấy tất cả
-      responses:
-        '200':
-          description: Danh sách nhân viên
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Employee'
-        '403':
-          description: Không có quyền
+    Payslip:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        period_id: { type: integer }
+        month: { type: integer }
+        year: { type: integer }
+        gross_salary: { type: integer }
+        net_salary: { type: integer }
+        pdf_url: { type: [string, 'null'] }
+        generated_at: { type: string, format: date-time }
 
-    post:
-      tags: [Employees]
-      summary: Tạo nhân viên mới (HR/Admin)
-      responses:
-        '201':
-          description: Tạo thành công
-        '403':
-          description: Chỉ HR/Admin được tạo
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [request_status, payslip_ready, contract_expiring, system] }
+        title: { type: string }
+        body: { type: string }
+        read_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+    NotificationPreferences:
+      type: object
+      properties:
+        email_enabled: { type: boolean }
 
-  /api/v1/employees/{id}:
-    get:
-      tags: [Employees]
-      summary: Xem chi tiết nhân viên
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Chi tiết nhân viên
-        '403':
-          description: Không có quyền xem nhân viên này
-        '404':
-          description: Không tìm thấy
+    TaxBracketInput:
+      type: object
+      required: [bracket_no, from_amount, rate]
+      properties:
+        bracket_no: { type: integer }
+        from_amount: { type: integer, minimum: 0 }
+        to_amount: { type: [integer, 'null'], description: null = không giới hạn }
+        rate: { type: number, description: 'Ví dụ 0.05 = 5%' }
+    TaxBracket:
+      allOf:
+        - $ref: '#/components/schemas/TaxBracketInput'
+        - type: object
+          properties:
+            id: { type: integer }
+            effective_from: { type: string, format: date }
+            effective_to: { type: [string, 'null'], format: date }
+    InsuranceRate:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [bhxh, bhyt, bhtn] }
+        employee_rate: { type: number, description: 'Ví dụ 0.08 = 8%' }
+        cap_basis: { type: string, enum: [base_salary_ref, regional_min_wage] }
+        cap_multiplier: { type: number, examples: [20] }
+        effective_from: { type: string, format: date }
+        effective_to: { type: [string, 'null'], format: date }
+    SystemParam:
+      type: object
+      required: [key, value, effective_from]
+      properties:
+        key: { type: string, examples: [ot_rate_weekday] }
+        value: { type: string }
+        effective_from: { type: string, format: date }
 
-  /api/v1/pto-requests:
-    get:
-      tags: [PTO]
-      summary: Lấy danh sách đơn nghỉ phép
-      description: |
-        - Employee: chỉ thấy đơn của mình
-        - Manager: thấy đơn của team
-        - HR/Admin: thấy tất cả
-      responses:
-        '200':
-          description: Danh sách đơn PTO
+    DashboardSummary:
+      type: object
+      properties:
+        total_employees: { type: integer }
+        employees_by_department:
+          type: array
+          items:
+            type: object
+            properties:
+              department_id: { type: integer }
+              department_name: { type: string }
+              count: { type: integer }
+        pending_requests: { type: integer }
+        payroll_total_current_period: { type: [integer, 'null'] }
+        total_ot_hours: { type: number }
+        contracts_expiring_soon: { type: integer }
+        updated_at: { type: string, format: date-time }
 
-    post:
-      tags: [PTO]
-      summary: Tạo đơn nghỉ phép
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreatePtoRequest'
-      responses:
-        '201':
-          description: Tạo đơn thành công
-        '400':
-          description: Số ngày phép không đủ hoặc dữ liệu không hợp lệ
-
-  /api/v1/pto-requests/{id}/approve:
-    patch:
-      tags: [PTO]
-      summary: Duyệt đơn nghỉ phép (Manager/HR/Admin)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Duyệt thành công
-        '403':
-          description: Không có quyền duyệt đơn này
-
-  /api/v1/pto-requests/{id}/reject:
-    patch:
-      tags: [PTO]
-      summary: Từ chối đơn nghỉ phép
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [reason]
-              properties:
-                reason:
-                  type: string
-      responses:
-        '200':
-          description: Từ chối thành công
-
-  /api/v1/payrolls/periods:
-    get:
-      tags: [Payroll]
-      summary: Danh sách kỳ lương
-      responses:
-        '200':
-          description: Danh sách kỳ lương
-
-  /api/v1/payrolls/calculate:
-    post:
-      tags: [Payroll]
-      summary: Chạy tính lương batch (HR/Admin)
-      responses:
-        '202':
-          description: Job tính lương đã được chấp nhận
-        '403':
-          description: Chỉ HR/Admin
-
-  /api/v1/employees/{id}/payslips:
-    get:
-      tags: [Payslips]
-      summary: Lấy danh sách phiếu lương của nhân viên
-      description: Employee chỉ được xem của chính mình
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Danh sách phiếu lương
-        '403':
-          description: Không có quyền
-
-  /api/v1/audit-logs:
-    get:
-      tags: [Audit]
-      summary: Xem nhật ký kiểm toán (HR/Admin)
-      responses:
-        '200':
-          description: Danh sách audit log
-        '403':
-          description: Chỉ HR/Admin
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        action: { type: string, enum: [create, update, delete] }
+        table: { type: string }
+        record_id: { type: integer }
+        old_value: { type: [object, 'null'] }
+        new_value: { type: [object, 'null'] }
+        created_at: { type: string, format: date-time }
