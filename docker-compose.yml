@@ -1,38 +1,153 @@
+# Enterprise HR & Automated Payroll System - docker compose (NFR-09)
+#
+# Chạy:            docker compose up -d --build
+# Kèm mail giả:    docker compose --profile dev up -d --build     (xem email tại http://localhost:8025)
+# Xem trạng thái:  docker compose ps
+# Tắt, giữ dữ liệu: docker compose down
+# Tắt và XÓA dữ liệu: docker compose down -v   (xóa cả DB và file PDF/ảnh)
+#
+# GIẢ ĐỊNH (đổi nếu nhóm chọn công nghệ khác):
+#   - backend/Dockerfile và frontend/Dockerfile tồn tại.
+#   - Backend là Node.js lắng nghe cổng 8000, có GET /api/v1/health, tự chạy migration khi khởi động
+#     (và seed khi SEED_ON_BOOT=true) TRƯỚC khi mở cổng.
+#   - Worker chạy cùng image với backend bằng lệnh `npm run worker` (SR-23.1: worker đơn giản
+#     đọc hàng đợi việc trong chính PostgreSQL, KHÔNG dùng Redis/Message Queue).
+#   - Frontend build ra file tĩnh và phục vụ bằng nginx (cổng 80 trong container).
+
+name: hr-payroll
+
+# Biến môi trường dùng chung cho backend và worker.
+x-backend-env: &backend-env
+  NODE_ENV: ${APP_ENV:-development}
+  TZ: ${TZ:-Asia/Ho_Chi_Minh}
+  PORT: "8000"
+  # Kết nối DB: trong mạng compose, host luôn là `db`.
+  DB_HOST: db
+  DB_PORT: "5432" 
+  DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-hr_payroll}
+  DB_NAME: ${DB_NAME:-hr_payroll}
+  DB_USER: ${DB_USER:-hr_payroll}
+  DB_USERNAME: ${DB_USER:-hr_payroll}
+  DB_PASSWORD: ${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong file .env}
+  # Mật khẩu DB nên chỉ gồm chữ và số để chuỗi URL này không bị lỗi ký tự đặc biệt.
+  DATABASE_URL: postgres://${DB_USER:-hr_payroll}:${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong file .env}@db:5432/${DB_NAME:-hr_payroll}
+  # Xác thực
+  APP_JWT_SECRET: ${APP_JWT_SECRET:?Hãy đặt APP_JWT_SECRET trong file .env}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+  BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+  # Email (mặc định trỏ tới mailpit ở profile dev)
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-HR Payroll <no-reply@hr-payroll.local>}
+  # Lưu file (PDF phiếu lương, ảnh chấm công). Dùng chung giữa backend và worker.
+  STORAGE_PATH: /app/storage
+  # Chấm công
+  WORK_START_TIME: ${WORK_START_TIME:-08:00}
+  WORK_END_TIME: ${WORK_END_TIME:-17:30}
+  QR_TOKEN_TTL_SECONDS: ${QR_TOKEN_TTL_SECONDS:-15}
+  ATTENDANCE_PHOTO_MAX_KB: ${ATTENDANCE_PHOTO_MAX_KB:-200}
+  # Worker nền
+  WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-5000}
+  # Dữ liệu mẫu
+  SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
+  SEED_EMPLOYEE_COUNT: ${SEED_EMPLOYEE_COUNT:-500}
+
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
-    container_name: hrflow_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: hrflow_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_secure_password
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-hr_payroll}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong file .env}
+      POSTGRES_DB: ${DB_NAME:-hr_payroll}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
     volumes:
-      - hrflow_postgres_data:/var/lib/postgresql/data
-    networks:
-      - hrflow_default
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Chỉ mở cho máy local để dùng DBeaver/psql. Trên server thật nên bỏ dòng này.
+      - "127.0.0.1:${DB_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hr_payroll} -d ${DB_NAME:-hr_payroll}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: hrflow_backend
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hrflow_db
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=your_secure_password
+    restart: unless-stopped
     depends_on:
-      - postgres
-    networks:
-      - hrflow_default
+      db:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+    ports:
+      - "${BACKEND_PORT:-8000}:8080"
+    volumes:
+      - storage:/app/storage
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+
+  worker:
+    # Cùng image với backend, chạy tiến trình nền: gửi email, thông báo, sinh PDF phiếu lương,
+    # job quét hợp đồng sắp hết hạn hằng ngày (FR-14, SR-02.1, SR-12.1, SR-23.1).
+    build:
+      context: ./backend
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        # Chờ backend healthy để chắc chắn migration đã chạy xong.
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      # Backend đã seed rồi, worker không seed lại.
+      SEED_ON_BOOT: "false"
+    volumes:
+      - storage:/app/storage
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Biến VITE_* được nhúng vào bundle lúc BUILD: đổi giá trị thì phải build lại
+        # (docker compose up -d --build), restart là không đủ.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+        VITE_NOTIFICATION_POLL_SECONDS: ${VITE_NOTIFICATION_POLL_SECONDS:-45}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  # Hộp thư giả để xem email (phiếu lương, cảnh báo hợp đồng) khi phát triển.
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["dev"]
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"   # giao diện web
+      - "${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP
 
 volumes:
-  hrflow_postgres_data:
-
-networks:
-  hrflow_default:
-    driver: bridge
+  pgdata:
+  storage:

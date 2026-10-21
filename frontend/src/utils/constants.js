@@ -1,0 +1,50 @@
+export const ROLES = {
+  ADMIN: 'Admin',
+  HR: 'HR',
+  MANAGER: 'Manager',
+  EMPLOYEE: 'Employee',
+};
+
+export const CONTRACT_STATUS = {
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+  TERMINATED: 'TERMINATED',
+  DRAFT: 'DRAFT',
+};
+
+export const ATTENDANCE_STATUS = {
+  PRESENT: 'PRESENT',
+  LATE: 'LATE',
+  EARLY_LEAVE: 'EARLY_LEAVE',
+  ABSENT: 'ABSENT',
+  ON_LEAVE: 'ON_LEAVE',
+  HOLIDAY: 'HOLIDAY',
+};
+
+export const LEAVE_STATUS = {
+  DRAFT: 'DRAFT',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+};
+
+export const OVERTIME_STATUS = {
+  DRAFT: 'DRAFT',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+};
+
+export const PAYROLL_STATUS = {
+  DRAFT: 'DRAFT',
+  CALCULATING: 'CALCULATING',
+  CALCULATED: 'CALCULATED',
+  APPROVED: 'APPROVED',
+  PAID: 'PAID',
+};
+
+export const STORAGE_KEYS = {
+  AUTH_TOKEN: 'hrflow_auth_token',
+  CURRENT_USER: 'hrflow_current_user',
+};
