@@ -23,10 +23,11 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# --- Environment & Secrets (Bảo mật tối quan trọng) ---
+# --- Environment & Secrets ---
 .env
+.env.*
+!.env.example
 *.env
-.env.local
 
 # --- Logs & Temporary Files ---
 *.log
