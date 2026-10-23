@@ -47,7 +47,7 @@ docker compose up -d --build
 
 Nạp dữ liệu demo: `TODO <lệnh seed>` (gồm tài khoản 4 vai trò, phòng ban, biểu thuế, bảo hiểm và bộ 500 nhân viên để kiểm tra hiệu năng).
 
-Tài khoản demo (mật khẩu `TODO`):
+Tài khoản demo (mật khẩu `password123`):
 
 | Vai trò | Email |
 |---|---|
