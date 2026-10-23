@@ -144,7 +144,36 @@ Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhậ
 | **Employee** | Nhân viên thông thường | Xem/cập nhật thông tin được phép của mình; check-in/out; tạo đơn nghỉ phép; đăng ký OT đã công bố; xem công và phiếu lương của mình |
 | **Manager** | Người được bổ nhiệm quản lý trực tiếp | Quyền cá nhân của Employee và duyệt/từ chối đơn, xem thông tin công của nhân viên thuộc quyền; không mặc nhiên xem phiếu lương của cấp dưới |
 | **HR** | Nhân sự được giao nghiệp vụ | Quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
-| **Admin** | Nhân sự quản trị hệ thống | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
+| **Admin** | Tài khoản quản trị kỹ thuật độc lập, không phải chức danh nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không mặc định phê duyệt PTO/OT, tính hoặc duyệt lương, xem toàn bộ phiếu lương hay thay đổi dữ liệu nhân sự nhạy cảm |
+
+### 4.1. Ánh xạ chức danh sang vai trò hệ thống
+
+Chức danh trong bảng dưới đây là **chức danh công việc**; vai trò HRFlow là **vai trò truy cập** được lưu cho tài khoản. Vai trò không tự thay đổi theo loại nhân sự (full-time, part-time, thử việc hoặc thực tập), mà căn cứ vào chức danh, nhiệm vụ thực tế và phạm vi được giao.
+
+| Phòng ban | Chức danh | Số lượng | Vai trò HRFlow | Ghi chú phạm vi quyền |
+|---|---|---:|---|---|
+| Management | Giám đốc | 1 | **Manager** | Quản lý trực tiếp và phê duyệt PTO/OT của Sales Manager, Operations Manager, Finance Manager và HR Lead theo tuyến một cấp.  |
+| Management | Operations Manager | 1 | **Manager** | Quản lý trực tiếp các Lead Content, Design, Digital và Account; chỉ xem công và duyệt đơn trong phạm vi cấp dưới trực tiếp. |
+| Management | Finance Manager | 1 | **Manager** | Phạm vi Manager theo nhân viên được gán trực tiếp; không mặc nhiên quản lý hoặc duyệt đơn của các phòng ban khác. |
+| Content | Content Lead | 1 | **Manager** | Quản lý trực tiếp 7 Content Executive; duyệt PTO/OT của nhóm Content. |
+| Content | Content Executive | 7 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Content Lead. |
+| Design & Video | Design Lead | 1 | **Manager** | Quản lý trực tiếp 5 Designer/Video Editor; duyệt PTO/OT của nhóm Design & Video. |
+| Design & Video | Designer/Video Editor | 5 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Design Lead. |
+| Digital Marketing | Digital Lead | 1 | **Manager** | Quản lý trực tiếp 6 SEO/Ads Specialist; duyệt PTO/OT của nhóm Digital Marketing. |
+| Digital Marketing | SEO/Ads Specialist | 6 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Digital Lead. |
+| Account | Account Lead | 1 | **Manager** | Quản lý trực tiếp 4 Account Executive; duyệt PTO/OT của nhóm Account. |
+| Account | Account Executive | 4 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Account Lead. |
+| Sales | Sales Manager | 1 | **Manager** | Quản lý trực tiếp 6 Sales Executive; duyệt PTO/OT của nhóm Sales; không tự duyệt đơn của mình. |
+| Sales | Sales Executive | 6 | **Employee** | Chỉ truy cập dữ liệu của chính mình; hoa hồng/KPI theo chính sách Sales; gửi PTO/OT cho Sales Manager. |
+| Human Resources | HR Lead | 1 | **HR** | Quản lý nghiệp vụ HR và 3 HR Executive; duyệt đơn của nhân viên không có Manager; duyệt đơn của Giám đốc theo tuyến đặc biệt; không tự duyệt đơn của mình. |
+| Human Resources | HR Executive | 3 | **HR** | Xử lý nghiệp vụ HR trong phạm vi được giao; gửi PTO/OT cho HR Lead hoặc tuyến thay thế đã cấu hình; không tự có quyền Admin. |
+| **Tổng cộng** |  | **40** |  | Không có vai trò hệ thống thứ năm. |
+
+Trong database hiện tại, `app_user.role` là một trường đơn và migration chưa có bảng `roles`/`user_roles`; do đó chưa thể khẳng định một tài khoản có nhiều role đồng thời. HR Lead được dùng role **HR** kèm quyền phê duyệt theo tuyến nêu trên, không tạo role mới và không mặc định gán thêm **Manager**.
+
+Tài khoản **Admin** là tài khoản quản trị kỹ thuật độc lập, không phải một chức danh nhân sự và không thuộc danh sách 40 nhân sự. Migration hiện tại cho phép `app_user.employee_id` là `NULL`, nên về mặt cấu trúc có thể tạo tài khoản Admin không liên kết hồ sơ `employee`. Tuy nhiên, dữ liệu mẫu hiện tại đang gắn tài khoản Admin với hồ sơ nhân viên số 1; Ngân cần tách liên kết này khi triển khai phương án 2, đồng thời bảo đảm tài khoản Admin không được tham gia tuyến duyệt PTO/OT hoặc tự động nhận quyền nghiệp vụ của Giám đốc. Việc tách tài khoản không làm tăng quy mô nhân sự lên 41 người.
+
+Quyền dữ liệu và quyền phê duyệt là hai lớp riêng: Manager chỉ có phạm vi nhân viên có `manager_id` trực tiếp bằng mình hoặc trường hợp được ủy quyền hợp lệ; HR xử lý phạm vi nghiệp vụ nhân sự theo RBAC; Employee chỉ xem dữ liệu của mình; Admin chỉ quản trị kỹ thuật theo quyền được cấp. Việc được gán chức danh Giám đốc, Manager hoặc HR không tự động cấp quyền Admin, quyền xem toàn bộ dữ liệu lương hoặc quyền duyệt ngoài tuyến. Admin không tham gia tuyến duyệt PTO/OT. Các tuyến dự phòng khi người duyệt vắng mặt thực hiện theo bảng phê duyệt tại Mục 4 và phải được cấu hình trong RBAC/database.
 
 Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến cụ thể tại Mục 2.1. Đối với nhân viên không có Manager trực tiếp, HR Lead xử lý; đối với đơn của HR Lead, Giám đốc xử lý; đối với đơn của Giám đốc, HR Lead xử lý. Khi người duyệt vắng mặt, chỉ người dự phòng đã được cấu hình trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi thay đổi có người thực hiện, thời gian và lý do. Chi tiết phạm vi API trong [`docs/rbac-matrix.md`](./rbac-matrix.md); việc cấu hình người duyệt dự phòng cần Ngân bổ sung vào RBAC/database nếu hệ thống chưa hỗ trợ.
 
