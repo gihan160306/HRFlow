@@ -9,12 +9,15 @@ import java.util.List;
 public record PayslipResponse(
         Long payslipId,
         Long employeeId,
+        String employeeCode,
+        String fullName,
         Long periodId,
         String periodCode,
         LocalDate startDate,
         LocalDate endDate,
         Integer standardWorkingDays,
         String status,
+        String policyVersion,
         BigDecimal grossSalary,
         BigDecimal bhxhAmount,
         BigDecimal bhytAmount,
@@ -25,6 +28,9 @@ public record PayslipResponse(
         BigDecimal periodAdjustments,
         BigDecimal carriedDebt,
         BigDecimal netSalary,
+        BigDecimal netEntitlement,
+        BigDecimal advanceRecovery,
+        BigDecimal reimbursements,
         LocalDateTime createdAt,
         List<PayslipLine> lines
 ) {

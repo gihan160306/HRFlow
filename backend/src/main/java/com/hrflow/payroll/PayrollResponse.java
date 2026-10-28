@@ -17,6 +17,9 @@ public record PayrollResponse(
     public record PayrollRecordResponse(
             Long payrollRecordId,
             Long employeeId,
+            String employeeCode,
+            String fullName,
+            String policyVersion,
             BigDecimal grossSalary,
             BigDecimal bhxhAmount,
             BigDecimal bhytAmount,
