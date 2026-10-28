@@ -4,7 +4,7 @@
 |---|---|
 | Phiên bản | 2.0 — chốt nghiệp vụ ngày 26/10/2026 |
 | Phạm vi | HRFlow, chính sách HNQ từ 01/07/2026 |
-| Căn cứ nội bộ | [Company Profile 2.1](./company_profile.md), [SRS](./SRS.md), [RBAC](./rbac-matrix.md), [OpenAPI](./openapi-spec.yaml) |
+| Căn cứ nội bộ | [Company Profile 2.1](./company_profile.md), [SRS](./SRS.md), [Permission matrix](./permission_matrix.md), [OpenAPI](./openapi-spec.yaml) |
 | Đơn vị và thời gian | VND; Asia/Ho_Chi_Minh; tháng dương lịch |
 | Mục đích | Chuẩn triển khai engine, nhập dữ liệu và xác định kết quả kiểm thử |
 

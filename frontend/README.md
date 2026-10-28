@@ -22,7 +22,7 @@ Phân hệ giao diện Web hiện đại dành cho hệ thống **Enterprise HR 
      - **HR:** `hr@example.com` (Hồ Thị Gia Hân)
      - **Manager:** `manager@example.com` (Trần Thị Lệ Hoa)
      - **Employee:** `employee1@example.com` (Nguyễn Hoàng Phương Ngân)
-   - **Quick Role Switcher:** Nút chuyển đổi vai trò trực tiếp trên thanh điều hướng topbar giúp kiểm thử tức thì ma trận quyền hạn theo `docs/rbac-matrix.md`.
+   - **Quick Role Switcher:** Nút chuyển đổi vai trò trực tiếp trên thanh điều hướng topbar giúp kiểm thử tức thì ma trận quyền hạn theo `docs/permission_matrix.md`.
 2. **Bảng điều khiển (Dashboard):**
    - Thẻ KPI: Tổng nhân sự, tỷ lệ chuyên cần hôm nay, đơn chờ duyệt, quỹ lương tháng.
    - Cảnh báo hợp đồng sắp hết hạn trong 30-45 ngày (SR-02.1).

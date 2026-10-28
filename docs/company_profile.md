@@ -146,7 +146,7 @@ Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhậ
 | **HR** | Nhân sự được giao nghiệp vụ | Quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
 | **Admin** | Nhân sự quản trị hệ thống | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
 
-Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến cụ thể tại Mục 2.1. Đối với nhân viên không có Manager trực tiếp, HR Lead xử lý; đối với đơn của HR Lead, Giám đốc xử lý; đối với đơn của Giám đốc, HR Lead xử lý. Khi người duyệt vắng mặt, chỉ người dự phòng đã được cấu hình trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi thay đổi có người thực hiện, thời gian và lý do. Chi tiết phạm vi API trong [`docs/rbac-matrix.md`](./rbac-matrix.md); việc cấu hình người duyệt dự phòng cần Ngân bổ sung vào RBAC/database nếu hệ thống chưa hỗ trợ.
+Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến cụ thể tại Mục 2.1. Đối với nhân viên không có Manager trực tiếp, HR Lead xử lý; đối với đơn của HR Lead, Giám đốc xử lý; đối với đơn của Giám đốc, HR Lead xử lý. Khi người duyệt vắng mặt, chỉ người dự phòng đã được cấu hình trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi thay đổi có người thực hiện, thời gian và lý do. Chi tiết phạm vi API trong [`docs/permission_matrix.md`](./permission_matrix.md); việc cấu hình người duyệt dự phòng cần Ngân bổ sung vào RBAC/database nếu hệ thống chưa hỗ trợ.
 
 | Người gửi đơn | Người duyệt chính | Người thay thế khi vắng mặt/không thể xử lý |
 |---|---|---|
