@@ -43,6 +43,9 @@ public class PayrollPeriod {
     @Column(name = "created_by")
     private Long createdBy;
 
+    @Column(name = "calculated_by")
+    private Long calculatedBy;
+
     @Column(name = "approved_by")
     private Long approvedBy;
 
@@ -129,6 +132,9 @@ public class PayrollPeriod {
     public Long getCreatedBy() {
         return createdBy;
     }
+
+    public Long getCalculatedBy() { return calculatedBy; }
+    public void setCalculatedBy(Long calculatedBy) { this.calculatedBy = calculatedBy; }
 
     public void setCreatedBy(Long createdBy) {
         this.createdBy = createdBy;

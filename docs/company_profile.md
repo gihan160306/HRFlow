@@ -41,7 +41,7 @@ Tên **HNQ** được ghép từ tên năm thành viên sáng lập trong mô h�
 4. **Content, Design và Digital Marketing** thực hiện công việc theo kế hoạch; **Account** theo dõi tiến độ, liên hệ khách hàng.
 5. Khách hàng xác nhận kết quả/nghiệm thu theo từng giai đoạn hoặc theo hợp đồng.
 6. Bộ phận phụ trách tài chính xác nhận khoản tiền khách đã thanh toán.
-7. **Sales Manager và HR** đối soát doanh thu hợp lệ, KPI và hoa hồng để chuyển dữ liệu sang bảng lương.
+7. **Sales Manager** xác nhận người phụ trách và điều kiện doanh thu; **Finance Manager** xác nhận tiền thực nhận; **HR** tiếp nhận dữ liệu đã xác nhận để tính KPI và hoa hồng trong bảng lương.
 
 HRFlow quản lý **nhân sự và tiền lương**, không thay thế phần mềm CRM, quản lý dự án hoặc kế toán. Các khoản doanh thu và nghiệm thu có thể được nhập vào HRFlow dưới dạng **bảng kết quả đã xác nhận**, có chứng từ tham chiếu.
 
@@ -52,17 +52,17 @@ HNQ Media có **7 phòng ban, 40 người**, gồm 3 người ở bộ phận đ
 ```mermaid
 
 flowchart TB
-    GD["Giám đốc / Director<br/>1 người"]
+    GD["Giám đốc / Director<br/>1 người — role Manager"]
 
     subgraph QL["Cấp quản lý"]
         direction LR
         OPS["Operations Manager<br/>1 người"]
-        HR["Human Resources<br/>4 người"]
         FIN["Finance Manager<br/>1 người"]
     end
 
     subgraph NV["Các phòng ban nghiệp vụ"]
         direction LR
+        HR["Human Resources<br/>4 người"]
         CT["Content<br/>8 người"]
         DS["Design & Video<br/>6 người"]
         DM["Digital Marketing<br/>7 người"]
@@ -91,8 +91,8 @@ flowchart TB
     classDef management fill:#262b30,stroke:#1684a5,color:#ffffff
     classDef department fill:#262b30,stroke:#1684a5,color:#ffffff
 
-    class GD,OPS,HR,FIN management
-    class CT,DS,DM,AC,SA department
+    class GD,OPS,FIN management
+    class HR,CT,DS,DM,AC,SA department
 
     style QL fill:transparent,stroke:transparent
     style NV fill:transparent,stroke:transparent
@@ -101,7 +101,7 @@ flowchart TB
 
 ```
 
-*Đường liền thể hiện quan hệ quản lý; đường nét đứt thể hiện phối hợp nghiệp vụ. Các nhóm chuyên môn đều có trưởng bộ phận trực tiếp. Sơ đồ sử dụng cú pháp Mermaid để hiển thị trong trình xem Markdown hỗ trợ Mermaid, như GitHub.*
+*Đường liền thể hiện quan hệ quản lý; đường nét đứt thể hiện phối hợp nghiệp vụ. Human Resources là phòng ban độc lập, không thuộc Management.*
 
 | Phòng ban | Nhân sự | Cơ cấu | Nhiệm vụ chính |
 |---|---:|---|---|
@@ -117,9 +117,9 @@ flowchart TB
 ### 2.1. Nguyên tắc quản lý nhân sự
 
 - Mỗi nhân viên có **mã nhân viên duy nhất**, họ tên, phòng ban, chức danh, cấp quản lý, loại hợp đồng và trạng thái làm việc.
-- Mỗi nhân viên trực thuộc một phòng ban tại một thời điểm. Việc chuyển phòng ban/chức danh có **ngày hiệu lực** và lưu lịch sử.
-- Trưởng phòng quản lý công việc và duyệt yêu cầu của nhân viên thuộc phạm vi phụ trách; Operations Manager quản lý và duyệt đơn của các Lead Content, Design, Digital và Account; Giám đốc quản lý và duyệt đơn của Sales Manager, Operations Manager, Finance Manager và HR Lead. Giám đốc gửi đơn cho HR Lead duyệt theo tuyến một cấp đã thống nhất tại Mục 4.
-- Không cho phép một nhân viên tự phê duyệt yêu cầu do chính mình gửi. HNQ áp dụng tuyến duyệt nội bộ một cấp như sau: nhân viên Content/Design/Digital/Account do Lead trực tiếp duyệt; nhân viên Sales do Sales Manager duyệt; nhân viên HR do HR Lead duyệt; các Lead và Sales Manager do Operations Manager hoặc Giám đốc theo tuyến quản lý nêu trên duyệt; Operations Manager và Finance Manager do Giám đốc duyệt; HR Lead do Giám đốc duyệt; đơn của Giám đốc do HR Lead duyệt. Nếu người duyệt chính vắng mặt hoặc có xung đột lợi ích, dùng người dự phòng được cấu hình trước: Operations Manager thay Lead các phòng nghiệp vụ, Giám đốc thay Sales Manager/HR Lead, và HR Executive được HR Lead chỉ định trước thay HR Lead khi duyệt đơn của Giám đốc. Người dự phòng chỉ duyệt trong đúng phạm vi đơn được ủy quyền và không được tự duyệt đơn của mình.
+- Mỗi nhân viên trực thuộc một phòng ban tại một thời điểm. Việc chuyển phòng ban/chức danh có **ngày hiệu lực** và lưu lịch sử. Giám đốc quyết định thành lập, điều chỉnh hoặc giải thể phòng ban trong phạm vi thẩm quyền theo quy chế công ty; HR cập nhật danh mục phòng ban và hồ sơ nhân sự theo quyết định hợp lệ. Admin chỉ hỗ trợ cấu hình kỹ thuật, không quyết định cơ cấu tổ chức.
+- Tuyến quản lý trực tiếp: nhân viên Content/Design/Digital/Account báo cáo Lead tương ứng; các Lead này báo cáo Operations Manager; Sales Executive báo cáo Sales Manager; Sales Manager, Operations Manager, Finance Manager và HR Lead báo cáo Giám đốc. HR Executive báo cáo HR Lead. Tuyến quản lý này là căn cứ xác định phạm vi quản lý, không tự động cấp quyền xem lương.
+- PTO/OT áp dụng đúng một cấp phê duyệt theo bảng tại Mục 4. Người duyệt chính và người dự phòng được xác định theo chức danh/tuyến đã quy định; người dự phòng chỉ dùng khi người duyệt chính vắng mặt hoặc có xung đột lợi ích và phải được cấu hình/chỉ định trước. Không ai được tự duyệt đơn của mình. Nếu cả người duyệt chính và người dự phòng đều không thể xử lý, đơn giữ trạng thái chờ; không tự tìm người thay thế ngoài danh sách đã chỉ định.
 
 ## 3. Loại nhân sự và trạng thái làm việc
 
@@ -133,7 +133,7 @@ flowchart TB
 
 Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhận), **Active** (đang làm việc), **On Leave** (tạm nghỉ theo chế độ), **Terminated** (đã kết thúc làm việc). Khi nghỉ việc, tài khoản được vô hiệu hóa theo ngày hiệu lực nhưng **không xóa hồ sơ, chấm công, phiếu lương và lịch sử đã phát sinh**.
 
-Đây là **trạng thái nghiệp vụ** của HNQ. Trong migration hiện tại, `employee.status` mới giới hạn `ACTIVE/TERMINATED`, còn trạng thái tài khoản dùng `is_active`; `Onboarding` và `On Leave` cần được biểu diễn bằng quy trình/hợp đồng và dữ liệu nghỉ phép, hoặc được Ngân thống nhất bổ sung vào mô hình nếu cần truy vấn trực tiếp.
+Đây là **trạng thái nghiệp vụ** cần được HRFlow hỗ trợ. `Onboarding` là hồ sơ đang tiếp nhận nhưng chưa đủ điều kiện hoạt động bình thường; `Active` là đang làm việc; `On Leave` là đang nghỉ theo chế độ nhưng hồ sơ lao động còn hiệu lực; `Terminated` là đã kết thúc làm việc. Trạng thái hồ sơ lao động và trạng thái tài khoản đăng nhập phải được quản lý riêng: tài khoản có thể bị vô hiệu hóa nhưng hồ sơ, công, đơn nghỉ, phiếu lương và lịch sử vẫn được bảo toàn. Cách lưu các trạng thái này sẽ được đặc tả trong tài liệu thiết kế dữ liệu, không làm thay đổi ý nghĩa nghiệp vụ nêu tại đây.
 
 ## 4. Vai trò sử dụng hệ thống HRFlow
 
@@ -143,39 +143,10 @@ Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhậ
 |---|---|---|
 | **Employee** | Nhân viên thông thường | Xem/cập nhật thông tin được phép của mình; check-in/out; tạo đơn nghỉ phép; đăng ký OT đã công bố; xem công và phiếu lương của mình |
 | **Manager** | Người được bổ nhiệm quản lý trực tiếp | Quyền cá nhân của Employee và duyệt/từ chối đơn, xem thông tin công của nhân viên thuộc quyền; không mặc nhiên xem phiếu lương của cấp dưới |
-| **HR** | Nhân sự được giao nghiệp vụ | Quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
-| **Admin** | Tài khoản quản trị kỹ thuật độc lập, không phải chức danh nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không mặc định phê duyệt PTO/OT, tính hoặc duyệt lương, xem toàn bộ phiếu lương hay thay đổi dữ liệu nhân sự nhạy cảm |
+| **HR** | Nhân sự được giao nghiệp vụ | Quyền cá nhân như Employee; quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
+| **Admin** | Người quản trị kỹ thuật ngoài 40 nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
 
-### 4.1. Ánh xạ chức danh sang vai trò hệ thống
-
-Chức danh trong bảng dưới đây là **chức danh công việc**; vai trò HRFlow là **vai trò truy cập** được lưu cho tài khoản. Vai trò không tự thay đổi theo loại nhân sự (full-time, part-time, thử việc hoặc thực tập), mà căn cứ vào chức danh, nhiệm vụ thực tế và phạm vi được giao.
-
-| Phòng ban | Chức danh | Số lượng | Vai trò HRFlow | Ghi chú phạm vi quyền |
-|---|---|---:|---|---|
-| Management | Giám đốc | 1 | **Manager** | Quản lý trực tiếp và phê duyệt PTO/OT của Sales Manager, Operations Manager, Finance Manager và HR Lead theo tuyến một cấp.  |
-| Management | Operations Manager | 1 | **Manager** | Quản lý trực tiếp các Lead Content, Design, Digital và Account; chỉ xem công và duyệt đơn trong phạm vi cấp dưới trực tiếp. |
-| Management | Finance Manager | 1 | **Manager** | Phạm vi Manager theo nhân viên được gán trực tiếp; không mặc nhiên quản lý hoặc duyệt đơn của các phòng ban khác. |
-| Content | Content Lead | 1 | **Manager** | Quản lý trực tiếp 7 Content Executive; duyệt PTO/OT của nhóm Content. |
-| Content | Content Executive | 7 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Content Lead. |
-| Design & Video | Design Lead | 1 | **Manager** | Quản lý trực tiếp 5 Designer/Video Editor; duyệt PTO/OT của nhóm Design & Video. |
-| Design & Video | Designer/Video Editor | 5 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Design Lead. |
-| Digital Marketing | Digital Lead | 1 | **Manager** | Quản lý trực tiếp 6 SEO/Ads Specialist; duyệt PTO/OT của nhóm Digital Marketing. |
-| Digital Marketing | SEO/Ads Specialist | 6 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Digital Lead. |
-| Account | Account Lead | 1 | **Manager** | Quản lý trực tiếp 4 Account Executive; duyệt PTO/OT của nhóm Account. |
-| Account | Account Executive | 4 | **Employee** | Chỉ truy cập dữ liệu của chính mình; gửi PTO/OT cho Account Lead. |
-| Sales | Sales Manager | 1 | **Manager** | Quản lý trực tiếp 6 Sales Executive; duyệt PTO/OT của nhóm Sales; không tự duyệt đơn của mình. |
-| Sales | Sales Executive | 6 | **Employee** | Chỉ truy cập dữ liệu của chính mình; hoa hồng/KPI theo chính sách Sales; gửi PTO/OT cho Sales Manager. |
-| Human Resources | HR Lead | 1 | **HR** | Quản lý nghiệp vụ HR và 3 HR Executive; duyệt đơn của nhân viên không có Manager; duyệt đơn của Giám đốc theo tuyến đặc biệt; không tự duyệt đơn của mình. |
-| Human Resources | HR Executive | 3 | **HR** | Xử lý nghiệp vụ HR trong phạm vi được giao; gửi PTO/OT cho HR Lead hoặc tuyến thay thế đã cấu hình; không tự có quyền Admin. |
-| **Tổng cộng** |  | **40** |  | Không có vai trò hệ thống thứ năm. |
-
-Trong database hiện tại, `app_user.role` là một trường đơn và migration chưa có bảng `roles`/`user_roles`; do đó chưa thể khẳng định một tài khoản có nhiều role đồng thời. HR Lead được dùng role **HR** kèm quyền phê duyệt theo tuyến nêu trên, không tạo role mới và không mặc định gán thêm **Manager**.
-
-Tài khoản **Admin** là tài khoản quản trị kỹ thuật độc lập, không phải một chức danh nhân sự và không thuộc danh sách 40 nhân sự. Migration hiện tại cho phép `app_user.employee_id` là `NULL`, nên về mặt cấu trúc có thể tạo tài khoản Admin không liên kết hồ sơ `employee`. Tuy nhiên, dữ liệu mẫu hiện tại đang gắn tài khoản Admin với hồ sơ nhân viên số 1; Ngân cần tách liên kết này khi triển khai phương án 2, đồng thời bảo đảm tài khoản Admin không được tham gia tuyến duyệt PTO/OT hoặc tự động nhận quyền nghiệp vụ của Giám đốc. Việc tách tài khoản không làm tăng quy mô nhân sự lên 41 người.
-
-Quyền dữ liệu và quyền phê duyệt là hai lớp riêng: Manager chỉ có phạm vi nhân viên có `manager_id` trực tiếp bằng mình hoặc trường hợp được ủy quyền hợp lệ; HR xử lý phạm vi nghiệp vụ nhân sự theo RBAC; Employee chỉ xem dữ liệu của mình; Admin chỉ quản trị kỹ thuật theo quyền được cấp. Việc được gán chức danh Giám đốc, Manager hoặc HR không tự động cấp quyền Admin, quyền xem toàn bộ dữ liệu lương hoặc quyền duyệt ngoài tuyến. Admin không tham gia tuyến duyệt PTO/OT. Các tuyến dự phòng khi người duyệt vắng mặt thực hiện theo bảng phê duyệt tại Mục 4 và phải được cấu hình trong RBAC/database.
-
-Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến cụ thể tại Mục 2.1. Đối với nhân viên không có Manager trực tiếp, HR Lead xử lý; đối với đơn của HR Lead, Giám đốc xử lý; đối với đơn của Giám đốc, HR Lead xử lý. Khi người duyệt vắng mặt, chỉ người dự phòng đã được cấu hình trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi thay đổi có người thực hiện, thời gian và lý do. Chi tiết phạm vi API trong [`docs/rbac-matrix.md`](./rbac-matrix.md); việc cấu hình người duyệt dự phòng cần Ngân bổ sung vào RBAC/database nếu hệ thống chưa hỗ trợ.
+Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến tại bảng dưới đây. Người duyệt được xác định theo từng hàng trong bảng, không mặc định HR Lead duyệt mọi đơn thiếu Manager. Khi người duyệt vắng mặt hoặc có xung đột lợi ích, chỉ người dự phòng được chỉ định trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi quyết định duyệt/từ chối phải lưu người thực hiện, thời gian, lý do và căn cứ thay thế (nếu có). `permission_matrix.md` quy định chi tiết quyền hệ thống; vai trò hệ thống, chức danh và ủy quyền là các dữ liệu độc lập.
 
 | Người gửi đơn | Người duyệt chính | Người thay thế khi vắng mặt/không thể xử lý |
 |---|---|---|
@@ -183,11 +154,11 @@ Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến 
 | Nhân viên Sales | Sales Manager | Giám đốc |
 | Nhân viên HR | HR Lead | Giám đốc |
 | Lead Content/Design/Digital/Account | Operations Manager | Giám đốc |
-| Sales Manager, Operations Manager, Finance Manager | Giám đốc | Không có tuyến thay thế mặc định; HR Lead chỉ tiếp nhận và chuyển xử lý, không tự duyệt thay Giám đốc |
+| Sales Manager, Operations Manager, Finance Manager | Giám đốc | Không có người duyệt dự phòng mặc định; nếu Giám đốc không thể xử lý, đơn giữ trạng thái chờ quyết định. HR Lead có thể tiếp nhận hồ sơ nhưng không duyệt thay Giám đốc |
 | HR Lead | Giám đốc | Finance Manager được Giám đốc chỉ định trước |
 | Giám đốc | HR Lead | HR Executive được HR Lead chỉ định trước |
 
-Người duyệt thay thế thực hiện đúng một quyết định **Approve/Reject** và ghi lý do/ủy quyền vào approval log. Nếu người gửi đơn đồng thời là người duyệt chính hoặc thay thế, hệ thống phải từ chối thao tác tự duyệt và chuyển cho tuyến dự phòng tiếp theo đã cấu hình.
+Người duyệt thay thế thực hiện đúng một quyết định **Approve/Reject** và ghi lý do/ủy quyền vào approval log. Nếu người gửi đơn đồng thời là người duyệt chính hoặc thay thế, hệ thống từ chối tự duyệt; chỉ chuyển cho người dự phòng hợp lệ trong bảng Mục 4, nếu không có thì giữ đơn chờ.
 
 ## 5. Lịch làm việc và chấm công
 
@@ -206,7 +177,7 @@ Người duyệt thay thế thực hiện đúng một quyết định **Approve
 
 **Chính sách HNQ:** ngày công chuẩn của tháng là số ngày phải làm theo lịch của nhân viên trong kỳ, đã loại ngày lễ nghỉ hưởng lương; không mặc định mọi tháng là 22 hoặc 26 công. Tổng giờ chuẩn là tổng thời lượng các ca làm trong kỳ; nhân viên part-time dùng **giờ chuẩn riêng**.
 
-**Điểm cần thống nhất trước khi tính lương:** [`docs/payroll_rules.md`](./payroll_rules.md) và migration mẫu hiện dùng tham số `standard_working_days = 22`, đồng thời bảng `payroll_period` có mặc định 22. Vì vậy, cho đến khi Hiếu cập nhật công thức/tham số, không được coi quy tắc theo lịch ở trên là đã được engine áp dụng tự động. Kỳ lương phải lưu rõ giá trị ngày công chuẩn được chốt.
+**Quy tắc chốt:** ngày/giờ chuẩn phải được tính từ lịch làm việc cá nhân có hiệu lực trong kỳ và lưu snapshot cùng kỳ lương. Không dùng 22 hoặc 26 ngày làm mặc định nghiệp vụ. Nếu dùng số 22 trong ví dụ/dữ liệu demo, phải ghi rõ đó chỉ là dữ liệu minh họa, không phải quy tắc tính lương của HNQ.
 
 ### 5.2. Quy trình chấm công
 
@@ -312,7 +283,7 @@ Migration hiện có lịch OT và đơn đăng ký, nhưng chưa có trường 
 
 `Lương Net = Gross − Bảo hiểm người lao động − Thuế TNCN − Khấu trừ hợp lệ ± Điều chỉnh được phân loại`
 
-Công thức chi tiết, căn cứ bảo hiểm, tính thuế, làm tròn và điều chỉnh thuộc `payroll_rules.md`. Hoa hồng, thưởng KPI và thu nhập bổ sung chỉ được cộng khi có bản ghi đã duyệt; hiện `payroll_rules.md` mới chốt Gross từ lương theo công, OT và phụ cấp, chưa chốt cách đưa hoa hồng/thưởng vào Gross. **[Cần cập nhật payroll_rules.md trước khi triển khai tự động]** để tránh bỏ sót hoặc tính trùng các khoản này.
+Công thức chi tiết, căn cứ bảo hiểm, tính thuế, làm tròn và điều chỉnh thuộc `payroll_rules.md`. Hoa hồng, thưởng KPI và thu nhập bổ sung chỉ được cộng khi có bản ghi đủ điều kiện, đã xác nhận/phê duyệt theo đúng quy trình và có mã nguồn duy nhất; không cộng trùng một khoản vào nhiều dòng thu nhập.
 
 ### 8.2. Bảng lương cơ bản theo vị trí
 
@@ -461,7 +432,7 @@ Bảng tổng hợp được Sales Manager và Finance Manager xác nhận, gồ
 | Ngày cuối tháng | Kết thúc kỳ chấm công, tổng hợp ngày/giờ công | Nhân viên, Manager, HR |
 | Ngày 01–02 tháng sau | Xử lý đơn PTO/OT, xác minh công thiếu; chốt doanh thu Sales và phụ cấp | Manager, Sales Manager, Finance, HR |
 | Ngày 03 | Tính bảng lương dự kiến, rà soát Gross, bảo hiểm, thuế, khấu trừ | HR |
-| Ngày 04 | Kiểm tra, phê duyệt bảng lương và khóa kỳ | Người được phân quyền |
+| Ngày 04 | Đối soát tài chính, phê duyệt bảng lương và khóa kỳ | Finance Manager đối soát; Giám đốc phê duyệt (`APPROVE`); Finance Manager khóa kỳ (`LOCK`) sau phê duyệt |
 | Ngày 05 | Chi trả lương, phát hành PDF phiếu lương | Finance, HR, HRFlow |
 
 Nếu ngày 05 trùng ngày nghỉ, công ty **thanh toán vào ngày làm việc liền trước**. Trường hợp dữ liệu còn chờ xác minh phải xử lý trách nhiệm và phần thanh toán hợp lệ đúng hạn, không để phần mềm tự ý giữ toàn bộ lương.
@@ -478,9 +449,11 @@ flowchart LR
 
 - **Draft:** HR chuẩn bị kỳ và nhập dữ liệu đầu vào.
 - **Calculated:** hệ thống tính kết quả; HR rà soát và có thể yêu cầu tính lại.
-- **Approved:** bảng lương được người có thẩm quyền xác nhận.
-- **Locked:** dữ liệu kết quả kỳ chỉ đọc; HRFlow tạo phiếu lương PDF để nhân viên xem/tải theo quyền.
+- **Approved:** Giám đốc phê duyệt bảng lương bằng quyền `APPROVE` sau khi HR tính và Finance Manager đối soát.
+- **Locked:** Finance Manager sử dụng quyền `LOCK` sau khi bảng lương đã được phê duyệt; dữ liệu kết quả kỳ chỉ đọc. Bộ phận Tài chính tổ chức chi trả; HRFlow tạo phiếu lương PDF để nhân viên xem/tải theo quyền.
 - Nếu kỳ Locked có sai sót, lập **adjustment** có kỳ gốc, loại điều chỉnh, số tiền, chứng từ, lý do và người duyệt. Không chỉnh trực tiếp bảng lương đã khóa.
+
+**Phân công nghiệp vụ payroll:** HR tập hợp dữ liệu và lập bảng lương; Finance Manager đối soát tài chính; Giám đốc phê duyệt; Finance Manager khóa kỳ và phối hợp bộ phận Tài chính thanh toán. Các quyền `APPROVE` và `LOCK` được cấp cho đúng tài khoản theo chức danh nêu trên, không tự mở rộng cho mọi người có role `Manager`. Việc thay đổi mức lương của Giám đốc hoặc trường hợp có xung đột lợi ích cần quyết định riêng của cấp có thẩm quyền trước khi đưa vào bảng lương. Nếu Giám đốc phải phê duyệt kỳ lương có phần lương của chính mình, phải xác nhận biện pháp xử lý xung đột theo thẩm quyền; không tự duyệt phần lương đó hoặc tự lập tuyến duyệt thay thế.
 
 ### 11.3. Nội dung phiếu lương
 
@@ -533,22 +506,25 @@ Phiếu lương hiển thị: thông tin công ty, kỳ lương, mã/họ tên/c
 | Bảng lương | Kỳ, công chuẩn, công được trả, Gross, bảo hiểm, thuế, Net, trạng thái, adjustment |
 | Bảo mật | Tài khoản, vai trò, phạm vi dữ liệu, lịch sử đăng nhập và thao tác quan trọng |
 
-Các trường trên thể hiện **dữ liệu cần thiết về mặt nghiệp vụ**; cấu trúc bảng, quan hệ, kiểu dữ liệu và migration hiện có được đối chiếu trong [`docs/database-outline.md`](./database-outline.md) và [`backend/src/main/resources/db/migration/`](../backend/src/main/resources/db/migration/). Không bắt buộc xây thêm CRM đầy đủ để quản lý hợp đồng khách hàng: dữ liệu doanh thu Sales có thể nhập bằng bảng đối soát đã được duyệt.
+Các trường trên thể hiện **dữ liệu cần thiết về mặt nghiệp vụ**; cấu trúc bảng, quan hệ và kiểu dữ liệu sẽ được xác định trong `database_design.md`. Không bắt buộc xây thêm CRM đầy đủ để quản lý hợp đồng khách hàng: dữ liệu doanh thu Sales có thể nhập bằng bảng đối soát đã được duyệt.
 
-### 13.1. Mức độ khớp với thiết kế hiện tại
+### 13.1. Dữ liệu nghiệp vụ bắt buộc trước khi tính lương
 
-| Nghiệp vụ | Đã có trong migration/thiết kế | Khoảng thiếu cần ghi nhận |
+HRFlow chỉ được tính và đưa một khoản vào bảng lương khi có dữ liệu nguồn đủ căn cứ. Tối thiểu cần:
+
+| Nhóm nghiệp vụ | Dữ liệu cần có | Quy tắc kiểm soát |
 |---|---|---|
-| Phòng ban, nhân viên, quản lý, loại nhân sự | `department`, `employee`, `manager_id`, `employee_type` | Dữ liệu mẫu V14 mới có 5 nhân viên và cơ cấu TECH/HR/CONTENT/DESIGN/DIGITAL/SALES/FINANCE, chưa khớp roster HNQ 40 người và tên Account/Management trong profile. |
-| Hợp đồng, vào/nghỉ việc | `contract`, `termination_record`, ngày hiệu lực, lương đóng BH | Chưa có lịch sử chức danh/lương theo từng giai đoạn trong một bảng nghiệp vụ riêng; cần bảo đảm service không tính ngược hiệu lực. |
-| Chấm công | `check_in_at`, `check_out_at`, phút trễ/sớm, trạng thái, quyết định điều chỉnh | Chưa có trường khóa công theo kỳ và lịch sử chỉnh công đầy đủ; việc khóa phải gắn với kỳ lương, không chỉ dựa vào ngày. |
-| Nghỉ phép | `leave_request`, `leave_balance`, `duration_days`, `half_day_session`, trạng thái và người duyệt | Cần bảo đảm kiểm tra số dư, ngày lễ/lịch cá nhân và chuyển sang bảng công trước khi tính lương. |
-| OT | Lịch, đăng ký, trạng thái, lý do duyệt | Chưa lưu giờ thực tế, loại ngày, đoạn ban đêm, vượt giờ duyệt và xác nhận hoàn thành; **chưa đủ để tính OT theo chính sách này**. |
-| Sales/KPI | `revenue_record`, `commission_rate`, `kpi_result`, người xác nhận | Chưa có mã hợp đồng, ngày nghiệm thu, ngày thực nhận, số tiền hoàn/hủy và cơ chế phân bổ; cần bổ sung dữ liệu hoặc nhập bảng đối soát chuẩn hóa trước khi tính. |
-| Kỳ lương/phiếu lương/điều chỉnh | Trạng thái kỳ, `payslip`, `payroll_line`, `payroll_adjustment` | `payroll_rules.md` và dữ liệu mẫu còn dùng 22 ngày công, giảm trừ cá nhân 11 triệu trong V11; cần Hiếu chốt lại tham số có hiệu lực, không lấy giá trị mặc định cũ. |
-| Audit và phê duyệt | `approval_log`, `audit_log` | Migration tạo bảng nhưng cần kiểm tra service/DB trigger thực tế để bảo đảm append-only và ghi đủ old/new value. |
+| Hồ sơ/lương | Nhân viên, hợp đồng, chức danh, lương, lịch và ngày hiệu lực | Không lấy lương mẫu thay hợp đồng; lưu lịch sử thay đổi |
+| Chấm công | Lịch làm, check-in/out, nghỉ có/không lương, điều chỉnh được xác nhận | Thiếu dữ liệu là `Needs Review`, không tự quy thành 0 công |
+| PTO | Loại nghỉ, thời lượng thực tế theo lịch, số dư, người duyệt | Không trừ quỹ phép trước khi được duyệt; không tự duyệt |
+| OT | Lịch công bố, đăng ký/đồng ý, quyết định duyệt, giờ thực tế và người xác nhận | Trả theo thời gian thực tế đủ căn cứ; không dùng nguyên giờ đăng ký |
+| Phụ cấp/thưởng | Mã khoản, mức, điều kiện, thời hạn hiệu lực và quyết định | Không tự cộng khoản chưa được xác nhận/phê duyệt |
+| Sales/KPI | Mã hợp đồng/khoản thu, ngày nghiệm thu, ngày thực nhận, giá trị đủ điều kiện, Sales owner và điều chỉnh | Sales Manager xác nhận ownership/điều kiện; Finance xác nhận tiền thực nhận; không tính trùng |
+| Bảo hiểm/thuế | Đối tượng, căn cứ, địa bàn/thời điểm, bộ tham số và nguồn xác nhận | Không suy từ chức danh hoặc loại nhân sự; dữ liệu chưa xác minh phải chờ rà soát |
+| Payroll | Kỳ, snapshot ngày/giờ chuẩn, dòng thu nhập/khấu trừ, người lập/duyệt/khóa, trạng thái và adjustment | Người lập không tự duyệt; kỳ đã khóa không sửa trực tiếp |
+| Bảo mật/audit | Người dùng, role nền tảng, phạm vi, grant, tuyến duyệt và lịch sử thao tác | Chỉ cấp quyền cần thiết; lưu người thực hiện, thời điểm, lý do và kết quả |
 
-Các migration V14 là dữ liệu mẫu kỹ thuật, không phải dữ liệu chính thức thay thế cơ cấu và chính sách HNQ Media. Việc tạo đủ 40 hồ sơ và gán đúng phòng ban/chức danh là công việc dữ liệu triển khai riêng.
+Các trường trên là yêu cầu nghiệp vụ, chưa quy định cấu trúc bảng hoặc tên API. `database_design.md`, SRS và OpenAPI sẽ xác định cách triển khai nhưng không được làm mất dữ liệu/kiểm soát bắt buộc ở bảng này. HRFlow không cần trở thành CRM hay phần mềm kế toán đầy đủ; dữ liệu Sales có thể nhập từ bảng đối soát đã được xác nhận.
 
 ## 14. Phạm vi sử dụng HRFlow tại HNQ Media
 
@@ -568,19 +544,16 @@ Các migration V14 là dữ liệu mẫu kỹ thuật, không phải dữ liệu
 - Cổng tự phục vụ của nhân viên (ESS), thông báo và báo cáo/dashboard.
 - Audit trail nâng cao; chấm công bằng QR động/ảnh minh chứng.
 
-**Giới hạn hệ thống:** HRFlow không quản lý ngân sách quảng cáo, nội dung chiến dịch, luồng duyệt thiết kế, hóa đơn kế toán và thanh toán ngân hàng từ đầu đến cuối. Các hệ thống/bộ phận nghiệp vụ khác cung cấp **dữ liệu kết quả xác nhận** cho HRFlow khi cần tính lương. Sự tồn tại của bảng migration hoặc endpoint không đồng nghĩa nghiệp vụ đã hoàn thiện end-to-end; các mục thiếu dữ liệu ở Mục 13.1 phải được kiểm thử và bổ sung trước khi tự động hóa.
+**Giới hạn hệ thống:** HRFlow không quản lý ngân sách quảng cáo, nội dung chiến dịch, luồng duyệt thiết kế, hóa đơn kế toán và thanh toán ngân hàng từ đầu đến cuối. Các hệ thống/bộ phận nghiệp vụ khác cung cấp **dữ liệu kết quả xác nhận** cho HRFlow khi cần tính lương. Chỉ tự động hóa một nghiệp vụ khi đã có đủ dữ liệu nguồn, người chịu trách nhiệm xác nhận, trạng thái xử lý và cơ chế lưu lịch sử theo Mục 13.1.
 
 ## 15. Nguyên tắc áp dụng chung
 
 1. Mức lương, phụ cấp, thưởng và KPI là **chính sách nội bộ chính thức của HNQ Media** nêu trong hồ sơ này; mọi thay đổi phải có ngày hiệu lực và lưu lịch sử.
 2. Quyền lợi tiền công, giờ làm thêm, nghỉ phép, thuế và bảo hiểm thực hiện theo các quy định áp dụng ở kỳ phát sinh. Hệ thống dùng tham số theo ngày hiệu lực, không cố định mức pháp luật vĩnh viễn.
-3. Không dùng phạt tiền hoặc cắt lương thay cho xử lý kỷ luật lao động; không mặc định thực tập sinh, thử việc hoặc part-time được miễn bảo hiểm/thuế chỉ theo tên loại nhân sự. `Khấu trừ khác` chỉ được đưa vào lương khi có căn cứ, chứng từ và phê duyệt hợp lệ; điểm này cần Hiếu thống nhất với `payroll_rules.md`.
+3. Không dùng phạt tiền hoặc cắt lương thay cho xử lý kỷ luật lao động; không mặc định thực tập sinh, thử việc hoặc part-time được miễn bảo hiểm/thuế chỉ theo tên loại nhân sự. `Khấu trừ khác` chỉ được đưa vào lương khi có căn cứ, chứng từ và phê duyệt hợp lệ theo `payroll_rules.md`.
 4. Kết quả chấm công, duyệt nghỉ, OT, doanh thu Sales, phụ cấp và thưởng phải có nguồn gốc xác nhận rõ ràng trước khi tính lương.
 5. Bảng lương **Locked** không bị sửa trực tiếp; sai sót phải có điều chỉnh và phê duyệt.
 
 Các tỷ lệ, mức trần, giảm trừ, điều kiện thử việc, giới hạn OT và cách xử lý thuế/bảo hiểm trong tài liệu chỉ là chính sách/tham số mô phỏng tại thời điểm áp dụng. Nhóm chưa ghi nhận việc đối chiếu từng tham số với văn bản pháp luật chính thức trong repository; trước khi vận hành thực tế phải được HR/Finance xác minh và cập nhật theo ngày hiệu lực.
 
 ---
-
-**HNQ Media – Create. Connect. Grow.**  
-**Tài liệu:** `company_profile.md` · **Phiên bản:** 2.1 · **Trạng thái:** Chính sách vận hành của HNQ Media; các điểm đánh dấu **[Cần bổ sung hệ thống]** là yêu cầu cần được nhóm cập nhật trước khi coi là tự động hóa hoàn chỉnh.

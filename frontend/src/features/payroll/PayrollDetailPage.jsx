@@ -1,192 +1,98 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Button from '../../components/common/Button';
 import StatusBadge from '../../components/common/StatusBadge';
-import PayrollActions from './PayrollActions';
 import { formatCurrency } from '../../utils/formatCurrency';
-
-const SAMPLE_PAYROLL_ITEMS = [
-  {
-    id: 1,
-    employeeCode: 'EMP-001',
-    fullName: 'Đặng Minh Hiếu',
-    baseSalary: 45000000,
-    actualDays: 22,
-    overtimePay: 0,
-    allowance: 6200000,
-    grossSalary: 51200000,
-    insuranceDeduction: 4725000,
-    personalIncomeTax: 4250000,
-    netSalary: 42225000,
-  },
-  {
-    id: 2,
-    employeeCode: 'EMP-002',
-    fullName: 'Hồ Thị Gia Hân',
-    baseSalary: 32000000,
-    actualDays: 22,
-    overtimePay: 0,
-    allowance: 4500000,
-    grossSalary: 36500000,
-    insuranceDeduction: 3360000,
-    personalIncomeTax: 2125000,
-    netSalary: 31015000,
-  },
-  {
-    id: 3,
-    employeeCode: 'EMP-003',
-    fullName: 'Trần Thị Lệ Hoa',
-    baseSalary: 38000000,
-    actualDays: 22,
-    overtimePay: 0,
-    allowance: 5000000,
-    grossSalary: 43000000,
-    insuranceDeduction: 3990000,
-    personalIncomeTax: 3180000,
-    netSalary: 35830000,
-  },
-  {
-    id: 4,
-    employeeCode: 'EMP-004',
-    fullName: 'Nguyễn Hoàng Phương Ngân',
-    baseSalary: 28000000,
-    actualDays: 21,
-    overtimePay: 1200000,
-    allowance: 3000000,
-    grossSalary: 30927000,
-    insuranceDeduction: 2940000,
-    personalIncomeTax: 1250000,
-    netSalary: 26737000,
-  },
-  {
-    id: 5,
-    employeeCode: 'EMP-005',
-    fullName: 'Hồ Vinh Quan',
-    baseSalary: 22000000,
-    actualDays: 22,
-    overtimePay: 850000,
-    allowance: 2500000,
-    grossSalary: 25350000,
-    insuranceDeduction: 2310000,
-    personalIncomeTax: 450000,
-    netSalary: 22590000,
-  },
-];
+import { formatDate } from '../../utils/formatDate';
+import payrollApi from '../../api/payrollApi';
 
 export function PayrollDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [period, setPeriod] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [resetReason, setResetReason] = useState('');
+  const [showReset, setShowReset] = useState(false);
+  const load = useCallback(() => payrollApi.getPayrollPeriodById(id).then(setPeriod).catch((e) => setError(e.message)), [id]);
+  useEffect(() => { load(); }, [load]);
 
-  const [periodStatus, setPeriodStatus] = useState('CALCULATED');
-  const [items, setItems] = useState(SAMPLE_PAYROLL_ITEMS);
-  const [isCalculating, setIsCalculating] = useState(false);
-
-  const handleCalculate = () => {
-    setIsCalculating(true);
-    setTimeout(() => {
-      setIsCalculating(false);
-      setPeriodStatus('CALCULATED');
-    }, 800);
+  const act = async (fn) => {
+    setBusy(true); setError('');
+    try { setPeriod(await fn(id)); return true; } catch (e) { setError(e.message); return false; }
+    finally { setBusy(false); }
   };
 
-  const handleApprove = () => {
-    setPeriodStatus('APPROVED');
-  };
-
-  const handleSendPayslips = () => {
-    setPeriodStatus('PAID');
-    alert('Đã gửi thông báo phiếu lương qua email cho tất cả nhân viên!');
+  const importInputs = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true); setError('');
+    try {
+      const data = JSON.parse(await file.text());
+      if (!Array.isArray(data.employees) || data.employees.length === 0) {
+        throw new Error('Tệp cần có danh sách employees đã đối soát.');
+      }
+      setPeriod(await payrollApi.calculatePayroll(Number(id), data.employees));
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); event.target.value = ''; }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/payroll')}
-            icon={ArrowLeft}
-          >
-            Danh sách kỳ lương
-          </Button>
+      <div className="flex flex-wrap justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" icon={ArrowLeft} onClick={() => navigate('/payroll')}>Danh sách kỳ lương</Button>
           <div>
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Chi tiết Bảng lương Tháng 10/2026
-              </h1>
-              <StatusBadge status={periodStatus} />
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Thời gian: 01/10/2026 - 31/10/2026 • Chuẩn: 22 ngày công
-            </p>
+            <h1 className="text-2xl font-extrabold text-slate-900">Kỳ lương {period?.periodCode || id}</h1>
+            {period && <p className="text-xs text-slate-500 mt-1">{formatDate(period.startDate)} – {formatDate(period.endDate)}</p>}
           </div>
+          {period && <StatusBadge status={period.status} />}
         </div>
-
-        <PayrollActions
-          periodStatus={periodStatus}
-          onCalculate={handleCalculate}
-          onApprove={handleApprove}
-          onSendPayslips={handleSendPayslips}
-          isLoading={isCalculating}
-        />
-      </div>
-
-      {/* Detailed payroll breakdown table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs uppercase font-bold text-slate-500 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3.5">Mã & Họ tên</th>
-                <th className="px-4 py-3.5">Lương cơ bản</th>
-                <th className="px-4 py-3.5">Ngày công</th>
-                <th className="px-4 py-3.5">Tiền OT</th>
-                <th className="px-4 py-3.5">Phụ cấp</th>
-                <th className="px-4 py-3.5">Thu nhập Gross</th>
-                <th className="px-4 py-3.5">BHXH (10.5%)</th>
-                <th className="px-4 py-3.5">Thuế TNCN</th>
-                <th className="px-4 py-3.5 text-right">Thực lĩnh (Net)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {items.map((it) => (
-                <tr key={it.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3.5">
-                    <p className="font-bold text-slate-900">{it.fullName}</p>
-                    <p className="text-xs text-slate-400">{it.employeeCode}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-700">
-                    {formatCurrency(it.baseSalary)}
-                  </td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-800">
-                    {it.actualDays}
-                  </td>
-                  <td className="px-4 py-3.5 text-amber-600 font-medium">
-                    {it.overtimePay > 0 ? `+${formatCurrency(it.overtimePay)}` : '-'}
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-600">
-                    {formatCurrency(it.allowance)}
-                  </td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-900">
-                    {formatCurrency(it.grossSalary)}
-                  </td>
-                  <td className="px-4 py-3.5 text-red-600">
-                    -{formatCurrency(it.insuranceDeduction)}
-                  </td>
-                  <td className="px-4 py-3.5 text-red-600">
-                    -{formatCurrency(it.personalIncomeTax)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right font-extrabold text-blue-600 text-base">
-                    {formatCurrency(it.netSalary)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex gap-2">
+          {(period?.status === 'DRAFT' || period?.status === 'CALCULATED') &&
+            <label className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+              {busy ? 'Đang xử lý...' : 'Nhập bảng đối soát'}
+              <input type="file" accept="application/json,.json" className="hidden" disabled={busy} onChange={importInputs} />
+            </label>}
+          {period?.status === 'CALCULATED' && <Button disabled={busy} onClick={() => act(payrollApi.confirmPayroll)}>Duyệt</Button>}
+          {period?.status === 'CALCULATED' && <Button variant="outline" disabled={busy} onClick={() => setShowReset((v) => !v)}>Sửa nguồn</Button>}
+          {period?.status === 'APPROVED' && <Button disabled={busy} onClick={() => act(payrollApi.lockPayroll)}>Khóa kỳ</Button>}
+          {period?.status === 'LOCKED' && <Button disabled={busy} onClick={() => act(payrollApi.publishPayslips)}>Phát hành phiếu</Button>}
         </div>
       </div>
+      {error && <p role="alert" className="text-red-600">{error}</p>}
+      {showReset && period?.status === 'CALCULATED' && <div className="bg-amber-50 rounded-xl p-4 flex flex-wrap gap-3 items-center">
+        <input value={resetReason} onChange={(e) => setResetReason(e.target.value)}
+          placeholder="Lý do trả về bản nháp" className="border rounded-lg p-2 flex-1 min-w-48" />
+        <Button variant="outline" disabled={busy || !resetReason.trim()}
+          onClick={async () => { if (await act((periodId) => payrollApi.resetPayroll(periodId, resetReason))) setShowReset(false); }}>
+          Trả về bản nháp
+        </Button>
+      </div>}
+      {!period && !error && <p className="text-slate-500">Đang tải bảng lương...</p>}
+      {period?.status === 'DRAFT' && <p className="text-slate-500">HR nhập bảng đầu vào đã đối soát cho toàn bộ nhân viên của kỳ này.</p>}
+      {period && <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-500"><tr>
+            <th className="px-4 py-3">Nhân viên</th><th className="px-4 py-3">Gross</th>
+            <th className="px-4 py-3">Bảo hiểm</th><th className="px-4 py-3">Thuế TNCN</th>
+            <th className="px-4 py-3">Khấu trừ khác</th><th className="px-4 py-3 text-right">Thực chi</th>
+          </tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {period.records.map((r) => <tr key={r.payrollRecordId}>
+              <td className="px-4 py-3"><b>{r.fullName}</b><div className="text-xs text-slate-400">{r.employeeCode}</div>
+                {!r.policyVersion && <div className="text-xs text-amber-700">Dữ liệu mẫu cũ, chưa đối soát</div>}</td>
+              <td className="px-4 py-3">{formatCurrency(r.grossSalary)}</td>
+              <td className="px-4 py-3">{formatCurrency(Number(r.bhxhAmount) + Number(r.bhytAmount) + Number(r.bhtnAmount))}</td>
+              <td className="px-4 py-3">{formatCurrency(r.pitAmount)}</td>
+              <td className="px-4 py-3">{formatCurrency(r.otherDeductions)}</td>
+              <td className="px-4 py-3 text-right font-bold text-blue-600">{formatCurrency(r.netSalary)}</td>
+            </tr>)}
+            {period.records.length === 0 && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-500">Chưa có phiếu lương.</td></tr>}
+          </tbody>
+        </table>
+      </div>}
     </div>
   );
 }

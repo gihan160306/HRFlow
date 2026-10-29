@@ -29,26 +29,27 @@ public class PayrollController {
     }
 
     @GetMapping("/periods")
-    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
+    @PreAuthorize("@payrollAccess.has(authentication, 'VIEW')")
     public ResponseEntity<List<PayrollResponse>> listPeriods() {
         return ResponseEntity.ok(payrollService.listPeriods());
     }
 
     @GetMapping("/periods/{id}")
-    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
+    @PreAuthorize("@payrollAccess.has(authentication, 'VIEW')")
     public ResponseEntity<PayrollResponse> getPeriod(@PathVariable Long id) {
         return ResponseEntity.ok(payrollService.getPeriod(id));
     }
 
     @PostMapping("/calculate")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("@payrollAccess.has(authentication, 'PREPARE')")
     public ResponseEntity<PayrollResponse> calculatePayroll(
-            @Valid @RequestBody PayrollCalculationRequest request) {
-        return ResponseEntity.ok(payrollService.calculate(request.periodId()));
+            @Valid @RequestBody PayrollCalculationRequest request,
+            @AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(payrollService.calculate(request, user.userId()));
     }
 
     @PostMapping("/periods/{id}/approve")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("@payrollAccess.has(authentication, 'APPROVE')")
     public ResponseEntity<PayrollResponse> approvePayroll(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthUser user) {
@@ -56,12 +57,27 @@ public class PayrollController {
         return ResponseEntity.ok(payrollService.approve(id, userId));
     }
 
+    @PostMapping("/periods/{id}/reset")
+    @PreAuthorize("@payrollAccess.has(authentication, 'PREPARE')")
+    public ResponseEntity<PayrollResponse> resetPayroll(
+            @PathVariable Long id, @Valid @RequestBody PayrollResetRequest request,
+            @AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(payrollService.reset(id, user.userId(), request.reason()));
+    }
+
     @PostMapping("/periods/{id}/lock")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@payrollAccess.has(authentication, 'LOCK')")
     public ResponseEntity<PayrollResponse> lockPayroll(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthUser user) {
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(payrollService.lock(id, userId));
+    }
+
+    @PostMapping("/periods/{id}/publish")
+    @PreAuthorize("@payrollAccess.has(authentication, 'LOCK')")
+    public ResponseEntity<PayrollResponse> publishPayslips(
+            @PathVariable Long id, @AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(payrollService.publish(id, user.userId()));
     }
 }

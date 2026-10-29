@@ -10,14 +10,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hrflow.payroll.PayrollAccess;
 
 @Service
 public class PayslipService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PayrollAccess payrollAccess;
 
-    public PayslipService(JdbcTemplate jdbcTemplate) {
+    public PayslipService(JdbcTemplate jdbcTemplate, PayrollAccess payrollAccess) {
         this.jdbcTemplate = jdbcTemplate;
+        this.payrollAccess = payrollAccess;
     }
 
     /**
@@ -37,20 +40,33 @@ public class PayslipService {
                 JOIN payroll_period pp
                     ON pp.id = p.payroll_period_id
                 WHERE p.employee_id = ?
-                  AND pp.status IN ('CALCULATED', 'APPROVED', 'LOCKED')
-                  AND p.status IN ('CALCULATED', 'FINALIZED', 'LOCKED', 'ISSUED')
+                  AND (pp.status = 'LOCKED' AND p.status = 'ISSUED'
+                       AND p.policy_version = 'HNQ-2026-07-v1' OR ?)
                 ORDER BY pp.start_date DESC
                 """;
 
         List<Long> ids = jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> rs.getLong("payslip_id"),
-                employeeId
+                employeeId, payrollAccess.hasUser(currentUserId, "VIEW")
         );
 
         return ids.stream()
                 .map(id -> getPayslip(id, currentUserId, role))
                 .toList();
+    }
+
+    /** The personal page never exposes previews, even when the account has salary-view grants. */
+    @Transactional(readOnly = true)
+    public List<PayslipResponse> getMyPublishedPayslips(Long employeeId, Long currentUserId, String role) {
+        List<Long> ids = jdbcTemplate.query("""
+                SELECT p.payslip_id FROM payslip p
+                JOIN payroll_period pp ON pp.id = p.payroll_period_id
+                WHERE p.employee_id = ? AND pp.status = 'LOCKED'
+                  AND p.status = 'ISSUED' AND p.policy_version = 'HNQ-2026-07-v1'
+                ORDER BY pp.start_date DESC
+                """, (rs, row) -> rs.getLong("payslip_id"), employeeId);
+        return ids.stream().map(id -> getPayslip(id, currentUserId, role)).toList();
     }
 
     /**
@@ -66,12 +82,15 @@ public class PayslipService {
                 SELECT
                     p.payslip_id,
                     p.employee_id,
+                    e.employee_code,
+                    e.full_name,
                     p.payroll_period_id AS period_id,
                     pp.period_code,
                     pp.start_date,
                     pp.end_date,
                     pp.standard_working_days,
                     p.status,
+                    p.policy_version,
                     p.gross_salary,
                     p.bhxh_amount,
                     p.bhyt_amount,
@@ -81,19 +100,23 @@ public class PayslipService {
                     p.period_adjustments,
                     p.carried_debt,
                     p.net_salary,
+                    p.net_entitlement,
+                    p.advance_recovery,
+                    p.reimbursements,
                     p.created_at
                 FROM payslip p
+                JOIN employee e ON e.employee_id = p.employee_id
                 JOIN payroll_period pp
                     ON pp.id = p.payroll_period_id
                 WHERE p.payslip_id = ?
-                  AND pp.status IN ('CALCULATED', 'APPROVED', 'LOCKED')
-                  AND p.status IN ('CALCULATED', 'FINALIZED', 'LOCKED', 'ISSUED')
+                  AND (pp.status = 'LOCKED' AND p.status = 'ISSUED'
+                       AND p.policy_version = 'HNQ-2026-07-v1' OR ?)
                 """;
 
         List<PayslipResponse> results = jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> mapPayslip(rs),
-                payslipId
+                payslipId, payrollAccess.hasUser(currentUserId, "VIEW")
         );
 
         if (results.isEmpty()) {
@@ -117,12 +140,15 @@ public class PayslipService {
         return new PayslipResponse(
                 payslip.payslipId(),
                 payslip.employeeId(),
+                payslip.employeeCode(),
+                payslip.fullName(),
                 payslip.periodId(),
                 payslip.periodCode(),
                 payslip.startDate(),
                 payslip.endDate(),
                 payslip.standardWorkingDays(),
                 payslip.status(),
+                payslip.policyVersion(),
                 payslip.grossSalary(),
                 payslip.bhxhAmount(),
                 payslip.bhytAmount(),
@@ -133,6 +159,9 @@ public class PayslipService {
                 payslip.periodAdjustments(),
                 payslip.carriedDebt(),
                 payslip.netSalary(),
+                payslip.netEntitlement(),
+                payslip.advanceRecovery(),
+                payslip.reimbursements(),
                 payslip.createdAt(),
                 lines
         );
@@ -183,9 +212,7 @@ public class PayslipService {
             );
         }
 
-        // HR và Admin được xem theo chính sách phân quyền.
-        if ("HR".equalsIgnoreCase(role)
-                || "ADMIN".equalsIgnoreCase(role)) {
+        if (payrollAccess.hasUser(currentUserId, "VIEW")) {
             return;
         }
 
@@ -212,43 +239,8 @@ public class PayslipService {
                         "Tài khoản không gắn với hồ sơ nhân viên."
                 ));
 
-        // Nhân viên chỉ được xem phiếu lương của mình.
-        if ("EMPLOYEE".equalsIgnoreCase(role)) {
-            if (!currentEmployeeId.equals(targetEmployeeId)) {
-                throw new AccessDeniedException(
-                        "Bạn không có quyền xem phiếu lương này."
-                );
-            }
-            return;
-        }
-
-        // Manager được xem phiếu lương của bản thân
-        // và nhân viên báo cáo trực tiếp cho mình.
-        if ("MANAGER".equalsIgnoreCase(role)) {
-            if (currentEmployeeId.equals(targetEmployeeId)) {
-                return;
-            }
-
-            Integer count = jdbcTemplate.queryForObject(
-                    """
-                    SELECT COUNT(*)
-                    FROM employee
-                    WHERE employee_id = ?
-                      AND manager_id = ?
-                    """,
-                    Integer.class,
-                    targetEmployeeId,
-                    currentEmployeeId
-            );
-
-            if (count != null && count > 0) {
-                return;
-            }
-        }
-
-        throw new AccessDeniedException(
-                "Bạn không có quyền xem phiếu lương này."
-        );
+        if (!currentEmployeeId.equals(targetEmployeeId))
+            throw new AccessDeniedException("Bạn không có quyền xem phiếu lương này.");
     }
 
     private PayslipResponse mapPayslip(ResultSet rs)
@@ -267,12 +259,15 @@ public class PayslipService {
         return new PayslipResponse(
                 rs.getLong("payslip_id"),
                 rs.getLong("employee_id"),
+                rs.getString("employee_code"),
+                rs.getString("full_name"),
                 rs.getLong("period_id"),
                 rs.getString("period_code"),
                 rs.getDate("start_date").toLocalDate(),
                 rs.getDate("end_date").toLocalDate(),
                 (Integer) rs.getObject("standard_working_days"),
                 rs.getString("status"),
+                rs.getString("policy_version"),
                 zeroIfNull(rs.getBigDecimal("gross_salary")),
                 bhxh,
                 bhyt,
@@ -283,6 +278,9 @@ public class PayslipService {
                 zeroIfNull(rs.getBigDecimal("period_adjustments")),
                 zeroIfNull(rs.getBigDecimal("carried_debt")),
                 zeroIfNull(rs.getBigDecimal("net_salary")),
+                zeroIfNull(rs.getBigDecimal("net_entitlement")),
+                zeroIfNull(rs.getBigDecimal("advance_recovery")),
+                zeroIfNull(rs.getBigDecimal("reimbursements")),
                 rs.getTimestamp("created_at") == null
                         ? null
                         : rs.getTimestamp("created_at")
