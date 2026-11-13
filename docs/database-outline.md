@@ -1,3 +1,5 @@
+> **LỖI THỜI – không dùng làm nguồn.** Đây là danh sách bảng đề xuất ban đầu (trước baseline). Thiết kế dữ liệu hiện hành nằm ở [`database_design.md`](database_design.md). Các điểm cũ ở đây không còn đúng: bảng `roles/user_roles` (hệ thống chỉ có một role nền tảng cho mỗi tài khoản, grant payroll lưu riêng), `base_salary` trong `employees` (lương lưu theo hiệu lực), trạng thái nhân viên chỉ Active/Terminated (thiếu Onboarding/On Leave), đơn PTO thiếu Draft/Cancelled.
+
 # Danh sách bảng đề xuất (theo mức độ ưu tiên)
 
 | STT | Tên bảng | Mục đích chính | Ghi chú quan trọng từ SRS |

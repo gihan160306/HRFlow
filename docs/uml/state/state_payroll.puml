@@ -3,19 +3,21 @@ title Kỳ lương (Payroll Period)
 hide empty description
 left to right direction
 
-[*] --> Draft : HR tạo kỳ lương
-Draft --> Calculated : Chạy tính lương\n[bảng công đã chốt]
-Calculated --> Draft : Tính lại
-Calculated --> Approved : HR duyệt bảng lương
-Approved --> Locked : Chốt kỳ lương
+[*] --> Draft : HR (grant PREPARE) tạo kỳ lương
+Draft --> Calculated : HR (PREPARE) tính lương\n[bảng công đã chốt]
+Calculated --> Draft : HR (PREPARE) trả về sửa nguồn\n[có lý do, audit]
+Calculated --> Approved : Director (grant APPROVE) phê duyệt\n[Finance Manager đã đối soát;\nngười duyệt ≠ người tính;\nkỳ có lương Director cần quyết định xử lý xung đột]
+Approved --> Locked : Finance Manager (grant LOCK) khóa kỳ
 Locked --> [*]
 
-Draft : Chỉnh sửa công, OT, phụ cấp
+Draft : Chuẩn bị, chốt công, nhập nguồn đã xác nhận
 Draft : Batch lỗi → rollback, giữ Draft
-Calculated : Xem trước bảng lương
-Approved : Chờ chốt kỳ
-Locked : Khóa dữ liệu, sinh phiếu lương
-Locked : Sai sót → tạo Adjustment kỳ sau
+Calculated : Xem trước, rà soát, đối soát tài chính
+Calculated : Thiếu quyết định xung đột lợi ích → APPROVE bị chặn (409)
+Approved : Bất biến, không tính lại
+Locked : Chỉ đọc; tạo/phát hành phiếu lương PDF
+Locked : Chi trả ghi nhận riêng (PAID), không đổi trạng thái kỳ
+Locked : Sai sót → tạo Adjustment ở kỳ mở tiếp theo
 
-footer BR-01 · SR-11.2 · SR-12.1 · NFR-12
+footer payroll_rules §1.1, §10.2 · permission_matrix §3.4 · SRS FR-17
 @enduml

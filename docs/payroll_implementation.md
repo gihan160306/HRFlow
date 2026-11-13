@@ -9,7 +9,7 @@ Quy tắc nghiệp vụ đầy đủ ở [payroll_rules.md](payroll_rules.md). B
 3. Khi cần sửa nguồn trước duyệt, tài khoản `PREPARE` trả kỳ `CALCULATED` về `DRAFT` kèm lý do; bản preview bị xóa và hành động được ghi audit. Tài khoản khác có grant `APPROVE` duyệt kỳ `CALCULATED`. `APPROVE` kiểm tra lại tổng Gross, BH, Net và snapshot. Người tính không tự duyệt.
 4. Tài khoản có grant `LOCK` khóa kỳ `APPROVED`. Đến ngày chi trả ghi trên kỳ, gọi `POST /api/v1/payroll/periods/{id}/publish` để phát hành phiếu. Nhân viên chỉ đọc phiếu `ISSUED` của chính mình trong kỳ `LOCKED`.
 
-Quyền xem, chuẩn bị, duyệt và khóa nằm trong bảng `payroll_permission`; role `ADMIN` hay `MANAGER` không tự có quyền lương. Migration V15 cấp grant tường minh cho hai tài khoản demo HR và Giám đốc/Admin. Môi trường khác phải cấp grant theo ủy quyền thực tế.
+Quyền xem, chuẩn bị, duyệt và khóa nằm trong bảng `payroll_permission`; role `ADMIN` hay `MANAGER` không tự có quyền lương. Theo baseline (`permission_matrix.md` Mục 3.4, DEC-03): HR có `PREPARE` (và `VIEW` theo nhiệm vụ), Giám đốc có `APPROVE`, Finance Manager có `LOCK`; **Admin không có grant payroll**. Seed V15 hiện cấp `VIEW/APPROVE/LOCK` cho `admin@example.com` là **sai baseline** và phải được thay bằng migration mới (xem `database_design.md` Mục 10). Môi trường khác phải cấp grant theo ủy quyền thực tế.
 
 ## Mẫu đầu vào một nhân viên
 

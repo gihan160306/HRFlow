@@ -19,9 +19,9 @@ rectangle "Phân hệ 1 - Hồ sơ Nhân sự" {
 }
 
 HR --> UC01
-Admin --> UC01
 
 HR --> UC02
+Admin --> UC02 : <<khởi tạo tài khoản\ntheo yêu cầu của HR>>
 
 HR --> UC03
 

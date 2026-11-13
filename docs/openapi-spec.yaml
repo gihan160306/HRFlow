@@ -1,10 +1,10 @@
 # HRFlow – OpenAPI 3 (hop dong API chinh thuc)
-# Sinh tu ma nguon backend bang springdoc + scripts bo sung mo ta. Cap nhat: 2026-11-12.
+# Hop dong API dich, dong bo voi company_profile.md, permission_matrix.md, payroll_rules.md. Backend hien tai chua trien khai day du (xem database_design.md Muc 10). Cap nhat: 2026-11-13.
 openapi: 3.0.3
 info:
   title: HRFlow API – HNQ Media
-  version: 3.3.0
-  description: 'Hợp đồng API chính thức của HRFlow (chấm công QR, nghỉ phép, OT, tính lương tự động).
+  version: 3.4.0
+  description: 'Hợp đồng API chính thức của HRFlow (chấm công cơ bản – QR động là mở rộng, nghỉ phép, OT, tính lương tự động). Bản 3.4.0: bỏ trạng thái CONFLICT_HOLD; chỉ HR cấp QR; Admin không ghi tham số payroll.
 
 
     **Quy ước chung** (xem docs/CONVENTIONS.md):
@@ -20,7 +20,7 @@ info:
     - Phân trang (nếu có): `?page=0&size=20` → `{content, page, size, totalElements, totalPages}`.
 
 
-    File này được sinh từ mã nguồn (springdoc) rồi bổ sung mô tả; Swagger UI chạy tại `/swagger-ui.html`.'
+    File này là hợp đồng API đích; khi backend triển khai xong, đối chiếu lại với Swagger UI tại `/swagger-ui.html`.'
 servers:
 - url: http://localhost:8080
   description: Backend chạy local
@@ -2924,7 +2924,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Tạo điểm chấm công
-      description: '**Quyền / quy tắc:** HR, ADMIN.'
+      description: '**Quyền / quy tắc:** HR (chế độ chấm công QR/ảnh – mở rộng). Admin không cấp/cấu hình QR (permission_matrix Mục 3.2).'
   /api/v1/attendance-points/{id}:
     put:
       tags:
@@ -2981,7 +2981,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Sửa điểm chấm công
-      description: '**Quyền / quy tắc:** HR, ADMIN.'
+      description: '**Quyền / quy tắc:** HR (chế độ chấm công QR/ảnh – mở rộng). Admin không cấp/cấu hình QR (permission_matrix Mục 3.2).'
   /api/v1/attendance/absences:
     post:
       tags:
@@ -3267,8 +3267,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Check-in bằng QR động (+ ảnh minh chứng ≤200KB)
-      description: '**Quyền / quy tắc:** Nhân viên. QR sai/hết hạn → 422 QR_INVALID/QR_EXPIRED; đã check-in → 409.'
+      summary: Check-in (cơ bản; kèm QR động + ảnh ≤200KB khi điểm chấm công bật chế độ mở rộng)
+      description: '**Quyền / quy tắc:** Employee, Manager, HR tự chấm công của mình; Admin không chấm công. Người chấm lấy từ phiên. Khi bật chế độ QR/ảnh: QR sai/hết hạn → 422 QR_INVALID/QR_EXPIRED. Đã check-in → 409.'
   /api/v1/attendance/check-out:
     post:
       tags:
@@ -3311,7 +3311,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Check-out bằng QR động
+      summary: Check-out (cơ bản; kèm QR động khi bật chế độ mở rộng)
       description: '**Quyền / quy tắc:** Chưa check-in → 409 NO_CHECK_IN.'
   /api/v1/attendance/qr:
     get:
@@ -3351,7 +3351,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Lấy mã QR động hiện hành của điểm chấm công
-      description: '**Quyền / quy tắc:** HR, ADMIN (màn hình kiosk). Payload = ''HRFLOW-QR:''+nonce, TTL 15 giây, kèm shortCode 6 ký tự.'
+      description: '**Quyền / quy tắc:** HR (màn hình kiosk; chế độ mở rộng). Admin → 403. Payload = ''HRFLOW-QR:''+nonce, TTL 15 giây, kèm shortCode 6 ký tự.'
   /api/v1/attendance/review:
     get:
       tags:
@@ -5427,7 +5427,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Doanh thu Sales theo kỳ
-      description: '**Quyền / quy tắc:** HR, Finance Manager: tất cả; Sales Manager: team; Sales Exec: của mình.'
+      description: '**Quyền / quy tắc:** Finance Manager: tất cả (xác nhận tiền thực nhận); Sales Manager: team; Sales Exec: của mình; HR: chỉ khoản đã CONFIRMED để đưa vào lương (permission_matrix Mục 3.3).'
     post:
       tags:
       - Income & Sales
@@ -5658,7 +5658,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Tham số nghiệp vụ theo hiệu lực
-      description: '**Quyền / quy tắc:** HR, ADMIN hoặc người có grant payroll.'
+      description: '**Quyền / quy tắc:** HR hoặc người có grant payroll; ADMIN chỉ đọc để hỗ trợ cấu hình kỹ thuật.'
     post:
       tags:
       - Payroll
@@ -5701,7 +5701,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Thêm phiên bản tham số
-      description: '**Quyền / quy tắc:** HR/ADMIN; bắt buộc nguồn + ngày hiệu lực; tháng đã chốt → 409.'
+      description: '**Quyền / quy tắc:** HR (đề xuất/xác nhận nghiệp vụ); ADMIN không tạo/sửa giá trị tham số lương/thuế/BH (403). Bắt buộc nguồn + ngày hiệu lực + người xác nhận; tháng đã chốt → 409.'
   /api/v1/payroll/adjustments:
     get:
       tags:
@@ -6075,7 +6075,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       summary: Phê duyệt kỳ lương
       description: '**Quyền / quy tắc:** Grant APPROVE; không phải người tính/chốt; không duyệt kỳ có lương của chính mình (409); không còn dòng
-        NEEDS_REVIEW.'
+        NEEDS_REVIEW. Kỳ có dòng lương của Giám đốc mà chưa ghi nhận quyết định xử lý xung đột → 409 CONFLICT_OF_INTEREST.'
   /api/v1/payroll/periods/{id}/audit:
     get:
       tags:
@@ -6159,8 +6159,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Tính lương từ snapshot → CALCULATED hoặc CONFLICT_HOLD
-      description: '**Quyền / quy tắc:** PREPARE. Kỳ có dòng lương của Giám đốc mà chưa có quyết định xung đột → CONFLICT_HOLD.'
+      summary: Tính lương từ snapshot → CALCULATED
+      description: '**Quyền / quy tắc:** PREPARE. Kết quả luôn ở CALCULATED. Kỳ có dòng lương của Giám đốc mà chưa ghi nhận quyết định xử lý xung đột thì vẫn tính được nhưng APPROVE sẽ bị chặn (409 CONFLICT_OF_INTEREST).'
   /api/v1/payroll/periods/{id}/close-timesheet:
     post:
       tags:
@@ -6261,8 +6261,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Ghi nhận quyết định xử lý xung đột lợi ích, chỉ định người duyệt thay
-      description: '**Quyền / quy tắc:** ADMIN; tạo grant APPROVE+VIEW tạm thời theo kỳ cho người được chỉ định.'
+      summary: Ghi nhận quyết định xử lý xung đột lợi ích đã được HNQ xác nhận
+      description: '**Quyền / quy tắc:** HR có grant PREPARE ghi nhận căn cứ quyết định (số quyết định, người/cấp xác nhận, ngày, nội dung biện pháp) do cấp có thẩm quyền HNQ ban hành (OPEN-05). Director không được tự ghi nhận. Endpoint không tạo grant, không chỉ định người duyệt thay, không đổi trạng thái kỳ; mọi thay đổi grant đi qua /grants theo DEC-03. Có audit.'
   /api/v1/payroll/periods/{id}/export:
     get:
       tags:
@@ -7729,7 +7729,6 @@ components:
           enum:
           - DRAFT
           - CALCULATED
-          - CONFLICT_HOLD
           - APPROVED
           - LOCKED
         paymentStatus:
@@ -7764,7 +7763,7 @@ components:
           type: string
         conflictDecisionRef:
           type: string
-        conflictApproverName:
+        conflictResolvedByName:
           type: string
         conflictResolvedAt:
           type: string
@@ -7831,19 +7830,16 @@ components:
         authorityConfirmedBy:
           type: string
           minLength: 1
-        designatedApproverAccountId:
-          type: integer
-          format: int64
-        validTo:
+        authorityConfirmedAt:
           type: string
-          format: date-time
+          format: date
         note:
           type: string
           minLength: 1
       required:
       - authorityConfirmedBy
+      - authorityConfirmedAt
       - decisionRef
-      - designatedApproverAccountId
       - note
     AdjustmentRequest:
       type: object
@@ -10328,7 +10324,7 @@ tags:
 - name: Employees
   description: Hồ sơ, tổ chức, hợp đồng, lương, phụ cấp, lịch, thuế/BH (FR-03..06, FR-29, FR-33)
 - name: Attendance
-  description: Chấm công QR động, bảng công, Needs Review, điều chỉnh (FR-07, FR-10)
+  description: Chấm công cơ bản (QR động + ảnh là mở rộng), bảng công, Needs Review, điều chỉnh (FR-07, FR-10)
 - name: Leave
   description: Nghỉ phép và quỹ phép (FR-08, FR-28)
 - name: Overtime

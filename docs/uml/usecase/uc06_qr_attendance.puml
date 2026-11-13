@@ -26,8 +26,10 @@ skinparam package {
 left to right direction
 
 actor "Employee\n(Nhân viên)" as Employee
+actor "HR\n(cấp QR động)" as HR
 
-package "UC-06 - Chấm công nâng cao (QR & Ảnh selfie)" {
+package "UC-06 - Chấm công nâng cao (QR & Ảnh selfie) – chức năng mở rộng" {
+    usecase "Cấp QR động tại điểm chấm công\n(chỉ HR; Admin không cấp)" as UC_Issue
     usecase "UC-06\nChấm công nâng cao" as UC06
     usecase "Quét mã QR động" as UC_Scan
     usecase "Xác thực hiệu lực QR (10-15s)" as UC_AuthQR
@@ -38,6 +40,7 @@ package "UC-06 - Chấm công nâng cao (QR & Ảnh selfie)" {
 }
 
 Employee --> UC06
+HR --> UC_Issue
 
 UC06 ..> UC_Scan : <<include>>
 UC_Scan ..> UC_AuthQR : <<include>>

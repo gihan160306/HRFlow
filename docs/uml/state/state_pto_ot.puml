@@ -16,7 +16,11 @@ Approved --> [*]
 Rejected --> [*]
 Cancelled --> [*]
 
-Pending : Manager duyệt (HR nếu không có Manager)
+Pending : Người duyệt chính theo tuyến (company_profile Mục 4)
+Pending : Người dự phòng chỉ khi đã chỉ định trước
+Pending : Không có người duyệt hợp lệ → giữ Pending
+Pending : Không tự duyệt; không mặc định HR duyệt
+Approved : Hủy/điều chỉnh sau duyệt qua yêu cầu mới, không sửa lịch sử
 Rejected : Bắt buộc ghi lý do
 
 footer BR-05 · SR-04 · SR-05 · SR-07 · SR-14 · SR-15

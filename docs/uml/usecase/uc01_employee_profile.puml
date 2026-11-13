@@ -23,7 +23,7 @@ rectangle "UC-01 - Quản lý hồ sơ nhân viên" {
 }
 
 HR --> UC01
-Admin --> UC01
+Admin --> Search : <<chỉ định danh tối thiểu\nđể quản trị tài khoản>>
 
 UC01 ..> Create : <<include>>
 UC01 ..> Search : <<include>>

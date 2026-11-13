@@ -1,5 +1,7 @@
 # KẾ HOẠCH PHÂN CÔNG HOÀN THIỆN DỰ ÁN HRFlow
 
+> **Ghi chú (13/11/2026):** Đây là bản kế hoạch/đề bài ban đầu. Cơ cấu công ty, chức danh, chính sách lương, phân quyền và quy tắc tính lương đã được chốt trong [`docs/company_profile.md`](docs/company_profile.md), [`docs/permission_matrix.md`](docs/permission_matrix.md) và [`docs/payroll_rules.md`](docs/payroll_rules.md). Khi nội dung dưới đây khác ba tài liệu này (ví dụ cơ cấu phòng ban đề xuất ở Thành viên 1, bảng `users/roles/user_roles`), áp dụng ba tài liệu đã chốt.
+
 ## 1. Mục tiêu dự án
 
 Hoàn thiện HRFlow – hệ thống web quản lý nhân sự, chấm công và tính lương tự động cho một công ty Marketing giả lập.

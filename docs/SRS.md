@@ -6,9 +6,9 @@
 |---|---|
 | Tên dự án | HRFlow – Enterprise Human Resource & Automated Payroll System |
 | Doanh nghiệp mô phỏng | HNQ Media – doanh nghiệp truyền thông và tiếp thị số |
-| Phiên bản tài liệu | 3.2 – Chấm công QR chính thức + đánh lại mã FR liền mạch (FR-01…FR-33) |
-| Trạng thái | ĐÃ CHỐT – baseline cập nhật: chấm công QR chính thức + mã FR liền mạch FR-01…FR-33; các giả định mô phỏng/ngoài MVP được ghi rõ tại Mục 11 |
-| Ngày cập nhật | 03/11/2026 |
+| Phiên bản tài liệu | 3.3 – Đồng bộ với baseline nghiệp vụ đã chốt (bỏ `CONFLICT_HOLD`; chấm công cơ bản là MVP, QR/ảnh là mở rộng) |
+| Trạng thái | ĐÃ CHỐT – đồng bộ với `company_profile.md`, `permission_matrix.md`, `payroll_rules.md`; mã FR liền mạch FR-01…FR-33; các giả định mô phỏng/ngoài MVP được ghi rõ tại Mục 11 |
+| Ngày cập nhật | 13/11/2026 |
 | Ngôn ngữ | Tiếng Việt; tên trạng thái, role và mã yêu cầu giữ bằng tiếng Anh khi cần |
 | Nhóm thực hiện | Hồ Thị Gia Hân; Đặng Minh Hiếu; Trần Thị Lệ Hoa; Nguyễn Hoàng Phương Ngân; Hồ Vinh Quan |
 
@@ -25,6 +25,7 @@
 | 3.0 | 30/10/2026 | Nhóm dự án | Chốt hệ mã FR (retire FR-18/FR-19 cũ, thêm FR-27 đến FR-33); bổ sung quỹ phép, lịch/giờ chuẩn, chốt công, Payable/tạm ứng/hoàn chi, trạng thái PAID, phân loại adjustment, quản trị tài khoản, grant, hồ sơ thuế/bảo hiểm; sửa lỗi tham chiếu; thêm NFR-09 (toàn vẹn payroll); thêm bảng PM → FR, phạm vi MVP theo ca kiểm thử P/B; thêm nhật ký quyết định DEC; viết lại ma trận truy vết |
 | 3.1 | 30/10/2026 | Nhóm dự án | Chốt các DEC-01–DEC-08; tách rõ test MVP và mở rộng; quy định dữ liệu OT/Sales trong MVP; định nghĩa `CONFLICT_HOLD`; làm rõ mã lỗi, quyền grant, điều chỉnh lương, `net_salary`; phân loại vấn đề còn mở thành giả định mô phỏng hoặc tích hợp ngoài MVP |
 | 3.2 | 03/11/2026 | Nhóm dự án | Gộp chấm công QR/ảnh vào FR-07 (MVP); đánh lại toàn bộ mã FR liền mạch FR-01…FR-33; cập nhật tham chiếu, phạm vi MVP, SIM-03, DEC-09, ma trận truy vết và luồng nghiệp vụ |
+| 3.3 | 13/11/2026 | Nhóm dự án | Đồng bộ với baseline đã chốt: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` theo OPEN-05); FR-07 MVP là chấm công cơ bản, QR động + ảnh minh chứng về nhóm mở rộng; chỉ HR cấp QR; sửa DEC-02, DEC-09, BR-10, BR-21, SIM-03 |
 
 ## Mục lục
 
@@ -108,14 +109,13 @@ SRS mô tả **điều hệ thống phải làm**; tên bảng, endpoint, packag
 | `APPROVED` | Đã được người có grant `APPROVE` duyệt; không tính lại |
 | `LOCKED` | Đã được người có grant `LOCK` khóa; chỉ đọc |
 | `PAID` | Trạng thái chi trả riêng sau `LOCKED`; không mở quyền sửa lương |
-| `CONFLICT_HOLD` | Trạng thái chặn phê duyệt khi kỳ có lương Director; chỉ rời trạng thái theo DEC-02 và có audit |
 | `Needs Review` | Dữ liệu chưa xác minh, không được đưa âm thầm vào payroll |
 
 ### 1.4.1. Quy tắc mã hóa và hệ mã FR của bản 3.0
 
 - `UR-xx`, `FR-xx`, `NFR-xx`, `BR-xx`, `AC-FR-xx`, `PM-xx` (ca phân quyền từ `permission_matrix.md`), `DEC-xx` (quyết định đã chốt), `SIM/EXT/QA` (giả định mô phỏng/hạng mục ngoài MVP/kiểm thử).
 - Từ bản **3.2**, hệ mã FR được đánh lại **liền mạch FR-01 … FR-33** (không còn khoảng trống mã sau khi gộp chấm công và thu gọn các mã đã retire trước đó trong phạm vi đánh số hiện hành).
-- Chấm công chính thức (QR động + ảnh minh chứng + quy tắc công) = **FR-07** (gộp nội dung chấm công cơ bản và QR/ảnh của bản ≤ 3.1). Cơ cấu tổ chức giữ **FR-04**.
+- Chấm công = **FR-07**: chấm công cơ bản là MVP; QR động + ảnh minh chứng là chế độ mở rộng trong cùng mã (từ bản 3.3). Cơ cấu tổ chức giữ **FR-04**.
 - **FR-08** = Quản lý yêu cầu nghỉ phép (PTO) — trước đây là FR-09 ở bản ≤ 3.1.
 - Tổng hợp Gross/Net/Payable = **FR-27** (trước đây FR-30 / FR-19 tùy phiên bản).
 - Khi thêm yêu cầu mới, dùng mã tiếp theo sau FR-33; cập nhật SRS và ma trận truy vết cùng lúc. Bảng ánh xạ mã các phiên bản nằm ở Phụ lục 12.4.
@@ -181,7 +181,7 @@ Tuyến quản lý xác định phạm vi team và tuyến duyệt PTO/OT; **kh�
 |---|---|---|
 | Tài khoản và truy cập | Đăng nhập/đăng xuất, quản trị tài khoản (FR-31), role/grant (FR-02, FR-32) | Phiên hợp lệ, quyền đúng phạm vi |
 | Hồ sơ nhân sự | Hồ sơ, cơ cấu, hợp đồng, onboarding/offboarding, hồ sơ thuế/BH (FR-03–FR-06, FR-33) | Hồ sơ có lịch sử hiệu lực |
-| Lịch và chấm công | Lịch/lễ/giờ chuẩn (FR-29), chấm công QR động + ảnh minh chứng, xác minh, chốt công (FR-07, 11, 33) | Bản ghi công đã xác nhận, snapshot nguồn |
+| Lịch và chấm công | Lịch/lễ/giờ chuẩn (FR-29), chấm công cơ bản (QR động + ảnh minh chứng là mở rộng), xác minh, chốt công (FR-07, 11, 33) | Bản ghi công đã xác nhận, snapshot nguồn |
 | PTO | Tạo, duyệt, hủy/điều chỉnh, quỹ phép (FR-08, FR-28) | Trạng thái đơn, số dư, approval log |
 | OT | Lịch, đăng ký, duyệt, xác nhận thực tế, OT ngoài lịch (FR-09) | Dữ liệu OT đủ căn cứ |
 | Thu nhập và Sales | Phụ cấp, thưởng, khấu trừ, KPI/hoa hồng (FR-11, FR-12) | Dòng thu nhập có nguồn xác nhận |
@@ -212,7 +212,7 @@ HRFlow chỉ có **4 role nền tảng**: `Employee`, `Manager`, `HR`, `Admin`. 
 | Phê duyệt bảng lương, duyệt adjustment | Director | `APPROVE` cấp riêng |
 | Khóa kỳ sau phê duyệt | Finance Manager | `LOCK` cấp riêng |
 
-Người lập/tính bảng lương không tự duyệt. Admin không mặc nhiên có `VIEW`/`APPROVE`/`LOCK`. Xung đột lợi ích khi kỳ có lương Director xử lý theo DEC-02 và BR-21.
+Người lập/tính bảng lương không tự duyệt. Admin không mặc nhiên có `VIEW`/`APPROVE`/`LOCK`. Xung đột lợi ích khi kỳ có lương Director xử lý theo DEC-02 và BR-21 (chặn duyệt, không thêm trạng thái).
 
 ## 2.5. Môi trường vận hành dự kiến
 
@@ -239,7 +239,7 @@ Người lập/tính bảng lương không tự duyệt. Admin không mặc nhi�
 - Tài khoản do Admin khởi tạo theo yêu cầu hợp lệ của HR; không có đăng ký công khai.
 - HR nhập hồ sơ và dữ liệu nguồn có căn cứ; Manager/Sales Manager/Finance Manager xác nhận phần thuộc trách nhiệm.
 - Dữ liệu Sales nhập từ bảng đối soát đã xác nhận, không yêu cầu CRM.
-- Email và lưu trữ PDF chỉ hoạt động khi có cấu hình; nếu chưa có, demo phải thể hiện rõ là giả lập/in-app. Phương thức chấm công chính thức (QR động + ảnh minh chứng – FR-07) thuộc MVP; nếu môi trường demo chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ ràng (in-app/giả lập) và ghi rõ trong tài liệu demo, không tuyên bố đã tích hợp phần cứng.
+- Email và lưu trữ PDF chỉ hoạt động khi có cấu hình; nếu chưa có, demo phải thể hiện rõ là giả lập/in-app. MVP dùng chấm công cơ bản (FR-07); QR động + ảnh minh chứng là chức năng mở rộng. Khi demo chế độ QR/ảnh mà chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ ràng (in-app/giả lập) và ghi rõ trong tài liệu demo, không tuyên bố đã tích hợp phần cứng.
 - Tham số thuế, bảo hiểm, lương tối thiểu, giới hạn OT là bộ mô phỏng, ghi nguồn/trạng thái xác minh; phải xác minh văn bản pháp lý trước khi vận hành thật.
 
 ---
@@ -351,27 +351,31 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 
 **AC-FR-06:** sau thời điểm vô hiệu hóa không đăng nhập/gọi API được (PM-18); dữ liệu lịch sử vẫn truy xuất được; nhân viên nghỉ việc vẫn có dòng quyết toán nếu còn khoản phải trả.
 
-## 3.8. FR-07 – Chấm công bằng QR động và ảnh minh chứng
+## 3.8. FR-07 – Chấm công (cơ bản; QR động + ảnh minh chứng là mở rộng)
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Mã | FR-07 (gộp chấm công cơ bản + QR/ảnh của bản ≤ 3.1) |
-| Tác nhân | Employee; Manager xác minh team; HR cấu hình/cấp QR, kiểm tra/chốt |
-| Ưu tiên | MVP |
+| Mã | FR-07 (chấm công cơ bản; chế độ QR/ảnh của bản ≤ 3.1 giữ trong cùng mã) |
+| Tác nhân | Employee, Manager, HR tự chấm công của mình; Manager xác minh team; HR cấu hình/cấp QR (khi bật chế độ mở rộng), kiểm tra/chốt. Admin không chấm công và không cấp QR |
+| Ưu tiên | MVP: chấm công cơ bản (check-in/check-out trên web). Mở rộng: QR động + ảnh minh chứng (`company_profile.md` Mục 14.2) |
 
-**Mô tả:** Phương thức chấm công chính thức của hệ thống là **QR động + ảnh minh chứng**. Nhân viên thực hiện check-in/check-out bằng cách quét QR động và (khi được cấu hình) chụp ảnh minh chứng. Hệ thống lưu thời điểm server, kết quả xác thực QR, tham chiếu ảnh (nếu có) và tính thời lượng công theo lịch cá nhân.
+**Mô tả:** MVP cung cấp **chấm công cơ bản**: nhân viên check-in khi bắt đầu ca và check-out khi kết thúc ca trên ứng dụng; hệ thống lưu thời điểm server và tính thời lượng công theo lịch cá nhân. **QR động + ảnh minh chứng** là chế độ mở rộng, bật theo cấu hình điểm chấm công; khi bật, việc check-in/out phải kèm QR hợp lệ (và ảnh nếu cấu hình).
 
-**Luồng chính:**
-1. HR/Admin cấu hình và cấp QR động (nonce, thời hạn ngắn) tại điểm chấm công hoặc theo ca.
-2. Nhân viên mở chức năng chấm công → quét QR động còn hiệu lực.
+**Luồng chính (MVP – chấm công cơ bản):**
+1. Nhân viên mở chức năng chấm công → bấm check-in khi bắt đầu ca.
+2. Hệ thống lấy nhân viên từ phiên (không tin `employee_id` từ client), lịch hiệu lực, lưu thời điểm server.
+3. Check-out cuối ca theo cùng quy trình.
+4. Hệ thống tính phút làm việc, trễ/sớm theo lịch cá nhân, loại khoảng nghỉ và chồng lặp.
+5. Nhân viên xem công của mình; Manager xem team; HR xử lý bản ghi `Needs Review` và chốt công (FR-30).
+
+**Luồng mở rộng – QR động + ảnh minh chứng (khi bật):**
+1. HR cấu hình và cấp QR động (nonce, thời hạn ngắn) tại điểm chấm công hoặc theo ca (`permission_matrix.md` Mục 3.2: chỉ HR cấp QR).
+2. Nhân viên quét QR động còn hiệu lực khi check-in/check-out.
 3. Backend xác thực QR (nonce, hạn dùng, điểm/ca hợp lệ); không chỉ kiểm tra phía trình duyệt.
 4. QR hợp lệ → (nếu bật) yêu cầu chụp ảnh minh chứng; hệ thống lưu ảnh theo giới hạn dung lượng và quyền truy cập.
-5. Hệ thống lấy nhân viên từ phiên (không tin `employee_id` từ client), lịch hiệu lực, lưu thời điểm server, kết quả xác thực, tham chiếu ảnh.
-6. Check-out cuối ca theo cùng quy trình QR (+ ảnh nếu bật).
-7. Hệ thống tính phút làm việc, trễ/sớm theo lịch cá nhân, loại khoảng nghỉ và chồng lặp.
-8. Nhân viên xem công của mình; Manager xem team; HR xử lý bản ghi `Needs Review` và chốt công (FR-30).
+5. Hệ thống lưu thêm kết quả xác thực QR và tham chiếu ảnh.
 
-**Quy tắc QR và ảnh:**
+**Quy tắc QR và ảnh (chỉ áp dụng khi bật chế độ mở rộng):**
 - QR động có nonce và thời hạn ngắn (mặc định 10–15 giây, cấu hình); **không dùng mã tĩnh dài hạn**.
 - QR hết hạn/không hợp lệ → không tạo bản ghi chấm công, giao diện báo lỗi rõ ràng, không tiếp tục chụp ảnh.
 - Ảnh minh chứng: giới hạn dung lượng cấu hình (mục tiêu ≤ 200 KB), chỉ lưu dữ liệu cần thiết, kiểm soát người xem theo quyền; thuộc dữ liệu nhạy cảm (NFR-01).
@@ -381,24 +385,27 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 
 **Quy tắc tính công:**
 - Ghi phút trễ/sớm từ phút đầu; không dung sai 15 phút tự động; **không phạt tiền**.
-- Thiếu check-in/out hoặc QR/ảnh không hợp lệ → `Needs Review`, không tự 0 công.
+- Thiếu check-in/out (hoặc QR/ảnh không hợp lệ khi bật chế độ mở rộng) → `Needs Review`, không tự 0 công.
 - Làm bù trong ngày không tự thành OT; đến sớm/về muộn không tự là OT.
 - Ngày lễ hưởng lương không giảm lương tháng, không cộng trùng công.
-- **Đi công tác/làm việc bên ngoài:** có lịch và minh chứng được Manager duyệt; giờ đủ điều kiện được tính như công thường (có thể dùng cơ chế xác minh riêng nếu không quét được QR tại văn phòng).
+- **Đi công tác/làm việc bên ngoài:** có lịch và minh chứng được Manager duyệt; giờ đủ điều kiện được tính như công thường.
 - Lịch đổi giữa kỳ: dùng lịch hiệu lực tại ngày đó, không áp ngược.
 
-**Ngoại lệ:** check-in trùng, check-out không có check-in, thời gian bất hợp lý, QR hết hạn/giả mạo → từ chối hoặc `Needs Review`; không xóa bản ghi gốc.
+**Ngoại lệ:** check-in trùng, check-out không có check-in, thời gian bất hợp lý (và QR hết hạn/giả mạo khi bật chế độ mở rộng) → từ chối hoặc `Needs Review`; không xóa bản ghi gốc.
 
-**AC-FR-07:**
+**AC-FR-07 (MVP):**
 - A không tạo/chỉnh công cho B bằng `employee_id` khác (PM-15).
-- QR hết hạn/không hợp lệ bị từ chối, không tạo bản ghi công.
-- Ảnh minh chứng không truy cập được bởi người không có quyền.
-- Bảng công hiển thị giờ gốc, thời lượng, phút trễ/sớm, trạng thái, tham chiếu xác thực QR/ảnh.
+- Bảng công hiển thị giờ gốc, thời lượng, phút trễ/sớm, trạng thái.
 - Thiếu dữ liệu không thành 0 công (B04); trễ 10 phút không phạt, chỉ chênh công đã đối soát (B05).
 - Điều chỉnh có người, lý do, thời điểm, trước/sau.
+
+**AC-FR-07 (mở rộng – QR/ảnh):**
+- QR hết hạn/không hợp lệ bị từ chối, không tạo bản ghi công.
+- Chỉ HR cấp được QR; Admin gọi chức năng cấp QR bị từ chối (`403`).
+- Ảnh minh chứng không truy cập được bởi người không có quyền.
 - Demo chưa tích hợp camera/lưu trữ phải ghi rõ trạng thái mô phỏng.
 
-> **Lưu ý mã (bản 3.2):** Nội dung QR động + ảnh minh chứng (từng là FR-08 ở bản ≤ 3.1) đã gộp vào **FR-07**. Các mã FR từ PTO trở đi được đánh lại liền mạch (PTO = FR-08, …). Xem Phụ lục 12.4.
+> **Lưu ý mã (bản 3.3):** Mã FR-07 giữ nguyên. Từ bản 3.3, MVP chỉ yêu cầu chấm công cơ bản; QR động + ảnh minh chứng trở lại nhóm mở rộng để thống nhất với `company_profile.md` Mục 14. Hệ mã FR liền mạch của bản 3.2 không thay đổi. Xem Phụ lục 12.4.
 
 ## 3.9. FR-08 – Quản lý yêu cầu nghỉ phép (PTO)
 
@@ -481,7 +488,7 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 | Tác nhân | Manager (team, được giao); HR |
 | Ưu tiên | MVP |
 
-1. Danh sách bản ghi `Needs Review` kèm lý do: thiếu check-in/out, QR hết hạn/không hợp lệ, thiếu ảnh minh chứng (khi bắt buộc), giờ bất thường, trùng thời gian, sai lệch.
+1. Danh sách bản ghi `Needs Review` kèm lý do: thiếu check-in/out, QR hết hạn/không hợp lệ hoặc thiếu ảnh minh chứng (khi bật chế độ mở rộng), giờ bất thường, trùng thời gian, sai lệch.
 2. Nhân viên gửi giải trình/minh chứng; Manager xác nhận dữ liệu thực tế; HR rà soát và chốt (chốt công theo FR-30).
 3. Dữ liệu gốc và lịch sử thay đổi được bảo toàn.
 4. Chỉ dữ liệu đã xác nhận được chuyển sang payroll.
@@ -549,7 +556,7 @@ So sánh chính xác, không làm tròn tỷ lệ trước khi xét đạt; dư�
 5. Kết quả tính lưu snapshot đầu vào, `H_std`, ngày chi trả, phiên bản tham số.
 6. Chỉ tài khoản có grant `VIEW` mới xem chi tiết bảng lương toàn kỳ.
 
-**Trạng thái chuẩn:** `DRAFT → CALCULATED → APPROVED → LOCKED`. `CALCULATED → DRAFT` được phép trước duyệt (có lý do, audit, vô hiệu kết quả cũ, mở chốt công theo FR-30). Không có đường mở lại `APPROVED`/`LOCKED`. `PAID` là trạng thái chi trả riêng (FR-17). `CONFLICT_HOLD` là trạng thái chặn tạm thời áp dụng khi kỳ có lương Director; luồng là `CALCULATED → CONFLICT_HOLD → CALCULATED` chỉ khi đủ hồ sơ giải quyết xung đột theo DEC-02. Không được `APPROVE` trực tiếp từ `CONFLICT_HOLD` và không tự động bỏ hold. `CONFLICT_HOLD` là trạng thái chặn tạm thời áp dụng khi kỳ có lương Director; luồng là `CALCULATED → CONFLICT_HOLD → CALCULATED` chỉ khi đủ hồ sơ giải quyết xung đột theo DEC-02. Không được `APPROVE` trực tiếp từ `CONFLICT_HOLD` và không tự động bỏ hold.
+**Trạng thái chuẩn:** `DRAFT → CALCULATED → APPROVED → LOCKED`. `CALCULATED → DRAFT` được phép trước duyệt (có lý do, audit, vô hiệu kết quả cũ, mở chốt công theo FR-30). Không có đường mở lại `APPROVED`/`LOCKED`. `PAID` là trạng thái chi trả riêng (FR-17). Không có trạng thái kỳ lương nào khác ngoài bốn trạng thái trên; kỳ có dòng lương Director vẫn ở `CALCULATED` và bị chặn `APPROVE` theo DEC-02.
 
 **AC-FR-13:** không tính khi còn thiếu dữ liệu bắt buộc chưa xử lý; kết quả gắn kỳ, người thực hiện, snapshot; chỉ `PREPARE` được chuẩn bị/tính; kỳ chồng bị chặn.
 
@@ -651,7 +658,7 @@ Bậc: ≤10 triệu 5%; ≤30 triệu 10%; ≤60 triệu 20%; ≤100 triệu 30
 
 **Tách biệt nhiệm vụ:** người lập/tính không duyệt (PM-08, ghi security event); `APPROVE` và `LOCK` độc lập (PM-07); HR không approve/lock chỉ nhờ role (PM-06); Admin không có quyền payroll (PM-05, PM-19); thiếu người có grant → giữ trạng thái chờ, không tự nâng quyền.
 
-**Xung đột lợi ích Director (DEC-02, PM-09):** `CONFLICT_HOLD` là trạng thái chặn phê duyệt riêng của kỳ lương. Khi kỳ có dòng lương của Director, hệ thống chuyển kỳ sang `CONFLICT_HOLD` và chặn `APPROVE` bằng `409`. Chỉ sau khi có bản ghi biện pháp xử lý được người đại diện chủ sở hữu/cấp có thẩm quyền của HNQ xác nhận (người xác nhận, ngày, căn cứ) và chỉ định bằng văn bản người phê duyệt thay thế, Admin mới được ghi nhận quyết định và cấp grant tạm thời có phạm vi/thời hạn; người được chỉ định không được là người lập bảng lương. Kỳ được đưa về `CALCULATED` để người được chỉ định thực hiện `APPROVE`; mọi bước đều audit. Hệ thống không tự chọn người thay thế và Director không duyệt phần lương của chính mình. Với MVP, đây là ca kiểm soát bảo mật; demo có thể dùng dữ liệu kiểm thử riêng, không cần kỳ lương Director để chứng minh luồng payroll thông thường.
+**Xung đột lợi ích Director (DEC-02, PM-09):** Khi kỳ có dòng lương của Director, kỳ vẫn ở `CALCULATED` và hệ thống chặn `APPROVE` bằng `409 CONFLICT_OF_INTEREST` cho tới khi có bản ghi quyết định xử lý xung đột đã được cấp có thẩm quyền HNQ xác nhận (căn cứ/số quyết định, người xác nhận, ngày xác nhận). Nội dung biện pháp xử lý là vấn đề mở `OPEN-05` của `payroll_rules.md`; SRS không tự xác lập biện pháp. Hệ thống không thêm trạng thái kỳ lương, không tự chọn người duyệt thay, không tự tạo grant và không tách duyệt từng phiếu; Director không duyệt phần lương của chính mình. Nếu quyết định của HNQ dẫn tới thay đổi người giữ `APPROVE`, việc cấp grant đi theo quy trình grant thông thường (DEC-03, FR-32) và có audit. Với MVP, đây là ca kiểm soát bảo mật; demo có thể dùng dữ liệu kiểm thử riêng, không cần kỳ lương Director để chứng minh luồng payroll thông thường.
 
 **Giao dịch, idempotent, đồng thời:** xem NFR-09.
 
@@ -696,7 +703,7 @@ ESS cho nhân viên xem thông tin cá nhân được phép, hợp đồng của
 | Tác nhân | Hệ thống; người dùng nhận thông báo của mình |
 | Ưu tiên | Mở rộng; thông báo trạng thái quan trọng có thể dùng cơ chế in-app đơn giản trong MVP |
 
-**Sự kiện:** PTO/OT gửi, duyệt, từ chối, cần rà soát; đơn `Pending` sắp chốt công; hợp đồng sắp hết hạn; kỳ lương/phiếu lương sẵn sàng; dữ liệu cần bổ sung; kỳ `CONFLICT_HOLD`.
+**Sự kiện:** PTO/OT gửi, duyệt, từ chối, cần rà soát; đơn `Pending` sắp chốt công; hợp đồng sắp hết hạn; kỳ lương/phiếu lương sẵn sàng; dữ liệu cần bổ sung; kỳ bị chặn duyệt do xung đột lợi ích.
 
 **Yêu cầu:** mỗi thông báo có người nhận, thời điểm, loại sự kiện, nội dung tối thiểu, trạng thái đã đọc; người dùng chỉ xem thông báo của mình; email (nếu tích hợp) xử lý bất đồng bộ, lỗi có log và retry; nếu chưa cấu hình email, ghi rõ là in-app/demo, không giả nhận đã gửi email. Cấu hình nhận email là của từng người dùng.
 
@@ -726,7 +733,7 @@ ESS cho nhân viên xem thông tin cá nhân được phép, hợp đồng của
 | Tác nhân | Hệ thống tự ghi; HR/Admin xem trong phạm vi được cấp |
 | Ưu tiên | Audit cốt lõi: MVP; báo cáo audit nâng cao: Mở rộng |
 
-**Audit log** ghi tối thiểu: người thực hiện, thời điểm (múi giờ nhất quán), hành động, loại/bản ghi, kết quả, lý do khi cần, giá trị trước/sau khi lưu an toàn. Thao tác cần ghi: cập nhật hồ sơ/hợp đồng, điều chỉnh công, chốt/mở chốt công, thay đổi khoản thu nhập/khấu trừ, thay đổi tham số payroll, cấp/thu hồi grant, thay đổi tuyến duyệt, quản trị tài khoản, đổi trạng thái kỳ lương (kể cả `CONFLICT_HOLD`, `PAID`), duyệt/từ chối PTO/OT, tự duyệt bị chặn (security event), xuất dữ liệu nhạy cảm.
+**Audit log** ghi tối thiểu: người thực hiện, thời điểm (múi giờ nhất quán), hành động, loại/bản ghi, kết quả, lý do khi cần, giá trị trước/sau khi lưu an toàn. Thao tác cần ghi: cập nhật hồ sơ/hợp đồng, điều chỉnh công, chốt/mở chốt công, thay đổi khoản thu nhập/khấu trừ, thay đổi tham số payroll, cấp/thu hồi grant, thay đổi tuyến duyệt, quản trị tài khoản, đổi trạng thái kỳ lương, ghi nhận chi trả `PAID`, ghi nhận quyết định xử lý xung đột lợi ích, duyệt/từ chối PTO/OT, tự duyệt bị chặn (security event), xuất dữ liệu nhạy cảm.
 
 **Approval log:** người gửi, người duyệt, hành động, thời gian, lý do, trạng thái trước/sau, căn cứ dùng người dự phòng.
 
@@ -789,7 +796,7 @@ Phản hồi lỗi có cấu trúc thống nhất (mã lỗi nghiệp vụ, thô
 | `401` | Chưa xác thực/token sai/hết hạn | PM-01, PM-18 |
 | `403` | Có xác thực nhưng thiếu quyền chức năng/grant | PM-05, PM-06, PM-07, PM-08 |
 | `404` | Bản ghi không tồn tại hoặc ngoài phạm vi (không lộ sự tồn tại) | PM-02, PM-03 |
-| `409` | Xung đột trạng thái nghiệp vụ | Sửa kỳ `LOCKED`; duyệt kỳ `CONFLICT_HOLD` |
+| `409` | Xung đột trạng thái nghiệp vụ | Sửa kỳ `LOCKED`; duyệt kỳ có lương Director khi chưa có quyết định xử lý xung đột (`CONFLICT_OF_INTEREST`) |
 | `422` | Vi phạm quy tắc nghiệp vụ/validation | Khoảng ngày PTO sai; `employee_id` giả mạo (PM-15) |
 | `500` | Lỗi hệ thống | Không xử lý được ở backend |
 
@@ -938,17 +945,17 @@ Màn hình dự kiến:
 2. Trang chủ/dashboard theo role.
 3. Hồ sơ nhân sự (danh sách, chi tiết); hồ sơ thuế/bảo hiểm.
 4. Phòng ban/chức danh, hợp đồng, lịch làm việc và lịch lễ.
-5. Chấm công (QR động + ảnh minh chứng), bảng công, danh sách `Needs Review`, chốt công.
+5. Chấm công cơ bản (màn hình QR/ảnh khi bật chế độ mở rộng), bảng công, danh sách `Needs Review`, chốt công.
 6. PTO (danh sách, tạo, chi tiết, hộp thư duyệt, hủy/điều chỉnh); số dư phép.
 7. Lịch OT, đăng ký OT, xác nhận giờ thực tế, OT ngoài lịch.
 8. Phụ cấp/thưởng/khấu trừ/tạm ứng; dữ liệu Sales đã xác nhận.
-9. Kỳ lương: danh sách lỗi đầu vào, bảng lương dự kiến, đối soát, duyệt, khóa, ghi nhận chi trả, trạng thái `CONFLICT_HOLD`.
+9. Kỳ lương: danh sách lỗi đầu vào, bảng lương dự kiến, đối soát, duyệt, khóa, ghi nhận chi trả, cảnh báo chặn duyệt do xung đột lợi ích.
 10. Adjustment.
 11. Phiếu lương PDF/ESS.
 12. Thông báo, báo cáo, audit, quản trị tài khoản, grant/tuyến duyệt, tham số.
 
 ### 4.1.1. Quy tắc giao diện
-- Nhãn trạng thái thống nhất: `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`, `CALCULATED`, `LOCKED`, `PAID`, `Needs Review`, `CONFLICT_HOLD` tùy phân hệ.
+- Nhãn trạng thái thống nhất: `DRAFT`, `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`, `CALCULATED`, `LOCKED`, `PAID`, `Needs Review` tùy phân hệ.
 - Thao tác không hoàn tác hoặc tác động tiền lương (duyệt, khóa, mở chốt, terminate, tạo adjustment, ghi nhận chi trả) cần xác nhận rõ và hiển thị phạm vi tác động.
 - Trường bắt buộc có nhãn; lỗi validation gần trường tương ứng; không xóa dữ liệu đã nhập khi có thể tránh.
 - Bảng chứa dữ liệu nhạy cảm chỉ hiển thị cột được phép.
@@ -976,7 +983,7 @@ Dữ liệu cần lịch sử có thời điểm hiệu lực hoặc phiên bả
 |---|---|---|
 | Email | Thông báo, gửi phiếu lương | Chỉ coi là tích hợp thật khi cấu hình SMTP/provider và kiểm thử thành công |
 | PDF renderer | Sinh phiếu lương | PDF khớp snapshot kỳ khóa |
-| QR/camera | Chấm công chính thức (FR-07) | MVP; nếu demo chưa có camera/lưu trữ thật thì mô phỏng rõ và ghi rõ trong tài liệu demo |
+| QR/camera | Chế độ chấm công mở rộng (FR-07) | Mở rộng; nếu demo chưa có camera/lưu trữ thật thì mô phỏng rõ và ghi rõ trong tài liệu demo |
 | Bảng đối soát Sales | Nhận doanh thu/KPI đã xác nhận | Có thể nhập thủ công; không bắt buộc CRM |
 | Git/CI | Kiểm thử tự động, kiểm soát thay đổi | Theo cấu hình repository |
 
@@ -1091,7 +1098,7 @@ Các BR là ràng buộc bắt buộc cho thiết kế và code. Công thức, h
 | BR-07 | Đầu vào có căn cứ | Công, PTO, OT, phụ cấp, thưởng, Sales, BH, thuế, khấu trừ có nguồn/trạng thái xác nhận |
 | BR-08 | Thiếu dữ liệu | Không thay bằng 0, lương mẫu hoặc tham số mới nhất; báo lỗi, `Needs Review` |
 | BR-09 | Lịch làm việc | Lịch cá nhân hiệu lực; không mặc định 22/26 công; phút chính xác; `H_std` toàn tháng |
-| BR-10 | Chấm công | Phương thức chính thức: QR động + ảnh minh chứng (FR-07); trễ/sớm ghi từ phút đầu; không phạt tiền; thiếu công hoặc QR/ảnh không hợp lệ = `Needs Review` |
+| BR-10 | Chấm công | MVP: check-in/check-out cơ bản (FR-07); QR động + ảnh minh chứng là mở rộng; trễ/sớm ghi từ phút đầu; không dung sai tự động; không phạt tiền; thiếu công (hoặc QR/ảnh không hợp lệ khi bật) = `Needs Review` |
 | BR-11 | PTO một cấp | Tuyến chính/dự phòng theo Company Profile; không tự duyệt; không tự chuyển người nếu thiếu dự phòng hợp lệ |
 | BR-12 | OT theo lịch và thực tế | Đăng ký trên lịch công bố; trả theo giờ thực tế xác nhận; giờ vượt/OT ngoài lịch phải xác minh, không tự xóa cũng không tự trả |
 | BR-13 | OT chồng lặp | Không trả trùng một phút; chia đoạn theo loại ngày, giờ đêm, thay đổi lương/lịch |
@@ -1102,7 +1109,7 @@ Các BR là ràng buộc bắt buộc cho thiết kế và code. Công thức, h
 | BR-18 | Làm tròn | `ROUND_VND` HALF_UP tại từng dòng cuối; tổng từ các dòng đã làm tròn; BigDecimal |
 | BR-19 | Hồ sơ nghỉ việc | Vô hiệu hóa tài khoản theo ngày hiệu lực; giữ hồ sơ/lịch sử; khoản còn phải trả vẫn quyết toán |
 | BR-20 | Audit append-only | Không sửa/xóa `audit_log`/`payroll_audit` qua ứng dụng; chặn ở tầng lưu trữ |
-| BR-21 | Xung đột lợi ích | Dùng người dự phòng chỉ định trước; kỳ có lương Director vào `CONFLICT_HOLD`, chặn approve tới khi có biện pháp HNQ xác nhận |
+| BR-21 | Xung đột lợi ích | Dùng người dự phòng chỉ định trước; kỳ có lương Director bị chặn `APPROVE` (`409`) tới khi có quyết định xử lý được HNQ xác nhận (OPEN-05); không thêm trạng thái, không tự lập tuyến thay thế |
 | BR-22 | Bảo toàn lịch sử | Thay đổi lương, lịch, chức danh, phòng ban, quyền, tham số lưu lịch sử/hiệu lực |
 | BR-23 | Chốt công | Nguồn kỳ được chốt có người/thời điểm/phiên bản; mở chốt chỉ khi `CALCULATED → DRAFT`, có lý do; không mở sau `APPROVED` |
 | BR-24 | Net và Payable | Phân biệt Net_entitlement và Payable; tạm ứng/hoàn chi có chứng từ, không tính hai lần |
@@ -1147,7 +1154,7 @@ Nếu ngày 05 trùng ngày nghỉ, thanh toán vào ngày làm việc liền tr
 
 MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm thử nêu bên dưới.
 
-**Chức năng MVP:** FR-01–FR-08, FR-10, FR-11 (khoản bắt buộc: phụ cấp, khấu trừ có căn cứ), FR-13, FR-14, FR-16 (tính cho cư trú lũy tiến; các nhánh khác `NEEDS_REVIEW`), FR-17, FR-18, FR-22, FR-23, FR-24, FR-26–FR-33. (FR-07 = chấm công QR động + ảnh minh chứng.)
+**Chức năng MVP:** FR-01–FR-08, FR-10, FR-11 (khoản bắt buộc: phụ cấp, khấu trừ có căn cứ), FR-13, FR-14, FR-16 (tính cho cư trú lũy tiến; các nhánh khác `NEEDS_REVIEW`), FR-17, FR-18, FR-22, FR-23, FR-24, FR-26–FR-33. (FR-07 trong MVP = chấm công cơ bản; QR động + ảnh minh chứng là mở rộng.)
 
 **Ca kiểm thử nghiệp vụ bắt buộc cho MVP (không áp dụng các ca được ghi rõ là mở rộng):**
 
@@ -1157,7 +1164,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 | Ca biên | B01, B02, B03, B04, B05, B06, B13, B14, B15, B16, B17, B18, B19, B20, B22, B24 |
 | Phân quyền | PM-01 đến PM-12, PM-15 đến PM-20 |
 | An toàn | NFR-01, NFR-02, NFR-04, NFR-09 (mục 1–6, 8) |
-| Chấm công QR | QR hết hạn/không hợp lệ bị từ chối; ảnh không lộ ngoài quyền; mô phỏng rõ nếu chưa có camera thật |
+| Chấm công cơ bản | Check-in/out theo phiên; thiếu dữ liệu = `Needs Review`; không dung sai 15 phút; không phạt tiền |
 
 **Ngoài MVP (Mở rộng, có test riêng khi làm):** FR-09, FR-12, FR-15, FR-19–FR-21, FR-25; P05 (Sales), P06 (OT + miễn thuế OT); B07–B12 (OT, Sales); B21 (chi qua năm, không cư trú, short-term); B23 (500 nhân viên, PERF-02b); PM-13, PM-14.
 
@@ -1174,7 +1181,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 
 **Thứ tự làm đề xuất:** OT và Sales cùng làm trước vì P05/P06 phụ thuộc cả hai.
 
-> **Ghi chú bản 3.2:** QR động và ảnh minh chứng đã được đưa vào MVP dưới FR-07; toàn bộ mã FR đánh lại liền mạch FR-01…FR-33.
+> **Ghi chú bản 3.3:** QR động và ảnh minh chứng trở lại nhóm mở rộng (theo `company_profile.md` Mục 14.2); MVP của FR-07 là chấm công cơ bản. Hệ mã FR liền mạch FR-01…FR-33 của bản 3.2 giữ nguyên.
 
 ## 8.3. Ngoài phạm vi
 - CRM đầy đủ, pipeline bán hàng, chăm sóc khách hàng.
@@ -1197,8 +1204,8 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 6. Nghỉ việc: HR ghi ngày hiệu lực; tài khoản vô hiệu hóa đúng thời điểm; dữ liệu giữ; khoản còn phải trả quyết toán.
 
 ## 9.2. Chấm công và PTO
-1. Nhân viên chấm công (check-in/out) bằng **QR động + ảnh minh chứng** theo lịch cá nhân (FR-07).
-2. Hệ thống xác thực QR, lưu thời điểm server và tham chiếu ảnh, tính thời lượng, đánh `Needs Review` khi thiếu/sai lệch hoặc QR/ảnh không hợp lệ.
+1. Nhân viên chấm công (check-in/out) theo lịch cá nhân (FR-07); khi bật chế độ mở rộng thì kèm QR động + ảnh minh chứng.
+2. Hệ thống lưu thời điểm server (và kết quả xác thực QR, tham chiếu ảnh khi bật), tính thời lượng, đánh `Needs Review` khi thiếu/sai lệch.
 3. Nhân viên tạo PTO; hệ thống kiểm tra số dư, xác định người duyệt theo tuyến.
 4. Người duyệt đúng tuyến duyệt/từ chối; từ chối cần lý do; approval log.
 5. Duyệt → trừ quỹ phép; hủy/điều chỉnh đơn đã duyệt có tuyến riêng.
@@ -1216,7 +1223,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 2. Hệ thống kiểm tra dữ liệu, tham số, hồ sơ; thiếu sót vào danh sách `Needs Review`.
 3. HR chốt công, tính, chuyển `CALCULATED`, rà soát (có thể quay `DRAFT` có lý do).
 4. Finance Manager đối soát.
-5. Director dùng `APPROVE` (kỳ có lương Director → `CONFLICT_HOLD` tới khi có biện pháp xác nhận).
+5. Director dùng `APPROVE` (kỳ có lương Director bị chặn duyệt tới khi có quyết định xử lý xung đột được HNQ xác nhận – DEC-02).
 6. Finance Manager dùng `LOCK`.
 7. HRFlow tạo PDF theo snapshot; phát hành theo lịch chi.
 8. Finance ghi nhận chi trả → `PAID`.
@@ -1243,7 +1250,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 | UR-03 | Offboarding và bảo toàn lịch sử | FR-06, FR-31 | BR-19, BR-20 | AC-FR-06, AC-FR-25, B20 |
 | UR-04 | Nhân viên gửi PTO | FR-08, FR-28 | BR-11, BR-26 | AC-FR-08/28, PM-04, PM-16, PM-17 |
 | UR-05 | Duyệt/từ chối PTO/OT đúng tuyến | FR-08, FR-09, FR-32 | BR-11, BR-21 | AC-FR-08/09/32, PM-03/04/16/17 |
-| UR-06 | Ghi nhận công (QR động + ảnh minh chứng), xử lý sai lệch, chốt công | FR-07, FR-10, FR-29, FR-30 | BR-09, BR-10, BR-23 | AC-FR-07/10/29/30, B04, B05 |
+| UR-06 | Ghi nhận công (cơ bản; QR/ảnh là mở rộng), xử lý sai lệch, chốt công | FR-07, FR-10, FR-29, FR-30 | BR-09, BR-10, BR-23 | AC-FR-07/10/29/30, B04, B05 |
 | UR-07 | Đăng ký OT theo lịch công bố | FR-09, FR-15 | BR-12, BR-13 | AC-FR-09/15, B07–B10 |
 | UR-08 | Tính lương tháng tự động | FR-13, FR-14, FR-17, FR-27, FR-29, FR-30 | BR-05–BR-09, BR-18, BR-23, BR-24 | AC-FR-13/14/17/27, P01–P04, P08, B01–B03 |
 | UR-09 | Tính BH, thuế theo tham số | FR-16, FR-23, FR-33 | BR-17, BR-27 | AC-FR-16/23/33, P07, B13–B15, B21 |
@@ -1277,11 +1284,11 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 |---|---|---|---|
 | FR-01, 02, 34, 35 | Đăng nhập; quản trị tài khoản; cấp/thu hồi grant; cấu hình tuyến duyệt | Account, role, grant, approver_route, audit | 401/403/404, khóa tạm, grant hết hạn/thu hồi |
 | FR-03–06, 36 | Hồ sơ; cơ cấu; hợp đồng; onboarding/offboarding; hồ sơ thuế/BH | Employee, department, title, reporting_line, contract, tax/insurance profile, history | Mã trùng, hiệu lực, tài khoản nghỉ việc, thiếu hồ sơ thuế/BH |
-| FR-07, 11, 32, 33 | Chấm công QR động + ảnh minh chứng; xác minh; lịch/lễ; chốt công | Attendance, schedule, holiday, adjustment, work_snapshot, QR token, proof image ref | Thiếu công, trùng giờ, sai người, QR hết hạn/không hợp lệ, ảnh ngoài quyền, `H_std`, mở chốt |
+| FR-07, 11, 32, 33 | Chấm công cơ bản (QR/ảnh mở rộng); xác minh; lịch/lễ; chốt công | Attendance, schedule, holiday, adjustment, work_snapshot, QR token, proof image ref | Thiếu công, trùng giờ, sai người, QR hết hạn/không hợp lệ, ảnh ngoài quyền, `H_std`, mở chốt |
 | FR-08, 31 | PTO; hủy/điều chỉnh; quỹ phép | PTO request, leave_balance, approval_log | Tuyến, tự duyệt, từ chối thiếu lý do, thiếu dự phòng, số dư |
 | FR-09, 16 | Lịch OT; đăng ký/duyệt; xác nhận; OT ngoài lịch; tính OT | OT schedule, registration, approval, actual segment, verification | Thực tế ≠ đăng ký, qua nửa đêm, loại ngày, giới hạn |
 | FR-11, 13 | Khoản thu nhập; thưởng dự án; đối soát Sales | Allowance/bonus/deduction/advance/reimbursement, sales_reconciliation | Chưa duyệt, trùng nguồn, chưa thu/nghiệm thu, hoàn tiền |
-| FR-13, 15, 17, 20, 26, 27, 30 | Tạo kỳ; tính; rà soát; đối soát; duyệt; khóa; chi trả; adjustment | Payroll period, payroll line, snapshot, parameter_version, grant, adjustment, payment | Công thức P/B, thiếu nguồn, self-approval, APPROVE≠LOCK, khóa kỳ, CONFLICT_HOLD, idempotent |
+| FR-13, 15, 17, 20, 26, 27, 30 | Tạo kỳ; tính; rà soát; đối soát; duyệt; khóa; chi trả; adjustment | Payroll period, payroll line, snapshot, parameter_version, grant, adjustment, payment | Công thức P/B, thiếu nguồn, self-approval, APPROVE≠LOCK, khóa kỳ, chặn duyệt do xung đột lợi ích, idempotent |
 | FR-18, 22 | Tạo/xem phiếu; ESS | Payslip metadata, employee scope | Không xem phiếu người khác, PDF khớp snapshot |
 | FR-20, 24 | Thông báo; dashboard; xuất báo cáo | Notification, report scope, export audit | Đúng người nhận, không lộ qua export |
 | FR-22, 28, 29 | Audit; tác vụ định kỳ; xử lý lỗi | Audit log, job log, error contract | Append-only, chạy lặp, response lỗi nhất quán |
@@ -1322,19 +1329,19 @@ Các quyết định dưới đây là quyết định đã chốt cho baseline 
 | Mã | Quyết định | Ảnh hưởng | Trạng thái |
 |---|---|---|---|
 | DEC-01 | Quy ước lỗi: `401` chưa xác thực/tài khoản không được phép đăng nhập; `403` thiếu quyền chức năng/endpoint hoặc grant; `404` bản ghi ngoài phạm vi own/team để không lộ sự tồn tại; `409` xung đột trạng thái nghiệp vụ; `422` dữ liệu không qua validation | FR-01, FR-02, FR-26, OpenAPI, test | ĐÃ CHỐT |
-| DEC-02 | Kỳ có dòng lương Director chuyển sang `CONFLICT_HOLD`; chỉ được đưa về `CALCULATED` khi có biện pháp được cấp có thẩm quyền HNQ xác nhận, chỉ định người duyệt thay thế bằng văn bản và ghi audit; người duyệt thay thế có grant tạm thời, không phải người lập bảng lương | FR-17, BR-21, PM-09 | ĐÃ CHỐT |
+| DEC-02 | Kỳ có dòng lương Director giữ trạng thái `CALCULATED`; `APPROVE` bị chặn (`409 CONFLICT_OF_INTEREST`) tới khi có bản ghi quyết định xử lý xung đột được cấp có thẩm quyền HNQ xác nhận (căn cứ, người xác nhận, ngày) và có audit. Nội dung biện pháp là `OPEN-05` của `payroll_rules.md`, SRS không tự xác lập; hệ thống không thêm trạng thái kỳ, không tự chọn người duyệt thay, không tự tạo grant, không duyệt từng phiếu | FR-17, BR-21, PM-09 | ĐÃ CHỐT (sửa ở bản 3.3) |
 | DEC-03 | Grant payroll seed theo hồ sơ công ty: HR `PREPARE`; Director `APPROVE`; Finance Manager `LOCK`. Chủ sở hữu/đại diện chủ sở hữu HNQ hoặc người được ủy quyền bằng văn bản quyết định thay đổi; Admin chỉ thực thi, lưu tham chiếu quyết định và audit; không ai tự cấp/gia hạn quyền cho mình | FR-32, BR-03 | ĐÃ CHỐT |
 | DEC-04 | HR xác nhận hồ sơ và gửi yêu cầu; Admin khởi tạo/quản trị tài khoản, không tự quyết định hồ sơ nhân sự hoặc tự cấp grant payroll | FR-06, FR-31 | ĐÃ CHỐT |
 | DEC-05 | Adjustment do Director duyệt hoặc người được cấp có thẩm quyền HNQ ủy quyền bằng văn bản; người tạo adjustment không được tự duyệt; mọi ủy quyền phải có phạm vi, hiệu lực và audit | FR-24, FR-32 | ĐÃ CHỐT |
 | DEC-06 | Hệ mã FR (bản 3.0): retire mã cũ; bổ sung FR quỹ phép/lịch/chốt công/tài khoản/grant/hồ sơ thuế–BH; bản 3.2 đánh lại liền mạch thành FR-01…FR-33 | Mục 1.4.1, 12.4 | ĐÃ CHỐT |
 | DEC-07 | MVP theo đúng danh sách chức năng và ca kiểm thử tại Mục 8.1; P05/P06, B07–B12, PM-13/PM-14 là mở rộng, không chặn nghiệm thu MVP | Mục 8 | ĐÃ CHỐT |
 | DEC-08 | Nếu database/API cần trường `net_salary`, trường này mang nghĩa `Payable`; `Net_entitlement`, `Advance_recovery` và `Reimbursements` phải lưu/tính riêng để đối soát, tránh thu hồi tạm ứng hoặc cộng hoàn chi hai lần | FR-27 | ĐÃ CHỐT |
-| DEC-09 | Gộp chấm công QR/ảnh vào FR-07 (MVP); đánh lại mã FR liền mạch FR-01…FR-33 (PTO = FR-08 trở đi); nếu demo chưa có camera/lưu trữ thật thì mô phỏng rõ và ghi rõ trong tài liệu demo | FR-07…FR-33, Mục 8, SIM-03, UR-06, ma trận truy vết | ĐÃ CHỐT |
+| DEC-09 | Chấm công cơ bản và chế độ QR/ảnh cùng thuộc FR-07; MVP chỉ yêu cầu chấm công cơ bản, QR/ảnh là mở rộng (sửa ở bản 3.3 theo `company_profile.md` Mục 14); đánh lại mã FR liền mạch FR-01…FR-33 (PTO = FR-08 trở đi); nếu demo QR/ảnh chưa có camera/lưu trữ thật thì mô phỏng rõ | FR-07…FR-33, Mục 8, SIM-03, UR-06, ma trận truy vết | ĐÃ CHỐT |
 
 ## 11.2. Giả định và phụ thuộc
 1. HNQ Media là doanh nghiệp mô phỏng; các bộ thuế/BH/lương tối thiểu và giới hạn OT dùng trong demo là **tham số mô phỏng**, có nguồn, ngày hiệu lực, phiên bản và trạng thái xác minh. Không trình bày kết quả này như tư vấn pháp lý hoặc bảng lương tuân thủ pháp luật hiện hành nếu chưa được đối chiếu văn bản gốc.
 2. Địa bàn làm việc và hồ sơ thuế/BH của 40 nhân sự mẫu phải được seed/xác nhận trước khi chạy demo. Hồ sơ thiếu được gắn `NEEDS_REVIEW`, không tự suy theo chức danh hoặc loại nhân viên.
-3. Phương thức chấm công chính thức (QR động + ảnh minh chứng – FR-07) thuộc MVP. Nếu môi trường demo chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử end-to-end. Email thật vẫn là tích hợp tùy chọn.
+3. MVP dùng chấm công cơ bản (FR-07); QR động + ảnh minh chứng là mở rộng. Khi demo chế độ QR/ảnh mà môi trường chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử end-to-end. Email thật vẫn là tích hợp tùy chọn.
 4. MVP chỉ cần dữ liệu OT/Sales đã xác nhận hoặc xác nhận không phát sinh; luồng đăng ký/duyệt OT và tự động hóa KPI/hoa hồng là mở rộng.
 
 ## 11.3. Giả định mô phỏng và hạng mục ngoài MVP
@@ -1345,7 +1352,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 |---|---|---|---|
 | SIM-01 | Tham số thuế/BH/lương tối thiểu/OT chưa được xác minh pháp lý đầy đủ | Dùng bộ tham số mô phỏng có nguồn, hiệu lực, phiên bản, người xác nhận và cờ xác minh; chưa xác minh thì không tuyên bố tuân thủ pháp luật | Seed và kiểm thử bộ tham số; ghi rõ đây là dữ liệu mô phỏng |
 | SIM-02 | Địa bàn làm việc ảnh hưởng tham số vùng | Lưu địa bàn riêng trong hồ sơ; không suy từ tên công ty/thành phố | Seed địa bàn cho từng nhân viên mẫu |
-| SIM-03 | Camera/lưu trữ ảnh thật và email thật | Phương thức QR + ảnh thuộc MVP (FR-07); phần cứng camera/lưu trữ thật và email SMTP có thể mô phỏng nếu chưa tích hợp end-to-end | Ghi rõ trong demo/báo cáo phần nào là mô phỏng; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử |
+| SIM-03 | Camera/lưu trữ ảnh thật và email thật | Chế độ QR + ảnh là mở rộng (FR-07); phần cứng camera/lưu trữ thật và email SMTP có thể mô phỏng nếu chưa tích hợp end-to-end | Ghi rõ trong demo/báo cáo phần nào là mô phỏng; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử |
 | EXT-01 | Tự động hóa OT và Sales/KPI/hoa hồng | Ngoài MVP; MVP nhận dữ liệu đã xác nhận hoặc xác nhận không phát sinh | Kiểm thử dữ liệu đầu vào, nguồn, kỳ hiệu lực và `NEEDS_REVIEW` |
 | SIM-04 | Phân loại thuế/BH cho từng loại phụ cấp/thưởng/hoàn chi và căn cứ tham gia từng quỹ | Mỗi khoản có mã phân loại; chưa phân loại hoặc hồ sơ thiếu thì `NEEDS_REVIEW`; không suy theo `employee_type` | Seed dữ liệu đã phân loại cho bộ demo |
 | QA-01 | Đo performance/availability trong môi trường demo | Dùng ngưỡng NFR làm tiêu chí kiểm thử, ghi môi trường và kết quả thực đo | Chạy test và lưu bằng chứng |
@@ -1361,7 +1368,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 - [ ] Tuyến PTO/OT chính và dự phòng khớp bảng Company Profile và permission_matrix.
 - [ ] `VIEW`/`PREPARE`/`APPROVE`/`LOCK` độc lập; không cấp theo role.
 - [ ] Director `APPROVE`; Finance Manager `LOCK` sau phê duyệt; đối soát ≠ approve/lock.
-- [ ] Người lập không tự duyệt; xung đột lương Director xử lý bằng `CONFLICT_HOLD` và chờ xác nhận.
+- [ ] Người lập không tự duyệt; kỳ có lương Director bị chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận.
 - [ ] Công thức dùng lịch cá nhân và `H_std` toàn tháng, không mặc định 22/26.
 - [ ] Gross/Net/Payable không cộng trùng; tạm ứng/hoàn chi có chứng từ.
 - [ ] OT theo giờ thực tế đủ căn cứ; OT ngoài lịch/vượt giờ có bản ghi xác minh.
@@ -1372,9 +1379,9 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 - [ ] Audit/approval log append-only và có test.
 - [ ] Tham số pháp lý chưa xác minh được gắn trạng thái, không hard-code.
 - [ ] Mỗi FR có AC; ma trận truy vết đủ UR, PM; không mã FR trùng hoặc dùng lại mã retire.
-- [x] DEC-01 đến DEC-08 đã được chốt trong baseline SRS 3.1; DEC-09 (gộp chấm công + đánh lại mã FR liền mạch) đã chốt ở bản 3.2.
+- [x] DEC-01 đến DEC-08 đã được chốt trong baseline SRS 3.1; DEC-09 (gộp chấm công + đánh lại mã FR liền mạch) đã chốt ở bản 3.2; DEC-02 và DEC-09 được sửa ở bản 3.3 để khớp baseline nghiệp vụ.
 - [x] Phạm vi MVP và bộ P/B/PM bắt buộc được xác định tại Mục 8.1; các ca ngoài MVP không chặn nghiệm thu MVP.
-- [x] Phương thức chấm công chính thức là QR động + ảnh minh chứng (FR-07, MVP); hệ mã FR liền mạch FR-01…FR-33.
+- [x] Chấm công cơ bản là MVP (FR-07); QR động + ảnh minh chứng là mở rộng; hệ mã FR liền mạch FR-01…FR-33.
 
 ## 12.2. Ca kiểm thử phân quyền bắt buộc (từ permission_matrix.md)
 
@@ -1388,7 +1395,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 | PM-06 | HR approve/lock chỉ với role HR, không grant | `403` |
 | PM-07 | Có `APPROVE` nhưng không có `LOCK` cố khóa kỳ | `403` |
 | PM-08 | Người lập bảng lương tự duyệt | `403`, ghi audit/security event |
-| PM-09 | Director phê duyệt kỳ có lương mình khi chưa có biện pháp xác nhận | Chặn (`CONFLICT_HOLD`), yêu cầu quyết định hợp lệ |
+| PM-09 | Director phê duyệt kỳ có lương mình khi chưa có biện pháp xác nhận | Chặn `APPROVE` (`409`), kỳ giữ `CALCULATED`, yêu cầu quyết định hợp lệ; không tự chuyển duyệt từng phiếu |
 | PM-10 | Sửa kỳ/phiếu `LOCKED` | `409`, dữ liệu không đổi; yêu cầu adjustment |
 | PM-11 | HR sửa hồ sơ đúng quyền | Thành công và có audit |
 | PM-12 | Update/delete audit log | Bị chặn |
@@ -1417,7 +1424,7 @@ Từ bản **3.2**, mã FR được đánh **liền mạch FR-01 … FR-33**. B�
 | Mã bản ≤ 3.1 | Mã bản 3.2 | Nội dung |
 |---|---|---|
 | FR-01 … FR-06 | FR-01 … FR-06 | Không đổi |
-| FR-07 (chấm công cơ bản) + FR-08 (QR/ảnh) | **FR-07** | Gộp thành chấm công chính thức (QR động + ảnh minh chứng), MVP |
+| FR-07 (chấm công cơ bản) + FR-08 (QR/ảnh) | **FR-07** | Gộp thành một mã chấm công: cơ bản là MVP, QR động + ảnh minh chứng là mở rộng (từ bản 3.3) |
 | FR-09 PTO | **FR-08** | Quản lý yêu cầu nghỉ phép |
 | FR-10 OT | **FR-09** | Lịch OT, đăng ký, xác nhận giờ thực tế |
 | FR-11 Xác minh công | **FR-10** | Xác minh và điều chỉnh dữ liệu chấm công |
@@ -1455,4 +1462,4 @@ Từ bản **3.2**, mã FR được đánh **liền mạch FR-01 … FR-33**. B�
 | AC-FR-xx | Theo mã FR tương ứng bản 3.2 |
 ---
 
-**Kết thúc tài liệu SRS HRFlow phiên bản 3.2 – Baseline đã chốt (chấm công QR chính thức, mã FR liền mạch FR-01…FR-33).**
+**Kết thúc tài liệu SRS HRFlow phiên bản 3.3 – Baseline đã chốt, đồng bộ với ba tài liệu nghiệp vụ (mã FR liền mạch FR-01…FR-33).**

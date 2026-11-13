@@ -29,8 +29,9 @@ class Timecard {
     - lateMinutes : int
     - earlyLeaveMinutes : int
     - status : AttendanceStatus
-    - selfiePhotoUrl : String
-    - qrValidationCode : String
+    - workedMinutes : int
+    - selfiePhotoUrl : String <<mở rộng>>
+    - qrValidationCode : String <<mở rộng>>
     + recordCheckIn(time: LocalDateTime, qrCode: String, photoUrl: String) : void
     + recordCheckOut(time: LocalDateTime) : void
     + calculateDiscrepancy(standardStartTime: LocalTime, standardEndTime: LocalTime) : void
@@ -93,11 +94,10 @@ class ApprovalLog {
 
 ' ================= CÁC ENUM =================
 enum AttendanceStatus {
-    ON_TIME
-    LATE
-    EARLY_LEAVE
-    LATE_AND_EARLY
-    ABSENT
+    VALID
+    NEEDS_REVIEW
+    CONFIRMED
+    ABSENT_CONFIRMED
 }
 
 enum RequestStatus {
@@ -110,6 +110,7 @@ enum RequestStatus {
 
 enum PTOType {
     ANNUAL_LEAVE
+    PAID_PERSONAL_LEAVE
     UNPAID_LEAVE
     SICK_LEAVE
     MATERNITY_LEAVE

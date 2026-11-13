@@ -1,7 +1,9 @@
 # Thiết kế cơ sở dữ liệu – HRFlow
 
-> Phiên bản 3.3 · cập nhật 12/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
-> Phần chi tiết cột/khóa/chỉ mục/trigger được trích xuất trực tiếp từ database sau khi chạy migration, nên khớp với mã nguồn.
+> Phiên bản 3.4 · cập nhật 13/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
+> Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration hiện có trong repo (V1–V15) **chưa triển khai theo thiết kế này**; các chênh lệch được liệt kê ở Mục 10 và phải xử lý bằng migration mới.
+>
+> Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
 
 ## 1. Mục tiêu và nguyên tắc thiết kế
 
@@ -10,7 +12,7 @@
 | Lưu lịch sử theo **hiệu lực** | Lương, phụ cấp, lịch làm việc, phân công, hồ sơ thuế/BH, tham số đều có `effective_from`/`effective_to`; tính lương lấy bản có hiệu lực tại ngày cần tính, không ghi đè quá khứ. |
 | **Toàn vẹn payroll** | Kỳ đã APPROVED/LOCKED không sửa được dòng lương (trigger `fn_guard_payroll_line*` → lỗi `PERIOD_LOCKED`). Snapshot chốt công, phiếu lương, audit là **append-only** (trigger `fn_block_modify_append_only`). Ứng dụng thêm `PeriodGuard` chặn sửa dữ liệu nguồn của tháng đã chốt (409 `PERIOD_FROZEN`). |
 | **Truy vết** | `audit_log`, `approval_log`, `payroll_audit` chỉ ghi thêm; dòng lương có `payroll_line_item` giải thích từng khoản và `param_snapshot` lưu tham số đã dùng. |
-| **Tiền tệ chính xác** | Tiền lưu `numeric(18,2)`, tính bằng BigDecimal; làm tròn VND theo từng dòng (HALF_UP). |
+| **Tiền tệ chính xác** | Tiền cuối lưu `numeric(15,0)` (VND nguyên); giá trị trung gian lưu `numeric(30,12)` (`payroll_line_item.amount_raw`); tính bằng BigDecimal; làm tròn VND theo từng dòng (HALF_UP). |
 | **Thời gian** | Thời điểm lưu `timestamptz` (UTC); ngày nghiệp vụ là `date` theo múi giờ Asia/Ho_Chi_Minh. |
 | **Enum** | Lưu `varchar` + `CHECK (... IN (...))`, giá trị UPPERCASE giống API. |
 | **Chống trùng/tách nhiệm** | `UNIQUE` cho email, CCCD, mã nhân viên, `source_ref`, (kỳ, nhân viên)...; `CHECK` không tự quản lý/tự duyệt; người tạo ≠ người xác nhận được kiểm tra ở tầng service. |
@@ -62,10 +64,10 @@ Tổng cộng **52 bảng** nghiệp vụ (không tính `flyway_schema_history`)
 | `work_schedule_day` | Ca sáng/chiều theo từng thứ trong tuần của một lịch. |
 | `employee_schedule` | Lịch áp dụng cho nhân viên theo hiệu lực. |
 | `holiday` | Ngày lễ/Tết (có/không hưởng lương). |
-| `attendance_point` | Điểm chấm công (màn hình kiosk QR), có yêu cầu ảnh hay không. |
-| `qr_token` | Mã QR động: nonce ngẫu nhiên 24 byte + mã ngắn 6 ký tự, hết hạn sau 15 giây. |
-| `attendance_record` | Bản ghi công theo ngày: giờ vào/ra, điểm, nonce đã dùng, ảnh, phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED. |
-| `attendance_photo` | Ảnh minh chứng (bytea ≤ 200 KB). |
+| `attendance_point` | *(Mở rộng)* Điểm chấm công (màn hình kiosk QR), có yêu cầu ảnh hay không. |
+| `qr_token` | *(Mở rộng)* Mã QR động do HR cấp: nonce ngẫu nhiên 24 byte + mã ngắn 6 ký tự, hết hạn sau 15 giây. |
+| `attendance_record` | Bản ghi công theo ngày: giờ vào/ra; điểm, nonce đã dùng, ảnh (chỉ khi bật chế độ QR/ảnh mở rộng); phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED. |
+| `attendance_photo` | *(Mở rộng)* Ảnh minh chứng (bytea ≤ 200 KB). |
 | `attendance_adjustment` | Yêu cầu điều chỉnh/bổ sung công, lưu `before_json` để audit. |
 
 ### D. Nghỉ phép (FR-08, FR-28)
@@ -100,7 +102,7 @@ Tổng cộng **52 bảng** nghiệp vụ (không tính `flyway_schema_history`)
 |---|---|
 | `payroll_parameter` | Tham số nghiệp vụ/pháp lý theo hiệu lực và vùng (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ...). Unique (code, region, effective_from, version). |
 | `tax_bracket` | Biểu thuế lũy tiến theo bộ (`set_code`) và hiệu lực. |
-| `payroll_period` | Kỳ lương tháng: trạng thái DRAFT → CALCULATED/CONFLICT_HOLD → APPROVED → LOCKED, chi trả, người chốt/tính/đối soát/duyệt/khóa (để kiểm tra tách nhiệm), quyết định xung đột lợi ích. |
+| `payroll_period` | Kỳ lương tháng: trạng thái DRAFT → CALCULATED → APPROVED → LOCKED (CALCULATED → DRAFT trước duyệt), trạng thái chi trả riêng, chi trả, người chốt/tính/đối soát/duyệt/khóa (để kiểm tra tách nhiệm), quyết định xung đột lợi ích. |
 | `timesheet_snapshot` | Snapshot JSON dữ liệu nguồn khi chốt công (phiên bản vN) – bất biến. |
 | `payroll_line` | Dòng lương mỗi nhân viên: giờ chuẩn/được trả, các cấu phần Gross, BH, thuế, khấu trừ, Net, Payable, issues, `param_snapshot`. |
 | `payroll_line_item` | Khoản mục chi tiết của dòng lương (giá trị thô, đã làm tròn, nguồn, quy tắc áp dụng) – giải thích được từng con số. |
@@ -121,7 +123,7 @@ Tổng cộng **52 bảng** nghiệp vụ (không tính `flyway_schema_history`)
 
 ## 4. Sơ đồ quan hệ (ERD)
 
-Sơ đồ đầy đủ ở dạng code PlantUML: [`docs/uml/erd.puml`](uml/erd.puml) (dán vào https://www.plantuml.com/plantuml hoặc dùng extension PlantUML trong VS Code để xem). Quan hệ chính:
+Sơ đồ ERD đầy đủ theo thiết kế này chưa có trong repo (cần tạo `docs/uml/erd/erd.puml`; file `docs/uml/erd/erd_database_schema.md` hiện có là bản cũ, không dùng làm nguồn). Quan hệ chính:
 
 ```
 department 1─* employee *─1 job_title          employee 1─* contract 1─* salary_record
@@ -137,7 +139,7 @@ payroll_adjustment: origin_period_id → payroll_period, applied_period_id → p
 
 1. **Nguồn**: `attendance_record`, `leave_request_day`, `ot_registration`/`ot_unscheduled`, `income_item`, `sales_revenue`, `salary_record`, `employee_allowance`, `tax_profile`, `insurance_profile`, `dependent`, `payroll_parameter`, `tax_bracket`, `holiday`, `employee_schedule`.
 2. **Chốt công** → `timesheet_snapshot` (JSON bất biến, version vN) + `payroll_period.timesheet_closed = true`; từ đây `PeriodGuard` chặn sửa nguồn của tháng.
-3. **Tính lương** đọc snapshot + tham số có hiệu lực → ghi `payroll_line` + `payroll_line_item` (+ `param_snapshot`), trạng thái kỳ CALCULATED hoặc CONFLICT_HOLD.
+3. **Tính lương** đọc snapshot + tham số có hiệu lực → ghi `payroll_line` + `payroll_line_item` (+ `param_snapshot`), trạng thái kỳ CALCULATED. Nếu kỳ có dòng lương của Director mà chưa có quyết định xử lý xung đột được xác nhận (`conflict_decision_ref`, `conflict_resolved_by/at`), `APPROVE` bị chặn bằng 409 `CONFLICT_OF_INTEREST`; không đổi sang trạng thái khác.
 4. **Đối soát → duyệt → khóa**: cập nhật cột người/thời điểm trên `payroll_period`, ghi `payroll_audit`; khóa kỳ tạo `background_job` GENERATE_PAYSLIPS → `payslip`.
 5. **Sau khóa**: chỉ sửa bằng `payroll_adjustment` áp vào kỳ mở kế tiếp.
 
@@ -355,7 +357,7 @@ Hồ sơ nhân sự (thông tin cá nhân, ngân hàng, loại nhân sự, vùng
 | `termination_date` | date |  |  |  |
 | `termination_reason` | varchar(500) |  |  |  |
 | `work_location` | varchar(255) |  |  |  |
-| `wage_region` | varchar(30) | ✓ | 'REGION_I'::character varying |  |
+| `wage_region` | varchar(30) | ✓ |  | Vùng lương tối thiểu theo địa chỉ nơi làm việc; HR xác nhận, không mặc định `REGION_I` (OPEN-01) |
 | `department_id` | bigint | ✓ |  | FK→ `department` · Phòng ban |
 | `job_title_id` | bigint | ✓ |  | FK→ `job_title` · Chức danh |
 | `manager_id` | bigint |  |  | FK→ `employee` · Quản lý trực tiếp |
@@ -1076,7 +1078,7 @@ Biểu thuế lũy tiến theo bộ (`set_code`) và hiệu lực.
 
 #### `payroll_period`
 
-Kỳ lương tháng: trạng thái DRAFT → CALCULATED/CONFLICT_HOLD → APPROVED → LOCKED, chi trả, người chốt/tính/đối soát/duyệt/khóa (để kiểm tra tách nhiệm), quyết định xung đột lợi ích.
+Kỳ lương tháng: trạng thái DRAFT → CALCULATED → APPROVED → LOCKED (chỉ `CALCULATED → DRAFT` được quay lại trước duyệt); trạng thái chi trả `payment_status` tách riêng; người chốt/tính/đối soát/duyệt/khóa (để kiểm tra tách nhiệm); bản ghi quyết định xử lý xung đột lợi ích khi kỳ có lương Director (chỉ lưu căn cứ đã được HNQ xác nhận, không chứa người duyệt thay – OPEN-05).
 
 | Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
 |---|---|:-:|---|---|
@@ -1098,11 +1100,10 @@ Kỳ lương tháng: trạng thái DRAFT → CALCULATED/CONFLICT_HOLD → APPROV
 | `reconciled_by` | bigint |  |  | FK→ `user_account` |
 | `reconciled_at` | timestamptz |  |  |  |
 | `reconcile_note` | varchar(500) |  |  |  |
-| `conflict_decision_ref` | varchar(200) |  |  |  |
-| `conflict_approver_account_id` | bigint |  |  | FK→ `user_account` |
-| `conflict_resolved_by` | bigint |  |  | FK→ `user_account` |
-| `conflict_resolved_at` | timestamptz |  |  |  |
-| `conflict_note` | varchar(1000) |  |  |  |
+| `conflict_decision_ref` | varchar(200) |  |  | Số/căn cứ quyết định xử lý xung đột do cấp có thẩm quyền HNQ ban hành |
+| `conflict_resolved_by` | bigint |  |  | FK→ `user_account` · Người ghi nhận quyết định |
+| `conflict_resolved_at` | timestamptz |  |  | Thời điểm ghi nhận |
+| `conflict_note` | varchar(1000) |  |  | Nội dung biện pháp theo quyết định |
 | `approved_by` | bigint |  |  | FK→ `user_account` |
 | `approved_at` | timestamptz |  |  |  |
 | `locked_by` | bigint |  |  | FK→ `user_account` |
@@ -1118,9 +1119,9 @@ Kỳ lương tháng: trạng thái DRAFT → CALCULATED/CONFLICT_HOLD → APPROV
 
 Ràng buộc: `chk_period_month` CHECK (((period_month >= 1) AND (period_month <= 12))); `uq_period_month` UNIQUE (period_year, period_month)
 
-Giá trị enum: `payment_status` ∈ {UNPAID, PAID}; `status` ∈ {DRAFT, CALCULATED, CONFLICT_HOLD, APPROVED, LOCKED}
+Giá trị enum: `payment_status` ∈ {UNPAID, PAID}; `status` ∈ {DRAFT, CALCULATED, APPROVED, LOCKED}
 
-Chỉ mục: `idx_payroll_period_approved_by` ((approved_by)); `idx_payroll_period_calculated_by` ((calculated_by)); `idx_payroll_period_closed_by` ((closed_by)); `idx_payroll_period_conflict_approver_account_id` ((conflict_approver_account_id)); `idx_payroll_period_conflict_resolved_by` ((conflict_resolved_by)); `idx_payroll_period_created_by` ((created_by)); `idx_payroll_period_locked_by` ((locked_by)); `idx_payroll_period_paid_by` ((paid_by)); `idx_payroll_period_reconciled_by` ((reconciled_by)); `uq_period_month` (unique) ((period_year, period_month))
+Chỉ mục: `idx_payroll_period_approved_by` ((approved_by)); `idx_payroll_period_calculated_by` ((calculated_by)); `idx_payroll_period_closed_by` ((closed_by)); `idx_payroll_period_conflict_resolved_by` ((conflict_resolved_by)); `idx_payroll_period_created_by` ((created_by)); `idx_payroll_period_locked_by` ((locked_by)); `idx_payroll_period_paid_by` ((paid_by)); `idx_payroll_period_reconciled_by` ((reconciled_by)); `uq_period_month` (unique) ((period_year, period_month))
 
 #### `timesheet_snapshot`
 
@@ -1397,8 +1398,9 @@ Kết quả chạy tác vụ nền / tác vụ hằng ngày (idempotent theo `jo
 
 ## 8. Dữ liệu tham chiếu và dữ liệu demo
 
-- **V3__reference_data.sql**: phòng ban, chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
-- **Dữ liệu demo** (40 nhân sự HNQ, chấm công 9–11/2026, kỳ lương 9/2026 đã chi trả, kỳ 10/2026 ở DRAFT) do `DemoDataSeeder` nạp lúc khởi động khi bảng `employee` trống và `APP_SEED_DEMO=true`. Muốn nạp lại: xóa database `hrflow` và chạy lại backend.
+- **Migration dữ liệu tham chiếu (cần tạo mới, thay cho seed V14 hiện tại)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
+- **Dữ liệu demo (dự kiến)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật **không gắn hồ sơ nhân viên**; không dùng 22 ngày công làm mặc định (chỉ là ví dụ minh họa). Cơ chế nạp (`DemoDataSeeder`, `APP_SEED_DEMO=true`) chưa có trong repo.
+- **Grant payroll seed** (DEC-03): HR → `PREPARE` (và `VIEW` theo nhiệm vụ); Director → `APPROVE`; Finance Manager → `LOCK`. Admin **không** có grant payroll. Mỗi grant có người cấp, lý do, số quyết định và hiệu lực.
 
 ## 9. Sao lưu và khôi phục
 
@@ -1409,3 +1411,22 @@ pg_dump -h localhost -U hrflow -d hrflow -F c -f hrflow_$(date +%F).dump
 createdb -h localhost -U postgres -O hrflow hrflow_restore
 pg_restore -h localhost -U hrflow -d hrflow_restore hrflow_YYYY-MM-DD.dump
 ```
+
+## 10. Chênh lệch giữa thiết kế và migration hiện có (V1–V15)
+
+Bảng dưới đây ghi lại các điểm migration hiện tại chưa đạt thiết kế/baseline. Không sửa migration đã chạy; xử lý bằng migration mới.
+
+| Nhóm | Migration hiện có | Yêu cầu theo thiết kế/baseline |
+|---|---|---|
+| Grant payroll | V15 cấp `VIEW/APPROVE/LOCK` cho `admin@example.com`; bảng `payroll_permission` không có người cấp, lý do, hiệu lực, thu hồi | Thu hồi grant của Admin; cấp HR `PREPARE`, Director `APPROVE`, Finance Manager `LOCK`; dùng `payroll_grant` (PM-05, PM-19, PM-20) |
+| Audit | `audit_log` (V12), `approval_log` (V8) không có trigger chặn UPDATE/DELETE | Append-only bằng `fn_block_modify_append_only` (permission_matrix Mục 1) |
+| Ngày công | `payroll_period.standard_working_days` và `payslip.standard_working_days` mặc định 22; tham số `STANDARD_MONTHLY_WORK_DAYS = 22` | Giờ chuẩn theo lịch cá nhân (`H_std`), không mặc định 22/26 |
+| Thuế | `payslip.personal_deduction` mặc định 11.000.000 | Giảm trừ theo bộ tham số hiệu lực (15.500.000 / 6.200.000 từ 2026) |
+| Nhân sự | `employee_type` ∈ {STAFF, SALES, LEADER, MANAGER, INTERN}; `status` ∈ {ACTIVE, TERMINATED}; không có `job_title`, `approval_route`, `approver_unavailability` | `employee_type` ∈ {FULL_TIME, PART_TIME, PROBATION, INTERN}; `status` ∈ {ONBOARDING, ACTIVE, ON_LEAVE, TERMINATED}; tuyến duyệt chính/dự phòng |
+| Chấm công | `attendance.day_credit` 0/0,5/1; trạng thái không có `NEEDS_REVIEW`; không có lịch cá nhân, ngày lễ có/không lương | Phút làm/được trả; `NEEDS_REVIEW`; `work_schedule`, `employee_schedule`, `holiday` |
+| OT | `overtime_registration` không có giờ thực tế, phút duyệt, phần vượt, đồng ý | Các cột `actual_*`, `approved_minutes`, `extra_minutes_confirmed`, `consent` |
+| Phụ cấp/tham số | `allowance_type.is_taxable` boolean; tham số không có nguồn, người xác nhận, vùng, phiên bản | `tax_class`, `included_in_ot_base`; `payroll_parameter` có `source_ref`, `status`, `region`, `param_version` |
+| Sales | `revenue_record` chỉ một `verified_by`, thiếu ngày nghiệm thu/thanh toán | Hai bước xác nhận owner (Sales Manager) và tiền thực nhận (Finance Manager) |
+| Adjustment | `payroll_adjustment` dùng `direction/category`, không có kỳ gốc/kỳ áp dụng, loại GROSS/TAX/INSURANCE/NET, chứng từ | Cấu trúc như Mục 7.G |
+| Seed V14 | Phòng ban TECH/FINANCE, thiếu Account; Admin gắn với hồ sơ nhân viên; lương hợp đồng không khớp bảng lương; kỳ 9–10/2026 LOCKED với số liệu kiểu cũ | Seed theo `company_profile.md`; Admin ngoài 40 nhân sự |
+| Cấu hình backend | `application.yml`: `shortfall-tolerance-minutes: 15`, `regional-min-wage: 4960000` | Không dung sai tự động; lương tối thiểu vùng lấy từ `payroll_parameter` theo hiệu lực và vùng |

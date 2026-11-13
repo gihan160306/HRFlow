@@ -261,8 +261,13 @@ package "PAYROLL" {
         -ngayBatDau : Date
         -ngayKetThuc : Date
         -trangThai : String
+        -nguoiTinh : Long
+        -nguoiDoiSoat : Long
+        -nguoiPheDuyet : Long
         -thoiGianPheDuyet : DateTime
+        -nguoiKhoa : Long
         -thoiGianKhoa : DateTime
+        -canCuXuLyXungDot : String
 
         +tinhLuong() : Void
         +xemTruocBangLuong() : Void
@@ -409,12 +414,16 @@ enum LoaiThongBao {
 }
 
 enum TrangThaiChamCong {
-    DUNG_GIO
-    DI_TRE
-    VE_SOM
-    DI_TRE_VA_VE_SOM
-    VANG
+    HOP_LE
+    CAN_RA_SOAT
+    DA_XAC_NHAN
+    VANG_DA_XAC_NHAN
 }
+
+note bottom of TrangThaiChamCong
+  Đi trễ/về sớm lưu bằng số phút, không phải trạng thái.
+  Thiếu check-in/out → CAN_RA_SOAT (Needs Review), không tự 0 công.
+end note
 
 enum TrangThaiDon {
     NHAP
@@ -426,6 +435,7 @@ enum TrangThaiDon {
 
 enum LoaiNghi {
     NGHI_PHEP_NAM
+    NGHI_VIEC_RIENG_HUONG_LUONG
     NGHI_KHONG_LUONG
     NGHI_OM
     NGHI_THAI_SAN

@@ -1,3 +1,5 @@
+> **LỖI THỜI – không dùng làm nguồn.** Sơ đồ này được vẽ trước khi chốt baseline nghiệp vụ (có bảng vai trò nhiều-nhiều, lương cơ bản trong hợp đồng, thiếu grant payroll, tuyến duyệt, lịch làm việc, giờ OT thực tế). Thiết kế hiện hành: [`docs/database_design.md`](../../database_design.md).
+
 
 ``` mermaid
 erDiagram

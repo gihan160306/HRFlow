@@ -10,10 +10,10 @@ thay cho quản lý thủ công bằng Excel.
 
 | Mức | Nội dung |
 |---|---|
-| **MVP (bắt buộc)** | Hồ sơ nhân sự và onboarding · Chấm công cơ bản · Nghỉ phép (PTO) kèm duyệt 1 cấp · Engine tính lương, bảo hiểm, thuế TNCN · Phiếu lương PDF · Xác thực JWT + phân quyền RBAC · Background worker gửi email/thông báo |
-| **Mở rộng** | Tăng ca (OT) · Hợp đồng và cảnh báo hết hạn · Phụ cấp/khấu trừ · Cổng tự phục vụ (ESS) · Dashboard và báo cáo · Audit trail · Chấm công QR động + ảnh minh chứng |
+| **MVP (bắt buộc)** | Hồ sơ nhân sự và onboarding · Chấm công cơ bản · Nghỉ phép (PTO) kèm duyệt 1 cấp · Engine tính lương, bảo hiểm, thuế TNCN · Phiếu lương PDF · Xác thực JWT + phân quyền RBAC |
+| **Mở rộng** | Tăng ca (OT) · Hợp đồng và cảnh báo hết hạn · Phụ cấp/khấu trừ · Cổng tự phục vụ (ESS) · Dashboard và báo cáo · Audit trail nâng cao · Thông báo/email · Chấm công QR động + ảnh minh chứng |
 
-Vai trò: `Employee`, `Manager`, `HR`, `Admin`. Chi tiết quyền: [docs/PERMISSION-MATRIX.md](docs/PERMISSION-MATRIX.md).
+Vai trò: `Employee`, `Manager`, `HR`, `Admin`. Chi tiết quyền: [docs/permission_matrix.md](docs/permission_matrix.md).
 
 ## Kiến trúc
 
@@ -89,10 +89,11 @@ Chi tiết trong `CONTRIBUTING.md`.
 | File | Nội dung |
 |---|---|
 | [docs/SRS.md](docs/SRS.md) | Đặc tả yêu cầu phần mềm |
-| [docs/openapi-spec.yaml](docs/openapi-spec.yaml) | Hợp đồng API (OpenAPI 3.1) |
-| [docs/PERMISSION-MATRIX.md](docs/PERMISSION-MATRIX.md) | Ma trận phân quyền vai trò × chức năng |
-| [docs/PAYROLL-RULES.md](docs/PAYROLL-RULES.md) | Công thức lương, thuế, bảo hiểm, OT kèm ví dụ số |
-| `docs/ERD.md` | Cơ sở dữ liệu |
+| [docs/openapi-spec.yaml](docs/openapi-spec.yaml) | Hợp đồng API (OpenAPI 3.0.3) |
+| [docs/company_profile.md](docs/company_profile.md) | Hồ sơ công ty, cơ cấu, chính sách lương/phụ cấp, tuyến duyệt PTO/OT (baseline) |
+| [docs/permission_matrix.md](docs/permission_matrix.md) | Ma trận phân quyền vai trò × chức năng (baseline) |
+| [docs/payroll_rules.md](docs/payroll_rules.md) | Công thức lương, thuế, bảo hiểm, OT kèm ví dụ số (baseline) |
+| [docs/database_design.md](docs/database_design.md) | Thiết kế cơ sở dữ liệu |
 | `docs/ARCHITECTURE.md` | Kiến trúc và quyết định công nghệ |
 | `docs/TEST-PLAN.md` | Kế hoạch và kết quả kiểm thử |
 | `docs/RTM.md` | Ma trận truy vết FR → API → test |

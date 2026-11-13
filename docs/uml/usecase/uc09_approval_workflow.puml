@@ -25,13 +25,14 @@ skinparam package {
 
 left to right direction
 
-actor "Manager\n(Quản lý trực tiếp)" as Manager
-actor "HR\n(Nhân sự)" as HR
+actor "Người duyệt chính theo tuyến\n(Lead / Sales Manager / Operations Manager /\nDirector – role Manager; HR Lead – role HR)" as Primary
+actor "Người dự phòng đã chỉ định trước\n(theo bảng tuyến company_profile Mục 4)" as Backup
 
-HR .up.|> Manager : <<kế thừa khi khuyết Manager>>
-
-package "UC-09 - Quy trình phê duyệt đơn từ (PTO / OT)" {
+package "UC-09 - Quy trình phê duyệt đơn từ (PTO / OT) – một cấp" {
     usecase "UC-09\nPhê duyệt đơn từ" as UC09
+    usecase "Xác định người duyệt theo tuyến\n(không suy từ role; không mặc định HR)" as UC_Route
+    usecase "Chặn tự duyệt đơn của chính mình" as UC_NoSelf
+    usecase "Ghi lý do dùng người dự phòng" as UC_BackupReason
     usecase "Xem chi tiết đơn chờ duyệt (Pending)" as UC_View
     usecase "Phê duyệt (Approve) đơn" as UC_Approve
     usecase "Từ chối (Reject) đơn" as UC_Reject
@@ -40,14 +41,22 @@ package "UC-09 - Quy trình phê duyệt đơn từ (PTO / OT)" {
     usecase "Gửi thông báo kết quả (In-app / Email)" as UC_Notif
 }
 
-Manager --> UC09
-HR --> UC09
+Primary --> UC09
+Backup --> UC09
 
+UC09 ..> UC_Route : <<include>>
+UC09 ..> UC_NoSelf : <<include>>
+UC_BackupReason ..> UC09 : <<extend>>\n[người duyệt chính vắng mặt/xung đột]
 UC09 ..> UC_View : <<include>>
 UC09 ..> UC_Approve : <<include>>
 UC09 ..> UC_Reject : <<include>>
 UC_Reason ..> UC_Reject : <<extend>>
 UC09 ..> UC_Log : <<include>>
 UC09 ..> UC_Notif : <<include>>
+
+note bottom of UC_Route
+  Không có người duyệt hợp lệ (chính và dự phòng đều không xử lý được)
+  → đơn giữ PENDING, không tự chuyển cho HR hoặc người khác.
+end note
 
 @enduml
