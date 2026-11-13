@@ -1,7 +1,7 @@
 # Thiết kế cơ sở dữ liệu – HRFlow
 
 > Phiên bản 3.4 · cập nhật 13/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
-> Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration hiện có trong repo (V1–V15) **chưa triển khai theo thiết kế này**; các chênh lệch được liệt kê ở Mục 10 và phải xử lý bằng migration mới.
+> Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration V1–V15 là schema cũ; **V16–V20 dựng lại toàn bộ schema theo thiết kế này** (xem Mục 10).
 >
 > Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
 
@@ -1057,7 +1057,7 @@ Tham số nghiệp vụ/pháp lý theo hiệu lực và vùng (lương tối thi
 
 Giá trị enum: `category` ∈ {COMPANY, LEGAL}; `region` ∈ {REGION_I, REGION_II, REGION_III, REGION_IV}; `status` ∈ {VERIFIED_SIM, NEEDS_REVIEW}
 
-Chỉ mục: `idx_param_code` ((code, effective_from)); `uq_param_version` (unique) ((code, COALESCE(region, '-'::character varying), effective_from))
+Chỉ mục: `idx_param_code` ((code, effective_from)); `uq_param_version` (unique) ((code, COALESCE(region, '-'::character varying), effective_from, param_version))
 
 #### `tax_bracket`
 
@@ -1398,8 +1398,8 @@ Kết quả chạy tác vụ nền / tác vụ hằng ngày (idempotent theo `jo
 
 ## 8. Dữ liệu tham chiếu và dữ liệu demo
 
-- **Migration dữ liệu tham chiếu (cần tạo mới, thay cho seed V14 hiện tại)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
-- **Dữ liệu demo (dự kiến)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật **không gắn hồ sơ nhân viên**; không dùng 22 ngày công làm mặc định (chỉ là ví dụ minh họa). Cơ chế nạp (`DemoDataSeeder`, `APP_SEED_DEMO=true`) chưa có trong repo.
+- **Migration dữ liệu tham chiếu (`V19__reference_data.sql`, thay cho seed V14)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
+- **Dữ liệu demo (`V20__demo_seed.sql`)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật `admin@hnqmedia.example` **không gắn hồ sơ nhân viên**; tài khoản nhân viên `nv001…nv040@hnqmedia.example` (mật khẩu demo `password123`); không dùng 22 ngày công làm mặc định; `wage_region = REGION_I` chỉ là giả định dữ liệu mẫu (OPEN-01).
 - **Grant payroll seed** (DEC-03): HR → `PREPARE` (và `VIEW` theo nhiệm vụ); Director → `APPROVE`; Finance Manager → `LOCK`. Admin **không** có grant payroll. Mỗi grant có người cấp, lý do, số quyết định và hiệu lực.
 
 ## 9. Sao lưu và khôi phục
@@ -1412,9 +1412,21 @@ createdb -h localhost -U postgres -O hrflow hrflow_restore
 pg_restore -h localhost -U hrflow -d hrflow_restore hrflow_YYYY-MM-DD.dump
 ```
 
-## 10. Chênh lệch giữa thiết kế và migration hiện có (V1–V15)
+## 10. Chênh lệch giữa thiết kế và migration cũ (V1–V15) – đã xử lý ở V16–V20
 
-Bảng dưới đây ghi lại các điểm migration hiện tại chưa đạt thiết kế/baseline. Không sửa migration đã chạy; xử lý bằng migration mới.
+Không sửa migration đã chạy. Các chênh lệch dưới đây được xử lý bằng migration mới:
+
+| Migration | Nội dung |
+|---|---|
+| `V16__drop_legacy_schema.sql` | Xóa toàn bộ bảng/hàm của V2–V15 (kể cả `payroll_permission` chứa grant của Admin); giữ `trg_set_updated_at()` của V1. |
+| `V17__core_schema.sql` | Tạo đủ 52 bảng theo Mục 7 (gồm cả bảng mở rộng QR/ảnh, OT thực tế, `ot_unscheduled`, `income_item`, `sales_revenue`, thông báo). |
+| `V18__guards_and_triggers.sql` | Trigger Mục 6 (`fn_block_modify_append_only`, `fn_guard_payroll_line*`, `fn_guard_payroll_period`) và trigger `updated_at`. |
+| `V19__reference_data.sql` | Phòng ban, chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, `payroll_parameter`, biểu thuế. |
+| `V20__demo_seed.sql` | 40 nhân sự HNQ (34 FT, 3 PT, 2 thử việc, 1 TTS), tài khoản Admin không gắn hồ sơ, hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, người phụ thuộc, tuyến duyệt, quỹ phép 2026, kỳ 11/2026 DRAFT, grant payroll DEC-03. |
+
+**Lưu ý khi áp dụng:** V16 xóa toàn bộ dữ liệu của schema cũ. Backend (entity JPA, `ddl-auto: validate`, `PayrollAccess`) vẫn ánh xạ bảng cũ nên phải cập nhật ở bước backend trước khi chạy ứng dụng với DB đã migrate.
+
+Bảng chênh lệch ban đầu (để đối chiếu):
 
 | Nhóm | Migration hiện có | Yêu cầu theo thiết kế/baseline |
 |---|---|---|
