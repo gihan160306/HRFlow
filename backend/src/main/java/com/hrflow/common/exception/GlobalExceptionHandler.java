@@ -2,10 +2,9 @@ package com.hrflow.common.exception;
 
 import java.util.List;
 
-import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -22,8 +21,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.hrflow.common.response.ApiError;
 import com.hrflow.common.response.ApiError.FieldDetail;
-
-import jakarta.persistence.PersistenceException;
 
 /**
  * Chuyển mọi exception thành {@link ApiError} theo openapi_spec.yaml.
@@ -48,7 +45,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusiness(BusinessException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(ApiError.of(ex.getCode(), ex.getMessage()));
+        return ResponseEntity.status(ex.getStatus()).body(ApiError.of(ex.getCode(), ex.getMessage(), ex.getDetails()));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -119,12 +116,15 @@ public class GlobalExceptionHandler {
 
     // ---------- Ràng buộc CSDL (409 / 422) ----------
 
-    @ExceptionHandler({DataIntegrityViolationException.class, PersistenceException.class})
+    @ExceptionHandler({DataAccessException.class})
     public ResponseEntity<ApiError> handleDatabase(Exception ex) {
         String sqlState = extractSqlState(ex);
         if (sqlState != null) {
             switch (sqlState) {
                 case SQLSTATE_PERIOD_LOCKED:
+                    if (String.valueOf(rootMessage(ex)).contains("APPEND_ONLY")) {
+                        return conflict("APPEND_ONLY", "Bảng nhật ký/phiếu lương chỉ cho ghi thêm, không được sửa hoặc xóa");
+                    }
                     return conflict("PERIOD_LOCKED", "Kỳ lương đã chốt/khóa, không được sửa hoặc xóa dữ liệu. "
                             + "Hãy tạo adjustment ở kỳ kế tiếp.");
                 case SQLSTATE_UNIQUE_VIOLATION:
@@ -148,13 +148,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(code, message));
     }
 
+    private String rootMessage(Throwable ex) {
+        Throwable current = ex;
+        while (current.getCause() != null) current = current.getCause();
+        return current.getMessage();
+    }
+
     /** Lần theo chuỗi cause để lấy SQLSTATE của PostgreSQL. */
     private String extractSqlState(Throwable ex) {
         Throwable current = ex;
         while (current != null) {
-            if (current instanceof ConstraintViolationException hibernateEx && hibernateEx.getSQLState() != null) {
-                return hibernateEx.getSQLState();
-            }
             if (current instanceof java.sql.SQLException sqlEx && sqlEx.getSQLState() != null) {
                 return sqlEx.getSQLState();
             }

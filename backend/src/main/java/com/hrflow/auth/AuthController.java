@@ -1,61 +1,59 @@
 package com.hrflow.auth;
 
-import com.hrflow.security.CurrentUserService;
-
-import jakarta.validation.Valid;
-
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.web.server.ResponseStatusException;
+import com.hrflow.security.Principals;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final AuthService authService;
-    private final CurrentUserService currentUserService;
-    private final UserAccountRepository userRepository;
+    public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
+    }
 
-    public AuthController(
-            AuthService authService,
-            CurrentUserService currentUserService,
-            UserAccountRepository userRepository) {
-        this.authService = authService;
-        this.currentUserService = currentUserService;
-        this.userRepository = userRepository;
+    public record ChangePasswordRequest(@NotBlank String currentPassword, @NotBlank String newPassword) {
+    }
+
+    private final AuthService service;
+
+    public AuthController(AuthService service) {
+        this.service = service;
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        try {
-            return authService.login(request);
-        } catch (DisabledException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Thông tin đăng nhập không hợp lệ");
-        } catch (AuthenticationException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Thông tin đăng nhập không hợp lệ");
-        }
+    public Map<String, Object> login(@Valid @RequestBody LoginRequest r) {
+        return service.login(r.email(), r.password());
     }
 
     @GetMapping("/me")
-    public Map<String, String> me() {
-        String email = currentUserService.getCurrentEmail();
+    public Map<String, Object> me() {
+        return service.me(Principals.current().userId());
+    }
 
-        UserAccount account = userRepository
-                .findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED));
+    @PostMapping("/change-password")
+    public Map<String, Object> changePassword(@Valid @RequestBody ChangePasswordRequest r) {
+        return service.changePassword(r.currentPassword(), r.newPassword());
+    }
 
-        return Map.of(
-                "email", account.getEmail(),
-                "role", account.getRole());
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        service.logout();
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/refresh")
+    public Map<String, Object> refresh() {
+        return service.refresh();
     }
 }

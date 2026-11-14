@@ -1,59 +1,34 @@
-# Payroll code: bản triển khai đầu tiên
+# Payroll code: bản triển khai backend (đồng bộ baseline v3.0)
 
-Quy tắc nghiệp vụ đầy đủ ở [payroll_rules.md](payroll_rules.md). Backend hiện nhận **bảng đầu vào HR đã đối soát**, tính tiền bằng `BigDecimal`, lưu phiếu và dòng lương cùng snapshot nguồn trong một giao dịch. Hệ thống không tự tạo số tiền giả khi thiếu dữ liệu. Màn hình kỳ lương đọc dữ liệu thật và có nút nhập tệp JSON cho toàn kỳ.
+Quy tắc nghiệp vụ đầy đủ ở [payroll_rules.md](payroll_rules.md); lược đồ ở [database_design.md](database_design.md); đường dẫn API ở [openapi-spec.yaml](openapi-spec.yaml).
+Backend **không còn nhận bảng đầu vào JSON do client gửi** (endpoint `POST /payroll/calculate` đã bỏ). Mọi số liệu tính lương đọc từ CSDL.
 
-## Quy trình
+## Luồng
 
-1. HR chuẩn bị một tệp JSON có `employees` chứa **mọi nhân viên có hợp đồng chồng với kỳ**, kể cả người đã nghỉ trong kỳ. Mỗi khoản cần nguồn đối soát; tiền ăn/điện thoại miễn thuế, OT và bảo hiểm phải được HR xác nhận trước khi nhập.
-2. Tài khoản có grant `PREPARE` gửi `POST /api/v1/payroll/calculate` với `periodId` và `employees`, hoặc nhập tệp JSON trên màn hình kỳ lương. Có thể tính lại ở `DRAFT`/`CALCULATED`; dữ liệu cũ được thay trong cùng giao dịch.
-3. Khi cần sửa nguồn trước duyệt, tài khoản `PREPARE` trả kỳ `CALCULATED` về `DRAFT` kèm lý do; bản preview bị xóa và hành động được ghi audit. Tài khoản khác có grant `APPROVE` duyệt kỳ `CALCULATED`. `APPROVE` kiểm tra lại tổng Gross, BH, Net và snapshot. Người tính không tự duyệt.
-4. Tài khoản có grant `LOCK` khóa kỳ `APPROVED`. Đến ngày chi trả ghi trên kỳ, gọi `POST /api/v1/payroll/periods/{id}/publish` để phát hành phiếu. Nhân viên chỉ đọc phiếu `ISSUED` của chính mình trong kỳ `LOCKED`.
+1. `POST /payroll/periods` (grant `PREPARE`) tạo kỳ `DRAFT`; `payDate` mặc định ngày 05 tháng sau, lùi qua cuối tuần/lễ.
+2. `GET /payroll/periods/{id}/precheck`: lỗi chặn (`BLOCKING`) và cảnh báo (`WARNING`) theo nhân viên.
+3. `POST .../close-timesheet`: kỳ phải đã kết thúc và hết lỗi chặn (thiếu công, đơn nghỉ chờ duyệt, OT chưa xác nhận giờ thực tế, hồ sơ/hợp đồng thiếu) → ghi `timesheet_snapshot` vN (JSON bất biến) + `timesheet_closed`. Từ đây `PeriodGuard` chặn sửa nguồn của tháng (409 `PERIOD_FROZEN`).
+4. `POST .../calculate`: đọc snapshot + tham số trong `payroll_parameter`/`tax_bracket` → `payroll_line` + `payroll_line_item` (số trước/sau làm tròn, nguồn, quy tắc) trong một giao dịch; chạy lại cho cùng kết quả. Dòng thiếu căn cứ (thuế/bảo hiểm/phân loại thuế chưa xác nhận, tham số `NEEDS_REVIEW`, thực chi âm...) có trạng thái `NEEDS_REVIEW`, không bị đổi âm thầm thành 0.
+5. `POST .../reconcile` (grant `VIEW`, khác người tính): kiểm tra Gross/BH/Net/Payable khớp công thức và đủ dòng.
+6. `POST .../conflict-resolution` (HR có `PREPARE`, Giám đốc không tự ghi nhận): ghi quyết định xử lý xung đột lợi ích (OPEN-05).
+7. `POST .../approve` (grant `APPROVE`): khác người tính/chốt; đã đối soát; không còn `NEEDS_REVIEW`; kỳ có lương của Giám đốc/người duyệt mà chưa có quyết định → 409 `CONFLICT_OF_INTEREST`.
+8. `POST .../lock` (grant `LOCK`): khóa kỳ, xếp `background_job GENERATE_PAYSLIPS`; PDF tạo **sau** commit khóa (retry khi lỗi, không đảo trạng thái kỳ). `POST .../mark-paid` ghi nhận chi trả (số chứng từ bắt buộc).
+9. Sai sót sau khóa: `POST /payroll/adjustments` (kỳ gốc `LOCKED`, lý do, minh chứng, `sourceRef` duy nhất) → người khác có `APPROVE` duyệt → tự áp vào kỳ mở kế tiếp khi tính (GROSS qua phân loại thuế; TAX/INSURANCE/NET là điều chỉnh tiền thuần).
 
-Quyền xem, chuẩn bị, duyệt và khóa nằm trong bảng `payroll_permission`; role `ADMIN` hay `MANAGER` không tự có quyền lương. Theo baseline (`permission_matrix.md` Mục 3.4, DEC-03): HR có `PREPARE` (và `VIEW` theo nhiệm vụ), Giám đốc có `APPROVE`, Finance Manager có `LOCK`; **Admin không có grant payroll**. Seed V15 hiện cấp `VIEW/APPROVE/LOCK` cho `admin@example.com` là **sai baseline** và phải được thay bằng migration mới (xem `database_design.md` Mục 10). Môi trường khác phải cấp grant theo ủy quyền thực tế.
+## Quyền
 
-## Mẫu đầu vào một nhân viên
+Grant `VIEW/PREPARE/APPROVE/LOCK` đọc từ `payroll_grant` (còn hiệu lực, chưa thu hồi, đúng kỳ nếu giới hạn kỳ). Tài khoản `ADMIN` không bao giờ có quyền lương, kể cả có bản ghi grant. Role/chức danh không suy ra grant. Mã lỗi: 401 chưa đăng nhập, 403 thiếu quyền/tự duyệt, 404 ngoài phạm vi, 409 sai trạng thái/kỳ đã chốt, 422 dữ liệu không hợp lệ.
 
-Tệp dùng trên màn hình có cấu trúc dưới đây. Gửi trực tiếp qua API cần thêm `periodId`. Khi một kỳ có nhiều nhân viên, phải thêm đủ phần tử vào `employees`.
+## Công thức đã cài (PayrollEngine)
 
-```json
-{
-  "periodId": 3,
-  "employees": [{
-    "employeeId": 4,
-    "sourceReference": "HR-2026-11-approved-input-v1",
-    "salarySegments": [{
-      "sourceReference": "HD-2024-004 / attendance-confirmed",
-      "monthlySalary": 18000000,
-      "standardHours": 168,
-      "paidHours": 168
-    }],
-    "allowances": [
-      {"code": "MEAL", "monthlyAmount": 730000, "standardHours": 168, "eligibleHours": 168, "taxable": false},
-      {"code": "PARKING", "monthlyAmount": 200000, "standardHours": 168, "eligibleHours": 168, "taxable": true}
-    ],
-    "overtime": [],
-    "nightWork": [],
-    "commission": 0,
-    "bonus": 0,
-    "otherTaxableIncome": 0,
-    "insurance": {
-      "bhxhBase": 18000000, "bhytBase": 18000000, "bhtnBase": 18000000,
-      "bhxhParticipating": true, "bhytParticipating": true, "bhtnParticipating": true
-    },
-    "tax": {
-      "method": "PROGRESSIVE", "validDependents": 0,
-      "otherLegalRelief": 0, "validShortTermCommitment": false
-    },
-    "legalDeductions": 0,
-    "advanceRecovery": 0,
-    "reimbursements": 0,
-    "netAdjustment": 0
-  }]
-}
-```
+- Lương theo công `Σ L × H_paid / H_std` theo từng đoạn đổi lương/lịch; `H_std` là giờ chuẩn **cả tháng** theo lịch cá nhân (loại lễ hưởng lương, nghỉ tuần); phút tính chính xác.
+- Phụ cấp `Σ A × H_eligible / H_std`, làm tròn một lần cho mỗi khoản; OT theo giờ **thực tế** xác nhận, tách đoạn 00:00/06:00/22:00 và ngày thường/nghỉ tuần/lễ, hệ số lấy từ tham số (đêm: `k + 0,3 + 0,2 × k_day`); phút trùng giờ làm theo lịch không trả hai lần.
+- Hoa hồng/KPI chỉ cho Sales Executive từ doanh thu `CONFIRMED`; bảo hiểm theo hồ sơ đã xác nhận và trần từ tham số (`INSURANCE_REFERENCE_SALARY`, `BHXH_BHYT_CAP_MULTIPLIER`, `MIN_WAGE_MONTHLY` theo vùng của nhân viên); thuế theo `tax_profile` (lũy tiến/10%/không cư trú) và biểu `tax_bracket`; giảm trừ từ tham số.
+- Không còn giá trị viết cứng (trần bảo hiểm, giảm trừ, `regional-min-wage`, dung sai đi trễ 15 phút) trong code hay `application.yml`.
+- Kiểm thử đối soát P01–P08, B06, B08–B14, B22 ở `PayrollEngineTest`.
 
-Tiền trong API là VND; số cuối làm tròn `HALF_UP` tới 1 VND. `salarySegments[].standardHours` là giờ chuẩn **cả tháng** cho mức lương đó, kể cả khi vào việc giữa tháng. `paidHours` gồm công và nghỉ hưởng lương đã đối soát, không gồm OT. Phụ cấp có `eligibleHours` riêng; OT dùng giờ thực tế và đơn giá đã xác nhận. `netSalary` trong API là **thực chi** sau thu hồi tạm ứng và cộng hoàn chi.
+## Hạn chế đã biết
 
-## Phần chưa tự động hóa
-
-Bản này chưa tự gom và xác nhận giờ công/nghỉ, giờ OT thực tế, doanh thu Sales, căn cứ từng quỹ bảo hiểm, tình trạng phụ thuộc hoặc chứng từ miễn thuế từ các bảng nguồn. JSON là đầu vào HR xác nhận; `sourceReference` và snapshot giữ dấu truy vết nhưng chưa chứng minh tự động rằng chứng từ đúng. Các bảng nguồn riêng chưa bị khóa theo kỳ. Chưa tự tạo PDF/email, chưa có màn hình nhập từng khoản, chưa hỗ trợ kỳ trước 07/2026 hoặc kỳ chi trả ngoài năm 2026. Không sử dụng dữ liệu chưa đối soát để duyệt kỳ.
+- PDF dùng font Helvetica chuẩn nên văn bản tiếng Việt được chuyển về không dấu.
+- Chưa gửi email (SIM-03), chưa có job cộng dồn phép năm tự động (HR điều chỉnh quỹ phép), dashboard/báo cáo ở mức tối thiểu.
+- Làm đêm thường (22:00–06:00 thuộc lịch làm thường) chưa áp dụng vì lịch HNQ chỉ có ca ban ngày.

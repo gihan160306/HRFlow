@@ -1,22 +1,21 @@
-
 package com.hrflow.security;
+
+import java.time.Instant;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration
-        .AuthenticationConfiguration;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/** 401 khi thiếu/hỏng token, 403 khi không đủ quyền; thân lỗi theo ApiError (DEC-01). */
 @Configuration
-@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
@@ -26,42 +25,24 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http) throws Exception {
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(org.springframework.security.config.Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // Cho phép Docker kiểm tra sức khỏe ứng dụng
-                .requestMatchers("/actuator/health").permitAll()
-
-                // Các endpoint công khai hiện có
-                .requestMatchers(
-                    "/api/v1/auth/login",
-                    "/api/v1/health",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**"
-                ).permitAll()
-
-                // Phân quyền API nghiệp vụ
-                .requestMatchers("/api/v1/admin/**")
-                    .hasRole("ADMIN")
-                .requestMatchers("/api/v1/hr/**")
-                    .hasAnyRole("HR", "ADMIN")
-
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(
-                jwtFilter,
-                UsernamePasswordAuthenticationFilter.class);
-
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .formLogin(f -> f.disable())
+                .httpBasic(b -> b.disable())
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> write(res, 401, "UNAUTHORIZED",
+                                "Chưa đăng nhập hoặc token không hợp lệ"))
+                        .accessDeniedHandler((req, res, ex) -> write(res, 403, "FORBIDDEN",
+                                "Bạn không có quyền thực hiện thao tác này")))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/actuator/health", "/api/v1/health", "/api/v1/auth/login",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -70,9 +51,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
+    private static void write(jakarta.servlet.http.HttpServletResponse res, int status, String code, String message)
+            throws java.io.IOException {
+        res.setStatus(status);
+        res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        res.setCharacterEncoding("UTF-8");
+        res.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\",\"timestamp\":\""
+                + Instant.now() + "\"}");
     }
 }

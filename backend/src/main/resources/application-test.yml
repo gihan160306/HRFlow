@@ -1,7 +1,0 @@
-spring:
-  application:
-    name: HRFlow-test
-
-logging:
-  level:
-    com.hrflow: WARN

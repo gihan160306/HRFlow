@@ -1,190 +1,149 @@
-
 package com.hrflow.overtime;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
 @RestController
-@RequestMapping({"/api/v1/overtime", "/overtime"})
 public class OvertimeController {
 
-    private final OvertimeService overtimeService;
-
-    public OvertimeController(OvertimeService overtimeService) {
-        this.overtimeService = overtimeService;
+    public record ScheduleRequest(@NotBlank String title, @NotNull LocalDate workDate, @NotNull LocalTime startTime,
+                                  @NotNull LocalTime endTime, String description, Long departmentId,
+                                  @NotEmpty List<Long> targetEmployeeIds) {
     }
 
-    /**
-     * HR/Admin công bố lịch OT.
-     */
-    @PostMapping("/schedules")
-    public ResponseEntity<OvertimeSchedule> publishSchedule(
-            @RequestBody OvertimeService.ScheduleRequest request,
-            Authentication authentication
-    ) {
-        CurrentUser user = currentUser(authentication);
-
-        OvertimeSchedule result =
-                overtimeService.publishSchedule(
-                        request,
-                        user.userId(),
-                        user.role()
-                );
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    public record RegisterRequest(@NotNull Long scheduleId, @NotNull Boolean consent, LocalTime startTime, LocalTime endTime) {
     }
 
-    /**
-     * Xem lịch OT đã công bố.
-     */
-    @GetMapping("/schedules")
-    public ResponseEntity<List<OvertimeSchedule>> getSchedules() {
-        return ResponseEntity.ok(
-                overtimeService.getPublishedSchedules()
-        );
+    public record ApproveRequest(Integer approvedMinutes, String reason, String backupReason) {
     }
 
-    /**
-     * Nhân viên đăng ký tham gia lịch OT.
-     */
-    @PostMapping({"/schedules/{scheduleId}/registrations", "/registrations"})
-    public ResponseEntity<OvertimeRegistration> register(
-            @PathVariable(required = false) Long scheduleId,
-            @RequestBody(required = false) Map<String, Object> body,
-            Authentication authentication
-    ) {
-        CurrentUser user = currentUser(authentication);
-        Long targetScheduleId = scheduleId;
-        if (targetScheduleId == null && body != null && body.containsKey("scheduleId")) {
-            targetScheduleId = Long.valueOf(body.get("scheduleId").toString());
-        }
-        if (targetScheduleId == null) {
-            targetScheduleId = 1L;
-        }
-
-        OvertimeRegistration result = overtimeService.register(
-                targetScheduleId,
-                user.userId(),
-                user.role()
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    public record ActualRequest(@NotBlank String status, Instant actualStart, Instant actualEnd, Boolean extraConfirmed,
+                                String evidence) {
     }
 
-    /**
-     * Xem các đăng ký OT của bản thân.
-     */
-    @GetMapping({"/registrations", "/registrations/mine"})
-    public ResponseEntity<List<OvertimeRegistration>> getMine(
-            Authentication authentication
-    ) {
-        CurrentUser user = currentUser(authentication);
-
-        return ResponseEntity.ok(
-                overtimeService.getMyRegistrations(user.userId())
-        );
+    public record UnscheduledRequest(Long employeeId, @NotNull Instant startAt, @NotNull Instant endAt,
+                                     @NotBlank String description, String evidence) {
     }
 
-    /**
-     * Manager/HR duyệt hoặc từ chối đăng ký OT.
-     */
-    @PatchMapping({"/registrations/{registrationId}/decision", "/registrations/{registrationId}"})
-    public ResponseEntity<OvertimeRegistration> decide(
-            @PathVariable Long registrationId,
-            @RequestBody Map<String, Object> body,
-            Authentication authentication
-    ) {
-        CurrentUser user = currentUser(authentication);
-
-        String decision = body.containsKey("decision") && body.get("decision") != null
-                ? String.valueOf(body.get("decision"))
-                : (body.containsKey("status") && body.get("status") != null ? String.valueOf(body.get("status")) : "");
-        String reason = body.containsKey("reason") && body.get("reason") != null
-                ? body.get("reason").toString()
-                : (body.containsKey("rejectionReason") && body.get("rejectionReason") != null ? body.get("rejectionReason").toString() : "");
-
-        OvertimeService.DecisionRequest request = new OvertimeService.DecisionRequest(decision, reason);
-
-        OvertimeRegistration result = overtimeService.decide(
-                registrationId,
-                request,
-                user.userId(),
-                user.role()
-        );
-
-        return ResponseEntity.ok(result);
+    public record VerifyRequest(String note) {
     }
 
-    private CurrentUser currentUser(
-            Authentication authentication
-    ) {
-        if (authentication == null
-                || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException(
-                    "Bạn cần đăng nhập."
-            );
-        }
+    private final OvertimeService service;
 
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof Map<?, ?> map) {
-            Object userId = map.get("userId");
-            Object role = map.get("role");
-
-            if (userId != null && role != null) {
-                return new CurrentUser(
-                        Long.parseLong(userId.toString()),
-                        normalizeRole(role.toString())
-                );
-            }
-        }
-
-        if (principal instanceof UserDetails details) {
-            String role = details.getAuthorities().stream()
-                    .map(a -> a.getAuthority())
-                    .filter(a -> a.startsWith("ROLE_"))
-                    .map(a -> a.substring(5))
-                    .findFirst()
-                    .orElse("");
-
-            try {
-                return new CurrentUser(
-                        Long.parseLong(details.getUsername()),
-                        role
-                );
-            } catch (NumberFormatException ex) {
-                throw new IllegalStateException(
-                        "Username không phải user_id. "
-                        + "Hãy tích hợp CurrentUserService hoặc "
-                        + "điều chỉnh theo JWT principal của dự án."
-                );
-            }
-        }
-
-        throw new IllegalStateException(
-                "Không đọc được userId và role từ principal."
-        );
+    public OvertimeController(OvertimeService service) {
+        this.service = service;
     }
 
-    private String normalizeRole(String role) {
-        return role.startsWith("ROLE_")
-                ? role.substring(5)
-                : role;
+    @GetMapping("/api/v1/ot-schedules")
+    public List<Map<String, Object>> schedules() {
+        return service.schedules();
     }
 
-    private record CurrentUser(Long userId, String role) {
+    @PostMapping("/api/v1/ot-schedules")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createSchedule(@Valid @RequestBody ScheduleRequest r) {
+        return service.createSchedule(new OvertimeService.ScheduleCmd(r.title(), r.workDate(), r.startTime(), r.endTime(),
+                r.description(), r.departmentId(), r.targetEmployeeIds()));
+    }
+
+    @PostMapping("/api/v1/ot-schedules/{id}/publish")
+    public Map<String, Object> publish(@PathVariable long id) {
+        return service.publish(id);
+    }
+
+    @PostMapping("/api/v1/ot-schedules/{id}/close")
+    public Map<String, Object> close(@PathVariable long id) {
+        return service.closeSchedule(id);
+    }
+
+    @PostMapping("/api/v1/ot-schedules/{id}/cancel")
+    public Map<String, Object> cancelSchedule(@PathVariable long id) {
+        return service.cancelSchedule(id);
+    }
+
+    @GetMapping("/api/v1/ot-registrations")
+    public List<Map<String, Object>> registrations() {
+        return service.registrations();
+    }
+
+    @GetMapping("/api/v1/ot-registrations/me")
+    public List<Map<String, Object>> mine() {
+        return service.myRegistrations();
+    }
+
+    @GetMapping("/api/v1/ot-registrations/inbox")
+    public List<Map<String, Object>> inbox() {
+        return service.inbox();
+    }
+
+    @PostMapping("/api/v1/ot-registrations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> register(@Valid @RequestBody RegisterRequest r) {
+        return service.register(new OvertimeService.RegisterCmd(r.scheduleId(), r.consent(), r.startTime(), r.endTime()));
+    }
+
+    @PostMapping("/api/v1/ot-registrations/{id}/approve")
+    public Map<String, Object> approve(@PathVariable long id, @RequestBody(required = false) ApproveRequest r) {
+        ApproveRequest a = r == null ? new ApproveRequest(null, null, null) : r;
+        return service.decide(id, true, a.approvedMinutes(), a.reason(), a.backupReason());
+    }
+
+    @PostMapping("/api/v1/ot-registrations/{id}/reject")
+    public Map<String, Object> reject(@PathVariable long id, @RequestBody(required = false) ApproveRequest r) {
+        ApproveRequest a = r == null ? new ApproveRequest(null, null, null) : r;
+        return service.decide(id, false, null, a.reason(), a.backupReason());
+    }
+
+    @PostMapping("/api/v1/ot-registrations/{id}/cancel")
+    public Map<String, Object> cancel(@PathVariable long id) {
+        return service.cancel(id);
+    }
+
+    @PostMapping("/api/v1/ot-registrations/{id}/actual")
+    public Map<String, Object> actual(@PathVariable long id, @Valid @RequestBody ActualRequest r) {
+        return service.confirmActual(id, new OvertimeService.ActualCmd(r.status(), r.actualStart(), r.actualEnd(),
+                r.extraConfirmed() != null && r.extraConfirmed(), r.evidence()));
+    }
+
+    @PostMapping("/api/v1/ot-registrations/{id}/hr-check")
+    public Map<String, Object> hrCheck(@PathVariable long id) {
+        return service.hrCheck(id);
+    }
+
+    @GetMapping("/api/v1/ot-unscheduled")
+    public List<Map<String, Object>> unscheduled() {
+        return service.unscheduled();
+    }
+
+    @PostMapping("/api/v1/ot-unscheduled")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createUnscheduled(@Valid @RequestBody UnscheduledRequest r) {
+        return service.createUnscheduled(r.employeeId(), r.startAt(), r.endAt(), r.description(), r.evidence());
+    }
+
+    @PostMapping("/api/v1/ot-unscheduled/{id}/confirm")
+    public Map<String, Object> confirm(@PathVariable long id, @RequestBody(required = false) VerifyRequest r) {
+        return service.verifyUnscheduled(id, true, r == null ? null : r.note());
+    }
+
+    @PostMapping("/api/v1/ot-unscheduled/{id}/reject")
+    public Map<String, Object> rejectUnscheduled(@PathVariable long id, @RequestBody(required = false) VerifyRequest r) {
+        return service.verifyUnscheduled(id, false, r == null ? null : r.note());
     }
 }

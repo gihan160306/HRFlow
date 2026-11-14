@@ -5,6 +5,9 @@ spring:
   profiles:
     default: dev
 
+  jackson:
+    default-property-inclusion: always
+
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -16,20 +19,17 @@ server:
 app:
   jwt:
     secret: ${APP_JWT_SECRET:c2VjdXJlX2hyZmxvd19qd3Rfc2VjcmV0X2tleV8yMDI2X2FudGlncmF2aXR5X2RlbW9faHI=}
-    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+    # Hợp đồng API: JWT hết hạn sau 60 phút.
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:3600000}
 
+# Mọi tham số tiền lương, thuế, bảo hiểm, giờ chuẩn, hệ số OT... nằm trong bảng payroll_parameter
+# (có ngày hiệu lực, nguồn, trạng thái xác nhận) - KHÔNG cấu hình cứng ở đây.
 hrflow:
   cors:
     allowed-origins: ${HRFLOW_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
-  payroll:
-    regional-min-wage: ${HRFLOW_PAYROLL_REGIONAL_MIN_WAGE:4960000}
   attendance:
-    work-start: "08:30"
-    work-end: "17:30"
-    lunch-start: "12:00"
-    lunch-end: "13:00"
-    shortfall-tolerance-minutes: 15
-
+    qr-ttl-seconds: ${QR_TOKEN_TTL_SECONDS:15}
+    photo-max-kb: ${ATTENDANCE_PHOTO_MAX_KB:200}
 
 management:
   endpoints:

@@ -14,11 +14,27 @@ public class BusinessException extends RuntimeException {
 
     private final String code;
     private final HttpStatus status;
+    private final java.util.List<com.hrflow.common.response.ApiError.FieldDetail> details;
 
     public BusinessException(HttpStatus status, String code, String message) {
+        this(status, code, message, java.util.List.of());
+    }
+
+    public BusinessException(HttpStatus status, String code, String message,
+                             java.util.List<com.hrflow.common.response.ApiError.FieldDetail> details) {
         super(message);
         this.status = status;
         this.code = code;
+        this.details = details;
+    }
+
+    public static BusinessException unprocessable(String code, String message,
+                                                  java.util.List<com.hrflow.common.response.ApiError.FieldDetail> details) {
+        return new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, code, message, details);
+    }
+
+    public java.util.List<com.hrflow.common.response.ApiError.FieldDetail> getDetails() {
+        return details;
     }
 
     public static BusinessException unprocessable(String code, String message) {
