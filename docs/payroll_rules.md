@@ -42,7 +42,7 @@ Thứ tự áp dụng: (1) pháp luật bắt buộc có hiệu lực và thỏa
 ### 1.2. Các thông tin nghiệp vụ lấy từ Company Profile
 
 - Đơn vị: Công ty TNHH Truyền thông HNQ (HNQ Media), hoạt động tại TP.HCM; HRFlow chỉ quản lý nhân sự và payroll, không thay CRM, quản lý dự án hoặc kế toán.
-- Quy mô mẫu: 40 người thuộc 7 phòng ban, gồm 34 nhân viên chính thức toàn thời gian, 3 bán thời gian, 2 thử việc và 1 thực tập sinh. Director dùng role Manager; Admin kỹ thuật không thuộc 40 người. Loại nhân sự không tự quyết định nghĩa vụ thuế/bảo hiểm; phải xét hợp đồng và điều kiện thực tế.
+- Quy mô mẫu: 100 người thuộc 7 phòng ban, gồm 85 nhân viên chính thức toàn thời gian, 8 bán thời gian, 5 thử việc và 2 thực tập sinh. Director dùng role Manager; Admin kỹ thuật không thuộc 100 người. Loại nhân sự không tự quyết định nghĩa vụ thuế/bảo hiểm; phải xét hợp đồng và điều kiện thực tế.
 - Kỳ lương theo tháng dương lịch; chính sách nội bộ áp dụng từ 01/07/2026; tiền VND và múi giờ `Asia/Ho_Chi_Minh`.
 - Full-time: thứ Hai–thứ Sáu, 08:30–12:00 và 13:00–17:30, 8 giờ/ngày. Part-time mẫu: thứ Hai–thứ Sáu, 08:30–12:30, 4 giờ/ngày. Lịch cá nhân có hiệu lực là nguồn xác định giờ chuẩn; không mặc định mọi tháng 22/26 ngày.
 - Tuyến PTO/OT một cấp theo Company Profile. Không dùng tuyến duyệt PTO/OT để tự suy ra quyền phê duyệt payroll.

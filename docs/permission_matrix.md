@@ -20,7 +20,7 @@ Ký hiệu: `✓` = được thực hiện trong phạm vi; `own` = dữ liệu 
 | `Employee` | Nhân viên Content, Design & Video, Digital Marketing, Account, Sales và nhân sự khác | Hồ sơ được phép của mình, chấm công, tạo PTO/OT, xem công và phiếu lương của mình |
 | `Manager` | Các Lead, Sales Manager, Operations Manager, Finance Manager và Director/người được bổ nhiệm quản lý trực tiếp | Quyền cá nhân và quyền quản lý đúng tuyến; phê duyệt PTO/OT theo tuyến được cấu hình; không tự có quyền payroll |
 | `HR` | HR Executive/HR Lead | Hồ sơ, hợp đồng, công, phép, OT, dữ liệu đầu vào và xử lý lương theo quyền được cấp |
-| `Admin` | Người quản trị kỹ thuật ngoài 40 nhân sự | Tài khoản, role, cấu hình và audit kỹ thuật; không mặc nhiên có quyền xem hay duyệt lương |
+| `Admin` | Người quản trị kỹ thuật ngoài 100 nhân sự | Tài khoản, role, cấu hình và audit kỹ thuật; không mặc nhiên có quyền xem hay duyệt lương |
 
 Director sử dụng role nền tảng `Manager`; chức danh Director không tự cấp quyền truy cập toàn bộ dữ liệu hoặc quyền payroll. HR Lead duyệt PTO/OT của Director theo tuyến một cấp. Finance Manager xác nhận tiền thực nhận/đối soát; Sales Manager xác nhận Sales owner/KPI. Company Profile quy định Giám đốc phê duyệt bảng lương (`APPROVE`), Finance Manager khóa kỳ (`LOCK`) sau phê duyệt; grant cấp riêng cho đúng tài khoản, không cấp chung theo role.
 

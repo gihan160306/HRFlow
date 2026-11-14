@@ -7,7 +7,7 @@
 | Lĩnh vực | Digital Marketing, truyền thông và sản xuất nội dung số |
 | Mô hình kinh doanh | Cung cấp dịch vụ cho doanh nghiệp (B2B) |
 | Trụ sở | Thành phố Hồ Chí Minh, Việt Nam |
-| Quy mô nhân sự | **40 nhân viên** |
+| Quy mô nhân sự | **100 nhân viên** |
 | Hệ thống quản lý nội bộ | **HRFlow – Enterprise Human Resource & Automated Payroll System** |
 | Thời gian áp dụng chính sách nội bộ | Từ ngày **01/07/2026** |
 | Kỳ lương | Theo tháng dương lịch |
@@ -47,7 +47,7 @@ HRFlow quản lý **nhân sự và tiền lương**, không thay thế phần m�
 
 ## 2. Cơ cấu tổ chức và sơ đồ công ty
 
-HNQ Media có **7 phòng ban, 40 người**, gồm 3 người ở bộ phận điều hành và 37 người thuộc 6 bộ phận nghiệp vụ.
+HNQ Media có **7 phòng ban, 100 người**, gồm 3 người ở bộ phận điều hành và 97 người thuộc 6 bộ phận nghiệp vụ.
 
 ```mermaid
 
@@ -62,12 +62,12 @@ flowchart TB
 
     subgraph NV["Các phòng ban nghiệp vụ"]
         direction LR
-        HR["Human Resources<br/>4 người"]
-        CT["Content<br/>8 người"]
-        DS["Design & Video<br/>6 người"]
-        DM["Digital Marketing<br/>7 người"]
-        AC["Account<br/>5 người"]
-        SA["Sales<br/>7 người"]
+        HR["Human Resources<br/>7 người"]
+        CT["Content<br/>22 người"]
+        DS["Design & Video<br/>16 người"]
+        DM["Digital Marketing<br/>20 người"]
+        AC["Account<br/>14 người"]
+        SA["Sales<br/>18 người"]
     end
 
     GD --> OPS
@@ -106,13 +106,13 @@ flowchart TB
 | Phòng ban | Nhân sự | Cơ cấu | Nhiệm vụ chính |
 |---|---:|---|---|
 | Management | 3 | 1 Giám đốc, 1 Operations Manager, 1 Finance Manager | Điều hành, vận hành, ngân sách và kiểm soát tài chính |
-| Content | 8 | 1 Content Lead, 7 Content Executive | Nội dung quảng cáo, bài đăng, SEO content |
-| Design & Video | 6 | 1 Design Lead, 5 Designer/Video Editor | Thiết kế đồ họa, video và ấn phẩm |
-| Digital Marketing | 7 | 1 Digital Lead, 6 SEO/Ads Specialist | Quảng cáo, phân tích dữ liệu, SEO |
-| Account | 5 | 1 Account Lead, 4 Account Executive | Chăm sóc khách, hợp đồng dịch vụ, nghiệm thu |
-| Sales | 7 | 1 Sales Manager, 6 Sales Executive | Tìm khách hàng, doanh số và hợp đồng mới |
-| Human Resources | 4 | 1 HR Lead, 3 HR Executive | Hồ sơ, hợp đồng lao động, chấm công, lương và chế độ |
-| **Tổng cộng** | **40** | | |
+| Content | 22 | 1 Content Lead, 21 Content Executive | Nội dung quảng cáo, bài đăng, SEO content |
+| Design & Video | 16 | 1 Design Lead, 15 Designer/Video Editor | Thiết kế đồ họa, video và ấn phẩm |
+| Digital Marketing | 20 | 1 Digital Lead, 19 SEO/Ads Specialist | Quảng cáo, phân tích dữ liệu, SEO |
+| Account | 14 | 1 Account Lead, 13 Account Executive | Chăm sóc khách, hợp đồng dịch vụ, nghiệm thu |
+| Sales | 18 | 1 Sales Manager, 17 Sales Executive | Tìm khách hàng, doanh số và hợp đồng mới |
+| Human Resources | 7 | 1 HR Lead, 6 HR Executive | Hồ sơ, hợp đồng lao động, chấm công, lương và chế độ |
+| **Tổng cộng** | **100** | | |
 
 ### 2.1. Nguyên tắc quản lý nhân sự
 
@@ -125,11 +125,11 @@ flowchart TB
 
 | Nhóm nhân sự | Số lượng mẫu | Đặc điểm | Quy tắc trả thu nhập |
 |---|---:|---|---|
-| Nhân viên chính thức toàn thời gian | 34 | Làm theo lịch hành chính 40 giờ/tuần | Lương tháng theo công, phụ cấp, OT và khoản thưởng đủ điều kiện |
-| Nhân viên bán thời gian | 3 | Làm theo lịch riêng 20 giờ/tuần | Lương tháng theo giờ chuẩn của lịch bán thời gian |
-| Nhân viên thử việc | 2 | Làm theo hợp đồng/thỏa thuận thử việc | Lương thử việc và quyền lợi theo thỏa thuận hợp lệ |
-| Thực tập sinh | 1 | Thực tập có kế hoạch và người hướng dẫn | Trợ cấp theo thỏa thuận; nếu thực tế là quan hệ lao động thì xử lý theo loại hợp đồng tương ứng |
-| **Tổng** | **40** | | |
+| Nhân viên chính thức toàn thời gian | 85 | Làm theo lịch hành chính 40 giờ/tuần | Lương tháng theo công, phụ cấp, OT và khoản thưởng đủ điều kiện |
+| Nhân viên bán thời gian | 8 | Làm theo lịch riêng 20 giờ/tuần | Lương tháng theo giờ chuẩn của lịch bán thời gian |
+| Nhân viên thử việc | 5 | Làm theo hợp đồng/thỏa thuận thử việc | Lương thử việc và quyền lợi theo thỏa thuận hợp lệ |
+| Thực tập sinh | 2 | Thực tập có kế hoạch và người hướng dẫn | Trợ cấp theo thỏa thuận; nếu thực tế là quan hệ lao động thì xử lý theo loại hợp đồng tương ứng |
+| **Tổng** | **100** | | |
 
 Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhận), **Active** (đang làm việc), **On Leave** (tạm nghỉ theo chế độ), **Terminated** (đã kết thúc làm việc). Khi nghỉ việc, tài khoản được vô hiệu hóa theo ngày hiệu lực nhưng **không xóa hồ sơ, chấm công, phiếu lương và lịch sử đã phát sinh**.
 
@@ -144,7 +144,7 @@ Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhậ
 | **Employee** | Nhân viên thông thường | Xem/cập nhật thông tin được phép của mình; check-in/out; tạo đơn nghỉ phép; đăng ký OT đã công bố; xem công và phiếu lương của mình |
 | **Manager** | Người được bổ nhiệm quản lý trực tiếp | Quyền cá nhân của Employee và duyệt/từ chối đơn, xem thông tin công của nhân viên thuộc quyền; không mặc nhiên xem phiếu lương của cấp dưới |
 | **HR** | Nhân sự được giao nghiệp vụ | Quyền cá nhân như Employee; quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
-| **Admin** | Người quản trị kỹ thuật ngoài 40 nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
+| **Admin** | Người quản trị kỹ thuật ngoài 100 nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
 
 Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến tại bảng dưới đây. Người duyệt được xác định theo từng hàng trong bảng, không mặc định HR Lead duyệt mọi đơn thiếu Manager. Khi người duyệt vắng mặt hoặc có xung đột lợi ích, chỉ người dự phòng được chỉ định trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi quyết định duyệt/từ chối phải lưu người thực hiện, thời gian, lý do và căn cứ thay thế (nếu có). `permission_matrix.md` quy định chi tiết quyền hệ thống; vai trò hệ thống, chức danh và ủy quyền là các dữ liệu độc lập.
 

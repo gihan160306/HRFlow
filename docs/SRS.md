@@ -149,13 +149,13 @@ HNQ Media cung cấp dịch vụ truyền thông và tiếp thị số B2B: qu�
 | Bộ phận | Số lượng | Chức danh chính |
 |---|---:|---|
 | Management | 3 | Director, Operations Manager, Finance Manager |
-| Human Resources | 4 | HR Lead, HR Executive |
-| Content | 8 | Content Lead, Content Executive |
-| Design & Video | 6 | Design Lead, Designer/Video Editor |
-| Digital Marketing | 7 | Digital Lead, SEO/Ads Specialist |
-| Account | 5 | Account Lead, Account Executive |
-| Sales | 7 | Sales Manager, Sales Executive |
-| **Tổng** | **40** | 7 phòng ban |
+| Human Resources | 7 | HR Lead, HR Executive |
+| Content | 22 | Content Lead, Content Executive |
+| Design & Video | 16 | Design Lead, Designer/Video Editor |
+| Digital Marketing | 20 | Digital Lead, SEO/Ads Specialist |
+| Account | 14 | Account Lead, Account Executive |
+| Sales | 18 | Sales Manager, Sales Executive |
+| **Tổng** | **100** | 7 phòng ban |
 
 Nhóm mẫu: 34 chính thức toàn thời gian, 3 bán thời gian, 2 thử việc, 1 thực tập sinh. Đây là dữ liệu demo; nhân viên thực tế phải có hồ sơ và điều kiện hợp đồng/lịch tương ứng. Loại nhân sự không tự quyết định nghĩa vụ thuế/bảo hiểm.
 
@@ -198,7 +198,7 @@ HRFlow chỉ có **4 role nền tảng**: `Employee`, `Manager`, `HR`, `Admin`. 
 | `Employee` | Nhân viên các phòng ban | Dữ liệu của mình; chấm công; tạo PTO; đăng ký OT đã công bố; xem công/phiếu lương của mình | Không xem hồ sơ/công/lương người khác |
 | `Manager` | Lead, Sales Manager, Operations Manager, Finance Manager, Director | Quyền cá nhân và dữ liệu vận hành team trực tiếp; duyệt PTO/OT đúng tuyến | Không mặc nhiên xem lương team; không tự có quyền payroll |
 | `HR` | HR Executive/HR Lead | Hồ sơ, hợp đồng, công, PTO/OT; chuẩn bị/tính/rà soát lương theo grant | Không mặc nhiên `APPROVE`/`LOCK` |
-| `Admin` | Quản trị kỹ thuật ngoài 40 nhân sự | Tài khoản, role nền tảng, cấu hình kỹ thuật, giám sát audit | Không mặc nhiên xem lương, duyệt, khóa |
+| `Admin` | Quản trị kỹ thuật ngoài 100 nhân sự | Tài khoản, role nền tảng, cấu hình kỹ thuật, giám sát audit | Không mặc nhiên xem lương, duyệt, khóa |
 
 ### 2.4.1. Quyền payroll dạng grant
 
@@ -998,7 +998,7 @@ Các ngưỡng là mục tiêu kiểm thử của đồ án, không phải SLA t
 | Mã | Yêu cầu | Tiêu chí đo |
 |---|---|---|
 | PERF-01 | CRUD thông thường | p95 ≤ 2 giây trên môi trường demo, dữ liệu ghi rõ |
-| PERF-02a | Tính lương theo lô – quy mô mẫu | 40 nhân sự ≤ 30 giây (ngưỡng nghiệm thu MVP) |
+| PERF-02a | Tính lương theo lô – quy mô mẫu | 100 nhân sự ≤ 30 giây (ngưỡng nghiệm thu MVP) |
 | PERF-02b | Tính lương theo lô – quy mô mở rộng (B23) | 500 nhân viên, 50 người dùng đồng thời, batch ≤ 5 phút; không bỏ/trùng bản ghi; có báo cáo đo (mục tiêu mở rộng, bắt buộc có báo cáo trước khi tuyên bố đạt) |
 | PERF-03 | Truy xuất bảng công/PTO | p95 ≤ 2 giây, có phân trang |
 | PERF-04 | Tạo phiếu PDF | ≤ 5 giây/phiếu; ghi rõ nếu theo lô |
@@ -1340,8 +1340,8 @@ Các quyết định dưới đây là quyết định đã chốt cho baseline 
 
 ## 11.2. Giả định và phụ thuộc
 1. HNQ Media là doanh nghiệp mô phỏng; các bộ thuế/BH/lương tối thiểu và giới hạn OT dùng trong demo là **tham số mô phỏng**, có nguồn, ngày hiệu lực, phiên bản và trạng thái xác minh. Không trình bày kết quả này như tư vấn pháp lý hoặc bảng lương tuân thủ pháp luật hiện hành nếu chưa được đối chiếu văn bản gốc.
-2. Địa bàn làm việc và hồ sơ thuế/BH của 40 nhân sự mẫu phải được seed/xác nhận trước khi chạy demo. Hồ sơ thiếu được gắn `NEEDS_REVIEW`, không tự suy theo chức danh hoặc loại nhân viên.
-3. MVP dùng chấm công cơ bản (FR-07); QR động + ảnh minh chứng là mở rộng. Khi demo chế độ QR/ảnh mà môi trường chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử end-to-end. Email thật vẫn là tích hợp tùy chọn.
+2. Địa bàn làm việc và hồ sơ thuế/BH của 100 nhân sự mẫu phải được seed/xác nhận trước khi chạy demo. Hồ sơ thiếu được gắn `NEEDS_REVIEW`, không tự suy theo chức danh hoặc loại nhân viên.
+3. Phương thức chấm công chính thức (QR động + ảnh minh chứng – FR-07) thuộc MVP. Nếu môi trường demo chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử end-to-end. Email thật vẫn là tích hợp tùy chọn.
 4. MVP chỉ cần dữ liệu OT/Sales đã xác nhận hoặc xác nhận không phát sinh; luồng đăng ký/duyệt OT và tự động hóa KPI/hoa hồng là mở rộng.
 
 ## 11.3. Giả định mô phỏng và hạng mục ngoài MVP
