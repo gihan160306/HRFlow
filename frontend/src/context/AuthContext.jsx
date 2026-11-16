@@ -1,20 +1,31 @@
-
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  useCallback,
-} from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import authApi from '../api/authApi';
+import { setUnauthorizedHandler } from '../api/httpClient';
 import { STORAGE_KEYS, ROLES } from '../utils/constants';
 
 export const AuthContext = createContext(null);
 
+/** Chuẩn hóa payload `user` của backend (/auth/login, /auth/me, /auth/change-password). */
+function normalizeUser(u, mustChangePassword) {
+  return {
+    id: u.accountId ?? null,
+    email: u.email,
+    role: String(u.role || '').toUpperCase(),
+    fullName: u.fullName || u.email,
+    employeeId: u.employeeId ?? null,
+    employeeCode: u.employeeCode ?? null,
+    departmentName: u.departmentName ?? null,
+    jobTitleName: u.jobTitleName ?? null,
+    grants: Array.isArray(u.grants) ? u.grants : [],
+    teamSize: u.teamSize ?? 0,
+    approver: Boolean(u.approver),
+    mustChangePassword: Boolean(mustChangePassword ?? u.mustChangePassword),
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || null
-  );
+  const [token, setToken] = useState(() => localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || null);
   const [isInitializing, setIsInitializing] = useState(true);
 
   const clearSession = useCallback(() => {
@@ -24,140 +35,96 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Token hết hạn / bị thu hồi -> backend trả 401 -> quay về trang đăng nhập.
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession);
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
+
   // Xác minh token với backend mỗi khi ứng dụng khởi động.
   useEffect(() => {
     let cancelled = false;
 
-    const initializeSession = async () => {
-      const savedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-      if (!savedToken) {
-        if (!cancelled) {
-          setUser(null);
-          setToken(null);
-          setIsInitializing(false);
-        }
+    const init = async () => {
+      const saved = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      if (!saved) {
+        setIsInitializing(false);
         return;
       }
-
       try {
-        const currentUser = await authApi.getCurrentUser();
-
+        const me = await authApi.me();
         if (cancelled) return;
-
-        if (!currentUser?.email || !currentUser?.role) {
-          throw new Error('Thông tin người dùng từ máy chủ không hợp lệ.');
-        }
-
-        const normalizedRole = String(currentUser.role)
-          .replace(/^ROLE_/, '')
-          .toUpperCase();
-
-        const loggedUser = {
-          id: currentUser.id ?? null,
-          email: currentUser.email,
-          role: normalizedRole,
-          fullName: currentUser.fullName || currentUser.email,
-          employeeId: currentUser.employeeId ?? null,
-          avatar: null,
-        };
-
-        setToken(savedToken);
-        setUser(loggedUser);
-        localStorage.setItem(
-          STORAGE_KEYS.CURRENT_USER,
-          JSON.stringify(loggedUser)
-        );
+        if (!me?.email || !me?.role) throw new Error('invalid');
+        setToken(saved);
+        setUser(normalizeUser(me));
       } catch {
-        if (!cancelled) {
-          clearSession();
-        }
+        if (!cancelled) clearSession();
       } finally {
-        if (!cancelled) {
-          setIsInitializing(false);
-        }
+        if (!cancelled) setIsInitializing(false);
       }
     };
 
-    initializeSession();
-
+    init();
     return () => {
       cancelled = true;
     };
   }, [clearSession]);
 
-  const login = async (email, password) => {
-    const res = await authApi.login({ email, password });
-
+  const applyTokenResponse = useCallback((res) => {
     if (!res?.token || !res?.user?.email || !res?.user?.role) {
-      throw new Error('Phản hồi đăng nhập từ máy chủ không hợp lệ.');
+      throw new Error('Phản hồi từ máy chủ không hợp lệ.');
     }
-
-    const normalizedRole = String(res.user.role)
-      .replace(/^ROLE_/, '')
-      .toUpperCase();
-
-    const loggedUser = {
-      id: res.user.id ?? null,
-      email: res.user.email,
-      role: normalizedRole,
-      fullName: res.user.fullName || res.user.email,
-      employeeId: res.user.employeeId ?? null,
-      avatar: null,
-    };
-
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, res.token);
-    localStorage.setItem(
-      STORAGE_KEYS.CURRENT_USER,
-      JSON.stringify(loggedUser)
-    );
-
+    const loggedUser = normalizeUser(res.user, res.mustChangePassword);
     setToken(res.token);
     setUser(loggedUser);
-
     return loggedUser;
-  };
+  }, []);
 
-  const logout = () => {
-    // Backend hiện không nhất thiết có endpoint logout.
-    // Xóa token phía client để kết thúc phiên trên trình duyệt.
-    clearSession();
-  };
-
-  // Các hàm tương thích với giao diện demo cũ.
-  // Không dùng chúng để xác thực hoặc cấp quyền thật.
-  const switchRole = (newRole) => {
-    console.warn('switchRole chỉ dành cho demo, không thay đổi quyền backend.');
-  };
-
-  const switchUser = (userId) => {
-    console.warn('switchUser chỉ dành cho demo, không thay đổi người dùng backend.');
-  };
-
-  const role = user?.role || null;
-
-  const value = {
-    user,
-    token,
-    role,
-    login,
-    logout,
-    switchRole,
-    switchUser,
-    defaultUsers: [],
-    isInitializing,
-    isAuthenticated: Boolean(user && token),
-    isAdmin: role === ROLES.ADMIN,
-    isHR: role === ROLES.HR,
-    isManager: role === ROLES.MANAGER,
-    isEmployee: role === ROLES.EMPLOYEE,
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+  const login = useCallback(
+    async (email, password) => applyTokenResponse(await authApi.login(email, password)),
+    [applyTokenResponse]
   );
+
+  const changePassword = useCallback(
+    async (currentPassword, newPassword) =>
+      applyTokenResponse(await authApi.changePassword(currentPassword, newPassword)),
+    [applyTokenResponse]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout(); // thu hồi token phía server (token_version + 1)
+    } catch {
+      // token có thể đã hết hạn - vẫn xóa phiên cục bộ
+    }
+    clearSession();
+  }, [clearSession]);
+
+  const value = useMemo(() => {
+    const role = user?.role || null;
+    const grants = user?.grants || [];
+    return {
+      user,
+      token,
+      role,
+      grants,
+      login,
+      logout,
+      changePassword,
+      isInitializing,
+      isAuthenticated: Boolean(user && token),
+      mustChangePassword: Boolean(user?.mustChangePassword),
+      hasGrant: (g) => grants.includes(g),
+      hasAnyGrant: grants.length > 0,
+      isAdmin: role === ROLES.ADMIN,
+      isHR: role === ROLES.HR,
+      isManager: role === ROLES.MANAGER,
+      isEmployee: role === ROLES.EMPLOYEE,
+    };
+  }, [user, token, login, logout, changePassword, isInitializing]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export default AuthContext;

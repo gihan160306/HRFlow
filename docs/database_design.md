@@ -1,9 +1,10 @@
 # Thiết kế cơ sở dữ liệu – HRFlow
 
-> Phiên bản 3.4 · cập nhật 13/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
+> Phiên bản 3.5 · cập nhật 16/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
 > Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration V1–V15 là schema cũ; **V16–V20 dựng lại toàn bộ schema theo thiết kế này** (xem Mục 10).
 >
 > Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
+> Bản 3.5 (16/11/2026): đồng bộ baseline quy mô 100 nhân sự (V21 bổ sung dữ liệu demo); chấm công QR động + ảnh minh chứng vẫn là chức năng mở rộng theo `company_profile.md` Mục 14.2 và SRS 3.3 (MVP chỉ chấm công cơ bản); schema 52 bảng không đổi.
 
 ## 1. Mục tiêu và nguyên tắc thiết kế
 
@@ -1399,7 +1400,7 @@ Kết quả chạy tác vụ nền / tác vụ hằng ngày (idempotent theo `jo
 ## 8. Dữ liệu tham chiếu và dữ liệu demo
 
 - **Migration dữ liệu tham chiếu (`V19__reference_data.sql`, thay cho seed V14)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
-- **Dữ liệu demo (`V20__demo_seed.sql`)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật `admin@hnqmedia.example` **không gắn hồ sơ nhân viên**; tài khoản nhân viên `nv001…nv040@hnqmedia.example` (mật khẩu demo `password123`); không dùng 22 ngày công làm mặc định; `wage_region = REGION_I` chỉ là giả định dữ liệu mẫu (OPEN-01).
+- **Dữ liệu demo (`V20__demo_seed.sql`)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật `admin@hnqmedia.example` **không gắn hồ sơ nhân viên**; tài khoản nhân viên `nv001…nv040@hnqmedia.example` (V20) và `nv041…nv100@hnqmedia.example` (V21, tổng 100 nhân sự) (mật khẩu demo `password123`); không dùng 22 ngày công làm mặc định; `wage_region = REGION_I` chỉ là giả định dữ liệu mẫu (OPEN-01).
 - **Grant payroll seed** (DEC-03): HR → `PREPARE` (và `VIEW` theo nhiệm vụ); Director → `APPROVE`; Finance Manager → `LOCK`. Admin **không** có grant payroll. Mỗi grant có người cấp, lý do, số quyết định và hiệu lực.
 
 ## 9. Sao lưu và khôi phục
@@ -1422,9 +1423,10 @@ Không sửa migration đã chạy. Các chênh lệch dưới đây được x�
 | `V17__core_schema.sql` | Tạo đủ 52 bảng theo Mục 7 (gồm cả bảng mở rộng QR/ảnh, OT thực tế, `ot_unscheduled`, `income_item`, `sales_revenue`, thông báo). |
 | `V18__guards_and_triggers.sql` | Trigger Mục 6 (`fn_block_modify_append_only`, `fn_guard_payroll_line*`, `fn_guard_payroll_period`) và trigger `updated_at`. |
 | `V19__reference_data.sql` | Phòng ban, chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, `payroll_parameter`, biểu thuế. |
-| `V20__demo_seed.sql` | 40 nhân sự HNQ (34 FT, 3 PT, 2 thử việc, 1 TTS), tài khoản Admin không gắn hồ sơ, hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, người phụ thuộc, tuyến duyệt, quỹ phép 2026, kỳ 11/2026 DRAFT, grant payroll DEC-03. |
+| `V20__demo_seed.sql` | 40 nhân sự HNQ đầu tiên (34 FT, 3 PT, 2 thử việc, 1 TTS), tài khoản Admin không gắn hồ sơ, hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, người phụ thuộc, tuyến duyệt, quỹ phép 2026, kỳ 11/2026 DRAFT, grant payroll DEC-03. |
+| `V21__demo_seed_100_employees.sql` | Bổ sung NV041–NV100 để đủ 100 nhân sự (85 FT, 8 PT, 5 thử việc, 2 TTS; HR 7, Content 22, Design 16, Digital 20, Account 14, Sales 18) cùng hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, tuyến duyệt, quỹ phép 2026. |
 
-**Lưu ý khi áp dụng:** V16 xóa toàn bộ dữ liệu của schema cũ. Backend (entity JPA, `ddl-auto: validate`, `PayrollAccess`) vẫn ánh xạ bảng cũ nên phải cập nhật ở bước backend trước khi chạy ứng dụng với DB đã migrate.
+**Lưu ý khi áp dụng:** V16 xóa toàn bộ dữ liệu của schema cũ. Backend hiện đã truy vấn theo schema mới (đã đối chiếu cột `INSERT/UPDATE` với V17); DB dev cũ cần xóa volume hoặc chấp nhận V16 xóa dữ liệu khi chạy Flyway.
 
 Bảng chênh lệch ban đầu (để đối chiếu):
 
@@ -1440,5 +1442,5 @@ Bảng chênh lệch ban đầu (để đối chiếu):
 | Phụ cấp/tham số | `allowance_type.is_taxable` boolean; tham số không có nguồn, người xác nhận, vùng, phiên bản | `tax_class`, `included_in_ot_base`; `payroll_parameter` có `source_ref`, `status`, `region`, `param_version` |
 | Sales | `revenue_record` chỉ một `verified_by`, thiếu ngày nghiệm thu/thanh toán | Hai bước xác nhận owner (Sales Manager) và tiền thực nhận (Finance Manager) |
 | Adjustment | `payroll_adjustment` dùng `direction/category`, không có kỳ gốc/kỳ áp dụng, loại GROSS/TAX/INSURANCE/NET, chứng từ | Cấu trúc như Mục 7.G |
-| Seed V14 | Phòng ban TECH/FINANCE, thiếu Account; Admin gắn với hồ sơ nhân viên; lương hợp đồng không khớp bảng lương; kỳ 9–10/2026 LOCKED với số liệu kiểu cũ | Seed theo `company_profile.md`; Admin ngoài 40 nhân sự |
+| Seed V14 | Phòng ban TECH/FINANCE, thiếu Account; Admin gắn với hồ sơ nhân viên; lương hợp đồng không khớp bảng lương; kỳ 9–10/2026 LOCKED với số liệu kiểu cũ | Seed theo `company_profile.md`; Admin ngoài 100 nhân sự |
 | Cấu hình backend | `application.yml`: `shortfall-tolerance-minutes: 15`, `regional-min-wage: 4960000` | Không dung sai tự động; lương tối thiểu vùng lấy từ `payroll_parameter` theo hiệu lực và vùng |

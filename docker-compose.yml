@@ -4,57 +4,30 @@
 # Kèm mail giả:    docker compose --profile dev up -d --build     (xem email tại http://localhost:8025)
 # Xem trạng thái:  docker compose ps
 # Tắt, giữ dữ liệu: docker compose down
-# Tắt và XÓA dữ liệu: docker compose down -v   (xóa cả DB và file PDF/ảnh)
+# Tắt và XÓA dữ liệu: docker compose down -v   (xóa cả dữ liệu DB)
 #
-# GIẢ ĐỊNH (đổi nếu nhóm chọn công nghệ khác):
-#   - backend/Dockerfile và frontend/Dockerfile tồn tại.
-#   - Backend là Node.js lắng nghe cổng 8000, có GET /api/v1/health, tự chạy migration khi khởi động
-#     (và seed khi SEED_ON_BOOT=true) TRƯỚC khi mở cổng.
-#   - Worker chạy cùng image với backend bằng lệnh `npm run worker` (SR-23.1: worker đơn giản
-#     đọc hàng đợi việc trong chính PostgreSQL, KHÔNG dùng Redis/Message Queue).
-#   - Frontend build ra file tĩnh và phục vụ bằng nginx (cổng 80 trong container).
+# Kiến trúc: PostgreSQL 16 + backend Spring Boot (Java 21, cổng 8080, Flyway tự chạy migration + seed demo)
+#            + frontend React (Vite build, nginx cổng 80, proxy /api -> backend nên cùng origin, không cần CORS).
+# Job nền (sinh phiếu lương PDF...) chạy trong chính backend bằng @Scheduled, không cần service worker riêng.
 
 name: hr-payroll
 
-# Biến môi trường dùng chung cho backend và worker.
+# Biến môi trường của backend.
 x-backend-env: &backend-env
-  NODE_ENV: ${APP_ENV:-development}
   TZ: ${TZ:-Asia/Ho_Chi_Minh}
-  PORT: "8000"
-  # Kết nối DB: trong mạng compose, host luôn là `db`.
-  DB_HOST: db
-  DB_PORT: "5432" 
+  SPRING_PROFILES_ACTIVE: dev
+  SERVER_PORT: "8080"
+  # Kết nối DB: trong mạng compose, host luôn là `db` (đọc bởi application-dev.yml).
   DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-hr_payroll}
-  DB_NAME: ${DB_NAME:-hr_payroll}
-  DB_USER: ${DB_USER:-hr_payroll}
   DB_USERNAME: ${DB_USER:-hr_payroll}
   DB_PASSWORD: ${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong file .env}
-  # Mật khẩu DB nên chỉ gồm chữ và số để chuỗi URL này không bị lỗi ký tự đặc biệt.
-  DATABASE_URL: postgres://${DB_USER:-hr_payroll}:${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong file .env}@db:5432/${DB_NAME:-hr_payroll}
-  # Xác thực
+  # Khóa ký JWT: chuỗi Base64 của >= 32 byte ngẫu nhiên (xem .env.example).
   APP_JWT_SECRET: ${APP_JWT_SECRET:?Hãy đặt APP_JWT_SECRET trong file .env}
-  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-  BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-  # Email (mặc định trỏ tới mailpit ở profile dev)
-  SMTP_HOST: ${SMTP_HOST:-mailpit}
-  SMTP_PORT: ${SMTP_PORT:-1025}
-  SMTP_SECURE: ${SMTP_SECURE:-false}
-  SMTP_USER: ${SMTP_USER:-}
-  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-  MAIL_FROM: ${MAIL_FROM:-HR Payroll <no-reply@hr-payroll.local>}
-  # Lưu file (PDF phiếu lương, ảnh chấm công). Dùng chung giữa backend và worker.
-  STORAGE_PATH: /app/storage
+  APP_JWT_EXPIRATION_MS: ${APP_JWT_EXPIRATION_MS:-3600000}
+  HRFLOW_CORS_ALLOWED_ORIGINS: ${HRFLOW_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
   # Chấm công
-  WORK_START_TIME: ${WORK_START_TIME:-08:00}
-  WORK_END_TIME: ${WORK_END_TIME:-17:30}
   QR_TOKEN_TTL_SECONDS: ${QR_TOKEN_TTL_SECONDS:-15}
   ATTENDANCE_PHOTO_MAX_KB: ${ATTENDANCE_PHOTO_MAX_KB:-200}
-  # Worker nền
-  WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-5000}
-  # Dữ liệu mẫu
-  SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
-  SEED_EMPLOYEE_COUNT: ${SEED_EMPLOYEE_COUNT:-500}
 
 services:
   db:
@@ -88,8 +61,6 @@ services:
       <<: *backend-env
     ports:
       - "${BACKEND_PORT:-8000}:8080"
-    volumes:
-      - storage:/app/storage
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/actuator/health"]
       interval: 10s
@@ -98,34 +69,13 @@ services:
       start_period: 60s
 
 
-  worker:
-    # Cùng image với backend, chạy tiến trình nền: gửi email, thông báo, sinh PDF phiếu lương,
-    # job quét hợp đồng sắp hết hạn hằng ngày (FR-14, SR-02.1, SR-12.1, SR-23.1).
-    build:
-      context: ./backend
-    restart: unless-stopped
-    command: ["npm", "run", "worker"]
-    depends_on:
-      db:
-        condition: service_healthy
-      backend:
-        # Chờ backend healthy để chắc chắn migration đã chạy xong.
-        condition: service_healthy
-    environment:
-      <<: *backend-env
-      # Backend đã seed rồi, worker không seed lại.
-      SEED_ON_BOOT: "false"
-    volumes:
-      - storage:/app/storage
-
   frontend:
     build:
       context: ./frontend
       args:
-        # Biến VITE_* được nhúng vào bundle lúc BUILD: đổi giá trị thì phải build lại
-        # (docker compose up -d --build), restart là không đủ.
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
-        VITE_NOTIFICATION_POLL_SECONDS: ${VITE_NOTIFICATION_POLL_SECONDS:-45}
+        # Biến VITE_* được nhúng vào bundle lúc BUILD: đổi giá trị thì phải build lại.
+        # Mặc định /api/v1 (cùng origin, nginx proxy sang backend).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     restart: unless-stopped
     depends_on:
       backend:
@@ -150,4 +100,3 @@ services:
 
 volumes:
   pgdata:
-  storage:

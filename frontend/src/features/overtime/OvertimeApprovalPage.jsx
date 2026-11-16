@@ -1,134 +1,123 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Check, X, ArrowLeft, UserCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Check, X } from 'lucide-react';
+import useAsync from '../../hooks/useAsync';
+import overtimeApi from '../../api/overtimeApi';
 import Button from '../../components/common/Button';
-import StatusBadge from '../../components/common/StatusBadge';
-import { formatDate } from '../../utils/formatDate';
-
-const PENDING_OT_LIST = [
-  {
-    id: 1,
-    employeeName: 'Nguyễn Hoàng Phương Ngân',
-    department: 'Khối Kỹ Thuật & Công Nghệ',
-    date: '2026-10-21',
-    hours: 4.0,
-    rate: '1.5x (Ngày thường)',
-    task: 'Deploy phiên bản tính lương v2.0',
-    status: 'PENDING',
-  },
-  {
-    id: 2,
-    employeeName: 'Hồ Vinh Quan',
-    department: 'Khối Kỹ Thuật & Công Nghệ',
-    date: '2026-10-24',
-    hours: 8.0,
-    rate: '2.0x (Ngày nghỉ cuối tuần)',
-    task: 'Bảo trì cơ sở dữ liệu và hạ tầng server',
-    status: 'PENDING',
-  },
-];
+import Modal from '../../components/common/Modal';
+import InputField from '../../components/common/InputField';
+import Loading from '../../components/common/Loading';
+import ErrorMessage from '../../components/common/ErrorMessage';
+import EmptyState from '../../components/common/EmptyState';
+import PromptDialog from '../../components/common/PromptDialog';
+import { formatDate, formatMinutes } from '../../utils/formatDate';
 
 export function OvertimeApprovalPage() {
-  const navigate = useNavigate();
-  const [requests, setRequests] = useState(PENDING_OT_LIST);
+  const { data, loading, error, reload } = useAsync(() => overtimeApi.inbox(), []);
+  const [approving, setApproving] = useState(null);
+  const [minutes, setMinutes] = useState('');
+  const [note, setNote] = useState('');
+  const [modalError, setModalError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(null);
 
-  const handleAction = (id, status) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status } : r))
-    );
+  const openApprove = (r) => {
+    setApproving(r);
+    setMinutes(String(r.registeredMinutes));
+    setNote('');
+    setModalError('');
+  };
+
+  const approve = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setModalError('');
+    try {
+      await overtimeApi.approve(approving.id, { approvedMinutes: Number(minutes), reason: note.trim() || undefined });
+      setApproving(null);
+      reload();
+    } catch (err) {
+      setModalError(err.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/overtime')}
-          icon={ArrowLeft}
-        >
-          Quay lại
-        </Button>
+      <div className="flex items-center gap-3">
+        <Link to="/overtime"><Button variant="outline" size="sm" icon={ArrowLeft}>Lịch OT</Button></Link>
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Xét duyệt Đăng ký Tăng ca (OT)
-          </h1>
-          <p className="text-xs text-slate-500">
-            Duyệt thù lao làm thêm giờ cho nhân viên trực thuộc
-          </p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Duyệt đăng ký OT</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Chỉ hiển thị đăng ký thuộc tuyến duyệt của bạn; không tự duyệt đăng ký của mình.</p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-100">
-          <h3 className="text-base font-bold text-slate-800 flex items-center">
-            <UserCheck className="w-5 h-5 mr-2 text-amber-500" />
-            Yêu cầu chờ duyệt ({requests.filter((r) => r.status === 'PENDING').length})
-          </h3>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs uppercase font-bold text-slate-500 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3.5">Nhân viên</th>
-                <th className="px-4 py-3.5">Ngày OT</th>
-                <th className="px-4 py-3.5">Số giờ & Hệ số</th>
-                <th className="px-4 py-3.5">Nội dung công việc</th>
-                <th className="px-4 py-3.5">Trạng thái</th>
-                <th className="px-4 py-3.5 text-right">Phê duyệt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {requests.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3.5">
-                    <p className="font-bold text-slate-900">{r.employeeName}</p>
-                    <p className="text-xs text-slate-500">{r.department}</p>
-                  </td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-800">
-                    {formatDate(r.date)}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-bold text-slate-900">{r.hours}h</span>
-                    <span className="text-xs text-amber-600 block">{r.rate}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-600 max-w-xs truncate">
-                    {r.task}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    {r.status === 'PENDING' ? (
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handleAction(r.id, 'APPROVED')}
-                          icon={Check}
-                        >
-                          Duyệt
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleAction(r.id, 'REJECTED')}
-                          icon={X}
-                        >
-                          Từ chối
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Đã duyệt</span>
-                    )}
-                  </td>
+        {loading ? (
+          <Loading />
+        ) : error ? (
+          <div className="p-4"><ErrorMessage message={error.message} onRetry={reload} /></div>
+        ) : !data?.length ? (
+          <EmptyState title="Không có đăng ký chờ duyệt" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 text-xs uppercase font-bold text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3.5">Nhân viên</th>
+                  <th className="px-4 py-3.5">Lịch OT</th>
+                  <th className="px-4 py-3.5">Đăng ký</th>
+                  <th className="px-4 py-3.5 text-right">Phê duyệt</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50/80">
+                    <td className="px-4 py-3.5 font-bold text-slate-900">{r.employeeName}<span className="block text-xs font-normal text-slate-400">{r.employeeCode}</span></td>
+                    <td className="px-4 py-3.5">{r.scheduleTitle}<span className="block text-xs">{formatDate(r.workDate)}</span></td>
+                    <td className="px-4 py-3.5 font-semibold">{formatMinutes(r.registeredMinutes)}</td>
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <Button size="sm" icon={Check} onClick={() => openApprove(r)}>Duyệt</Button>
+                      <Button size="sm" variant="danger" icon={X} className="ml-2" onClick={() => setRejecting(r)}>Từ chối</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <Modal isOpen={Boolean(approving)} title="Duyệt đăng ký OT" onClose={() => setApproving(null)}>
+        {approving && (
+          <form onSubmit={approve} className="space-y-4">
+            {modalError && <ErrorMessage message={modalError} />}
+            <p className="text-sm text-slate-700">{approving.employeeName} – {approving.scheduleTitle} ({formatDate(approving.workDate)})</p>
+            <InputField label="Số phút OT được duyệt" type="number" min="1" max={approving.registeredMinutes} value={minutes}
+              onChange={(e) => setMinutes(e.target.value)} required helperText={`Tối đa ${approving.registeredMinutes} phút (đăng ký).`} />
+            <InputField label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} />
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" type="button" onClick={() => setApproving(null)}>Hủy</Button>
+              <Button type="submit" isLoading={busy}>Duyệt</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <PromptDialog
+        isOpen={Boolean(rejecting)}
+        title="Từ chối đăng ký OT"
+        description={rejecting && `${rejecting.employeeName} – ${rejecting.scheduleTitle}`}
+        label="Lý do từ chối"
+        confirmLabel="Từ chối"
+        confirmVariant="danger"
+        onClose={() => setRejecting(null)}
+        onSubmit={async (reason) => {
+          await overtimeApi.reject(rejecting.id, { reason });
+          reload();
+        }}
+      />
     </div>
   );
 }

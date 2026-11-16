@@ -1,24 +1,11 @@
 import httpClient from './httpClient';
 
 export const authApi = {
-  login: async (credentials) => {
-    return httpClient.post('/auth/login', credentials);
-  },
-
-  getCurrentUser: async () => {
-    return httpClient.get('/auth/me');
-  },
-
-  logout: async () => {
-    try {
-      await httpClient.post('/auth/logout');
-    } catch {
-      // Ignored
-    } finally {
-      localStorage.removeItem('hrflow_auth_token');
-      localStorage.removeItem('hrflow_current_user');
-    }
-  },
+  login: (email, password) => httpClient.post('/auth/login', { email, password }),
+  me: () => httpClient.get('/auth/me'),
+  changePassword: (currentPassword, newPassword) =>
+    httpClient.post('/auth/change-password', { currentPassword, newPassword }),
+  logout: () => httpClient.post('/auth/logout'),
 };
 
 export default authApi;

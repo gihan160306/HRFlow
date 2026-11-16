@@ -16,83 +16,25 @@ import { useAuth } from '../hooks/useAuth';
 import logoSvg from '../assets/logo.svg';
 
 const NAV_ITEMS = [
-  {
-    path: '/dashboard',
-    label: 'Tổng quan',
-    icon: LayoutDashboard,
-    roles: ['Admin', 'HR', 'Manager', 'Employee'],
-  },
-  {
-    path: '/employees',
-    label: 'Nhân viên',
-    icon: Users,
-    roles: ['Admin', 'HR', 'Manager'],
-  },
-  {
-    path: '/departments',
-    label: 'Phòng ban',
-    icon: Building2,
-    roles: ['Admin', 'HR'],
-  },
-  {
-    path: '/contracts',
-    label: 'Hợp đồng',
-    icon: FileCheck2,
-    roles: ['Admin', 'HR'],
-  },
-  {
-    path: '/attendance',
-    label: 'Chấm công',
-    icon: Clock,
-    roles: ['Admin', 'HR', 'Manager', 'Employee'],
-  },
-  {
-    path: '/leave',
-    label: 'Nghỉ phép',
-    icon: CalendarDays,
-    roles: ['Admin', 'HR', 'Manager', 'Employee'],
-  },
-  {
-    path: '/overtime',
-    label: 'Tăng ca (OT)',
-    icon: Zap,
-    roles: ['Admin', 'HR', 'Manager', 'Employee'],
-  },
-  {
-    path: '/payroll',
-    label: 'Tính lương',
-    icon: Calculator,
-    roles: ['Admin', 'HR'],
-  },
-  {
-    path: '/payslip',
-    label: 'Phiếu lương cá nhân',
-    icon: Receipt,
-    roles: ['Admin', 'HR', 'Manager', 'Employee'],
-  },
+  { path: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+  { path: '/employees', label: 'Nhân viên', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER'] },
+  { path: '/departments', label: 'Phòng ban', icon: Building2, roles: ['ADMIN', 'HR', 'MANAGER'] },
+  { path: '/contracts', label: 'Hợp đồng', icon: FileCheck2, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  { path: '/attendance', label: 'Chấm công', icon: Clock, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  { path: '/leave', label: 'Nghỉ phép', icon: CalendarDays, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  { path: '/overtime', label: 'Tăng ca (OT)', icon: Zap, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  // Payroll: theo grant (VIEW/PREPARE/APPROVE/LOCK), không theo role.
+  { path: '/payroll', label: 'Kỳ lương', icon: Calculator, grant: true },
+  { path: '/payslip', label: 'Phiếu lương cá nhân', icon: Receipt, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
 ];
 
-
 export function Sidebar({ isOpen, onClose }) {
-  const { role } = useAuth();
+  const { role, hasAnyGrant } = useAuth();
 
-  // Chuẩn hóa vai trò để tránh lỗi chữ hoa/chữ thường.
-  const normalizedRole = String(role ?? '').trim().toLowerCase();
-
-  const ROLE_ALIASES = {
-    admin: 'Admin',
-    hr: 'HR',
-    manager: 'Manager',
-    employee: 'Employee',
-  };
-
-  const currentRole = ROLE_ALIASES[normalizedRole] ?? '';
-
-  // Lọc chức năng theo vai trò người dùng.
-  const filteredNavItems = NAV_ITEMS.filter((item) =>
-    item.roles.includes(currentRole)
-  );
-
+  const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if (item.grant) return hasAnyGrant;
+    return !item.roles || item.roles.includes(role);
+  });
 
   return (
     <>

@@ -1,26 +1,22 @@
 import httpClient from './httpClient';
 
 export const payrollApi = {
-  getPayrollPeriods: async () => {
-    return httpClient.get('/payroll/periods');
-  },
-
-  getPayrollPeriodById: async (id) => {
-    return httpClient.get(`/payroll/periods/${id}`);
-  },
-
-  calculatePayroll: async (periodId, employees) => {
-    return httpClient.post('/payroll/calculate', { periodId, employees });
-  },
-
-  confirmPayroll: async (periodId) => {
-    return httpClient.post(`/payroll/periods/${periodId}/approve`);
-  },
-
-  resetPayroll: async (periodId, reason) => httpClient.post(`/payroll/periods/${periodId}/reset`, { reason }),
-
-  lockPayroll: async (periodId) => httpClient.post(`/payroll/periods/${periodId}/lock`),
-  publishPayslips: async (periodId) => httpClient.post(`/payroll/periods/${periodId}/publish`),
+  periods: () => httpClient.get('/payroll/periods'),
+  period: (id) => httpClient.get(`/payroll/periods/${id}`),
+  createPeriod: (data) => httpClient.post('/payroll/periods', data),
+  precheck: (id) => httpClient.get(`/payroll/periods/${id}/precheck`),
+  closeTimesheet: (id) => httpClient.post(`/payroll/periods/${id}/close-timesheet`),
+  reopenTimesheet: (id, reason) => httpClient.post(`/payroll/periods/${id}/reopen-timesheet`, { reason }),
+  calculate: (id) => httpClient.post(`/payroll/periods/${id}/calculate`),
+  reopen: (id, reason) => httpClient.post(`/payroll/periods/${id}/reopen`, { reason }),
+  reconcile: (id, note) => httpClient.post(`/payroll/periods/${id}/reconcile`, { note }),
+  approve: (id) => httpClient.post(`/payroll/periods/${id}/approve`),
+  lock: (id) => httpClient.post(`/payroll/periods/${id}/lock`),
+  markPaid: (id, data) => httpClient.post(`/payroll/periods/${id}/mark-paid`, data),
+  lines: (id) => httpClient.get(`/payroll/periods/${id}/lines`),
+  line: (lineId) => httpClient.get(`/payroll/lines/${lineId}`),
+  audit: (id) => httpClient.get(`/payroll/periods/${id}/audit`),
+  exportCsv: (id) => httpClient.download(`/payroll/periods/${id}/export`, undefined, `bang-luong-${id}.csv`),
 };
 
 export default payrollApi;

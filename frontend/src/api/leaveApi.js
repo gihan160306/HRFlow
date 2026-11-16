@@ -1,37 +1,20 @@
 import httpClient from './httpClient';
 
 export const leaveApi = {
-  getLeaveRequests: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    const endpoint = `/pto-requests${query ? `?${query}` : ''}`;
-    return httpClient.get(endpoint);
-  },
-
-  getMyLeaves: async () => {
-    return httpClient.get('/pto-requests/mine');
-  },
-
-  createLeaveRequest: async (data) => {
-    return httpClient.post('/pto-requests', data);
-  },
-
-  submitLeaveRequest: async (id) => {
-    return httpClient.post(`/pto-requests/${id}/submit`);
-  },
-
-  approveLeaveRequest: async (id, reason = '') => {
-    return httpClient.patch(`/pto-requests/${id}`, {
-      action: 'APPROVE',
-      reason,
-    });
-  },
-
-  rejectLeaveRequest: async (id, reason = '') => {
-    return httpClient.patch(`/pto-requests/${id}`, {
-      action: 'REJECT',
-      reason,
-    });
-  },
+  preview: (data) => httpClient.post('/leave-requests/preview', data),
+  // submit=true: tạo và gửi duyệt ngay; false: lưu nháp.
+  create: (data, submit = true) =>
+    httpClient.request('/leave-requests', { method: 'POST', body: data, params: { submit } }),
+  mine: () => httpClient.get('/leave-requests/me'),
+  inbox: () => httpClient.get('/leave-requests/inbox'),
+  all: (params) => httpClient.get('/leave-requests', params),
+  get: (id) => httpClient.get(`/leave-requests/${id}`),
+  submit: (id) => httpClient.post(`/leave-requests/${id}/submit`),
+  cancel: (id) => httpClient.post(`/leave-requests/${id}/cancel`),
+  requestCancel: (id, reason) => httpClient.post(`/leave-requests/${id}/cancel-request`, { reason }),
+  approve: (id, reason) => httpClient.post(`/leave-requests/${id}/approve`, { reason }),
+  reject: (id, reason) => httpClient.post(`/leave-requests/${id}/reject`, { reason }),
+  myBalance: (year) => httpClient.get('/leave-balances/me', { year }),
 };
 
 export default leaveApi;

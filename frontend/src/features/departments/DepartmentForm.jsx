@@ -1,112 +1,66 @@
-import React, { useState } from 'react';
-import { X, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import InputField from '../../components/common/InputField';
+import ErrorMessage from '../../components/common/ErrorMessage';
 
-export function DepartmentForm({
-  isOpen,
-  initialData,
-  onClose,
-  onSubmit,
-  isLoading = false,
-}) {
-  const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    code: initialData?.code || '',
-    description: initialData?.description || '',
-  });
+const EMPTY = { code: '', name: '', description: '', active: true, decisionRef: '' };
 
-  const [errors, setErrors] = useState({});
+export function DepartmentForm({ isOpen, department, onClose, onSubmit }) {
+  const [form, setForm] = useState(EMPTY);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const isEdit = Boolean(department?.id);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    setError('');
+    setForm(isEdit
+      ? { code: department.code, name: department.name, description: department.description || '', active: department.active, decisionRef: '' }
+      : EMPTY);
+  }, [isOpen, department, isEdit]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
+  const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Tên phòng ban là bắt buộc';
-    if (!formData.code.trim()) newErrors.code = 'Mã phòng ban là bắt buộc';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+    setError('');
+    setSaving(true);
+    try {
+      await onSubmit({
+        code: form.code.trim(),
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        active: form.active,
+        decisionRef: form.decisionRef.trim(),
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
-
-    onSubmit(formData);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <h3 className="text-lg font-bold text-slate-900 mb-4">
-          {initialData ? 'Chỉnh sửa phòng ban' : 'Tạo phòng ban mới'}
-        </h3>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <InputField
-            label="Tên phòng ban"
-            name="name"
-            placeholder="Khối Kỹ Thuật & Công Nghệ"
-            value={formData.name}
-            onChange={handleChange}
-            error={errors.name}
-            required
-          />
-
-          <InputField
-            label="Mã viết tắt"
-            name="code"
-            placeholder="TECH"
-            value={formData.code}
-            onChange={handleChange}
-            error={errors.code}
-            required
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Mô tả nhiệm vụ
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Mô tả chức năng nhiệm vụ của phòng ban..."
-              className="block w-full rounded-lg border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
-            <Button variant="outline" type="button" onClick={onClose}>
-              Hủy
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isLoading}
-              icon={Save}
-            >
-              Lưu phòng ban
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal isOpen={isOpen} title={isEdit ? 'Cập nhật phòng ban' : 'Thêm phòng ban'} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        {error && <ErrorMessage message={error} />}
+        <InputField label="Mã phòng ban" value={form.code} onChange={set('code')} required />
+        <InputField label="Tên phòng ban" value={form.name} onChange={set('name')} required />
+        <InputField label="Mô tả" value={form.description} onChange={set('description')} />
+        <InputField label="Số quyết định của Giám đốc" value={form.decisionRef} onChange={set('decisionRef')} required
+          helperText="Thay đổi cơ cấu phải có căn cứ quyết định hợp lệ; được ghi vào nhật ký kiểm toán." />
+        <label className="flex items-center text-sm text-slate-700">
+          <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })}
+            className="rounded border-slate-300 text-blue-600 mr-2" />
+          Đang hoạt động
+        </label>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="outline" type="button" onClick={onClose}>Hủy</Button>
+          <Button type="submit" isLoading={saving}>Lưu</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

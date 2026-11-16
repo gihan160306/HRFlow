@@ -5,8 +5,8 @@ import RoleRoute from './RoleRoute';
 import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
-// Features
 import LoginPage from '../features/auth/LoginPage';
+import ChangePasswordPage from '../features/auth/ChangePasswordPage';
 import DashboardPage from '../features/dashboard/DashboardPage';
 import EmployeeListPage from '../features/employees/EmployeeListPage';
 import EmployeeDetailPage from '../features/employees/EmployeeDetailPage';
@@ -25,117 +25,51 @@ import PayslipPage from '../features/payslip/PayslipPage';
 
 import { ROLES } from '../utils/constants';
 
+const { ADMIN, HR, MANAGER, EMPLOYEE } = ROLES;
+
+// Lớp UX: ẩn trang không có quyền. Backend vẫn là nơi kiểm quyền thật sự (401/403/404).
+const guard = (element, props) => <RoleRoute {...props}>{element}</RoleRoute>;
+
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Auth routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
-      {/* Protected App routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
 
-          {/* Employees */}
-          <Route
-            path="/employees"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR, ROLES.MANAGER]}>
-                <EmployeeListPage />
-              </RoleRoute>
-            }
-          />
-          <Route
-            path="/employees/create"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <EmployeeFormPage />
-              </RoleRoute>
-            }
-          />
-          <Route
-            path="/employees/:id"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR, ROLES.MANAGER]}>
-                <EmployeeDetailPage />
-              </RoleRoute>
-            }
-          />
+          {/* Nhân sự: HR toàn công ty, Manager team, Admin chỉ định danh tối thiểu */}
+          <Route path="/employees" element={guard(<EmployeeListPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
+          <Route path="/employees/create" element={guard(<EmployeeFormPage />, { allowedRoles: [HR] })} />
+          <Route path="/employees/:id/edit" element={guard(<EmployeeFormPage />, { allowedRoles: [HR] })} />
+          <Route path="/employees/:id" element={guard(<EmployeeDetailPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
+          <Route path="/profile" element={guard(<EmployeeDetailPage self />, { requireEmployee: true })} />
 
-          {/* Departments */}
-          <Route
-            path="/departments"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <DepartmentListPage />
-              </RoleRoute>
-            }
-          />
+          <Route path="/departments" element={guard(<DepartmentListPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
 
-          {/* Contracts */}
-          <Route
-            path="/contracts"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <ContractListPage />
-              </RoleRoute>
-            }
-          />
+          {/* Hợp đồng: HR toàn bộ; nhân viên/quản lý chỉ xem của mình; Admin không truy cập */}
+          <Route path="/contracts" element={guard(<ContractListPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
 
-          {/* Attendance */}
-          <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/attendance/history" element={<AttendancePage />} />
+          <Route path="/attendance" element={guard(<AttendancePage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
 
-          {/* Leave */}
-          <Route path="/leave" element={<LeaveRequestPage />} />
-          <Route path="/leave/request" element={<LeaveRequestPage />} />
-          <Route
-            path="/leave/approval"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR, ROLES.MANAGER]}>
-                <LeaveApprovalPage />
-              </RoleRoute>
-            }
-          />
+          <Route path="/leave" element={guard(<LeaveRequestPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
+          <Route path="/leave/approval" element={guard(<LeaveApprovalPage />, { allowedRoles: [HR, MANAGER], requireEmployee: true })} />
 
-          {/* Overtime */}
-          <Route path="/overtime" element={<OvertimeSchedulePage />} />
-          <Route path="/overtime/schedule" element={<OvertimeSchedulePage />} />
-          <Route path="/overtime/registration" element={<OvertimeRegistrationPage />} />
-          <Route
-            path="/overtime/approval"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR, ROLES.MANAGER]}>
-                <OvertimeApprovalPage />
-              </RoleRoute>
-            }
-          />
+          <Route path="/overtime" element={guard(<OvertimeSchedulePage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
+          <Route path="/overtime/registration" element={guard(<OvertimeRegistrationPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
+          <Route path="/overtime/approval" element={guard(<OvertimeApprovalPage />, { allowedRoles: [HR, MANAGER], requireEmployee: true })} />
 
-          {/* Payroll */}
-          <Route
-            path="/payroll"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <PayrollListPage />
-              </RoleRoute>
-            }
-          />
-          <Route
-            path="/payroll/:id"
-            element={
-              <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.HR]}>
-                <PayrollDetailPage />
-              </RoleRoute>
-            }
-          />
+          {/* Payroll: theo grant VIEW/PREPARE/APPROVE/LOCK, không theo role */}
+          <Route path="/payroll" element={guard(<PayrollListPage />, { anyGrant: true })} />
+          <Route path="/payroll/:id" element={guard(<PayrollDetailPage />, { anyGrant: true })} />
 
-          {/* Payslip */}
-          <Route path="/payslip" element={<PayslipPage />} />
+          <Route path="/payslip" element={guard(<PayslipPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
 
-          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Route>

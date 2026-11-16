@@ -355,7 +355,6 @@ HRFlow hiện có các service với tên dự kiến:
 - `backend`: API Spring Boot.
 - `db`: PostgreSQL.
 - `frontend`: giao diện web.
-- `worker`: tác vụ nền nếu service này được sử dụng trong cấu hình hiện tại.
 
 Tên service thực tế phải căn cứ vào file Compose của repository.
 
@@ -394,7 +393,6 @@ Xem log riêng từng service:
 docker compose logs --tail=100 backend
 docker compose logs --tail=100 db
 docker compose logs --tail=100 frontend
-docker compose logs --tail=100 worker
 ```
 
 Nếu backend liên tục restart, hãy ưu tiên xem log backend và database trước.

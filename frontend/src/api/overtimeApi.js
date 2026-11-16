@@ -1,39 +1,18 @@
 import httpClient from './httpClient';
 
 export const overtimeApi = {
-  getOvertimeSchedules: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    const endpoint = `/overtime/schedules${query ? `?${query}` : ''}`;
-    return httpClient.get(endpoint);
-  },
-
-  createOvertimeSchedule: async (data) => {
-    return httpClient.post('/overtime/schedules', data);
-  },
-
-  getOvertimeRegistrations: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    const endpoint = `/overtime/registrations${query ? `?${query}` : ''}`;
-    return httpClient.get(endpoint);
-  },
-
-  registerOvertime: async (data) => {
-    return httpClient.post('/overtime/registrations', data);
-  },
-
-  approveOvertime: async (id, reason = '') => {
-    return httpClient.patch(`/overtime/registrations/${id}`, {
-      status: 'APPROVED',
-      rejectionReason: reason,
-    });
-  },
-
-  rejectOvertime: async (id, reason = '') => {
-    return httpClient.patch(`/overtime/registrations/${id}`, {
-      status: 'REJECTED',
-      rejectionReason: reason,
-    });
-  },
+  schedules: () => httpClient.get('/ot-schedules'),
+  createSchedule: (data) => httpClient.post('/ot-schedules', data),
+  publishSchedule: (id) => httpClient.post(`/ot-schedules/${id}/publish`),
+  closeSchedule: (id) => httpClient.post(`/ot-schedules/${id}/close`),
+  cancelSchedule: (id) => httpClient.post(`/ot-schedules/${id}/cancel`),
+  registrations: () => httpClient.get('/ot-registrations'),
+  myRegistrations: () => httpClient.get('/ot-registrations/me'),
+  inbox: () => httpClient.get('/ot-registrations/inbox'),
+  register: (data) => httpClient.post('/ot-registrations', data),
+  approve: (id, data) => httpClient.post(`/ot-registrations/${id}/approve`, data ?? {}),
+  reject: (id, data) => httpClient.post(`/ot-registrations/${id}/reject`, data ?? {}),
+  cancel: (id) => httpClient.post(`/ot-registrations/${id}/cancel`),
 };
 
 export default overtimeApi;

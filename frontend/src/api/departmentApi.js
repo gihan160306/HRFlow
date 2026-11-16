@@ -1,25 +1,15 @@
 import httpClient from './httpClient';
 
 export const departmentApi = {
-  getDepartments: async () => {
-    return httpClient.get('/departments');
-  },
+  list: () => httpClient.get('/departments'),
+  create: (data) => httpClient.post('/departments', data),
+  update: (id, data) => httpClient.patch(`/departments/${id}`, data),
+};
 
-  getDepartmentById: async (id) => {
-    return httpClient.get(`/departments/${id}`);
-  },
-
-  createDepartment: async (data) => {
-    return httpClient.post('/departments', data);
-  },
-
-  updateDepartment: async (id, data) => {
-    return httpClient.patch(`/departments/${id}`, data);
-  },
-
-  deleteDepartment: async (id) => {
-    return httpClient.delete(`/departments/${id}`);
-  },
+export const catalogApi = {
+  jobTitles: () => httpClient.get('/job-titles'),
+  workSchedules: () => httpClient.get('/work-schedules'),
+  leaveTypes: () => httpClient.get('/leave-types'),
 };
 
 export default departmentApi;

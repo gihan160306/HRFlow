@@ -47,14 +47,18 @@ docker compose up -d --build
 
 Nạp dữ liệu demo: `TODO <lệnh seed>` (gồm tài khoản 4 vai trò, phòng ban, biểu thuế, bảo hiểm và bộ 500 nhân viên để kiểm tra hiệu năng).
 
-Tài khoản demo (mật khẩu `password123`):
+Tài khoản demo (mật khẩu `password123`; dữ liệu tạo bởi migration Flyway `V20`/`V21`):
 
-| Vai trò | Email |
-|---|---|
-| Admin | `admin@example.com` |
-| HR | `hr@example.com` |
-| Manager | `manager@example.com` |
-| Employee | `employee1@example.com` |
+| Vai trò | Email | Ghi chú |
+|---|---|---|
+| Admin | `admin@hnqmedia.example` | Quản trị kỹ thuật, không gắn hồ sơ nhân viên, không có quyền payroll |
+| HR | `nv004@hnqmedia.example` | HR Lead; grant payroll `VIEW`, `PREPARE` |
+| Manager (Giám đốc) | `nv001@hnqmedia.example` | Grant payroll `APPROVE` |
+| Manager (Finance) | `nv003@hnqmedia.example` | Grant payroll `LOCK` |
+| Manager (Lead) | `nv008@hnqmedia.example` | Lead Content, duyệt PTO/OT của team |
+| Employee | `nv009@hnqmedia.example` | Nhân viên Content |
+
+Quy ước: email nhân viên = `<mã nhân viên viết thường>@hnqmedia.example` (NV001 … NV100).
 
 Lệnh hay dùng:
 

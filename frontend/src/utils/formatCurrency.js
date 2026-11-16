@@ -1,25 +1,15 @@
 /**
- * Formats a numeric amount to Vietnamese Dong currency representation.
- * Example: 15000000 -> "15.000.000 ₫"
+ * Định dạng số tiền VND: 15000000 -> "15.000.000 ₫".
+ * null/undefined (backend ẩn dữ liệu nhạy cảm) hiển thị "-" thay vì 0 để không gây hiểu nhầm.
  */
 export function formatCurrency(amount, currencySymbol = '₫') {
-  if (amount === null || amount === undefined || isNaN(Number(amount))) {
-    return `0 ${currencySymbol}`;
+  if (amount === null || amount === undefined || amount === '' || Number.isNaN(Number(amount))) {
+    return '-';
   }
-  const formatted = Math.round(Number(amount))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${formatted} ${currencySymbol}`;
-}
-
-/**
- * Parses a currency string back to integer number.
- * Example: "15.000.000 ₫" -> 15000000
- */
-export function parseCurrency(str) {
-  if (!str) return 0;
-  const cleaned = String(str).replace(/[^\d-]/g, '');
-  return parseInt(cleaned, 10) || 0;
+  const n = Math.round(Number(amount));
+  const sign = n < 0 ? '-' : '';
+  const formatted = Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${sign}${formatted} ${currencySymbol}`;
 }
 
 export default formatCurrency;
