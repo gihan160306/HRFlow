@@ -16,6 +16,11 @@ export const payrollApi = {
   lines: (id) => httpClient.get(`/payroll/periods/${id}/lines`),
   line: (lineId) => httpClient.get(`/payroll/lines/${lineId}`),
   audit: (id) => httpClient.get(`/payroll/periods/${id}/audit`),
+  resolveConflict: (id, data) => httpClient.post(`/payroll/periods/${id}/conflict-resolution`, data),
+  adjustments: () => httpClient.get('/payroll/adjustments'),
+  createAdjustment: (data) => httpClient.post('/payroll/adjustments', data),
+  approveAdjustment: (id, note) => httpClient.post(`/payroll/adjustments/${id}/approve`, { note }),
+  rejectAdjustment: (id, note) => httpClient.post(`/payroll/adjustments/${id}/reject`, { note }),
   exportCsv: (id) => httpClient.download(`/payroll/periods/${id}/export`, undefined, `bang-luong-${id}.csv`),
 };
 

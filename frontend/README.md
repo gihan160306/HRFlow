@@ -56,6 +56,13 @@ Mật khẩu `password123`. Email nhân viên = `<mã nhân viên viết thườ
 | Tăng ca (lập/công bố/đóng lịch, đăng ký, duyệt) | `/ot-schedules`, `/ot-registrations` |
 | Kỳ lương (tạo, kiểm tra đầu vào, chốt công, tính, đối soát, duyệt, khóa, chi trả, CSV, nhật ký) | `/payroll/periods/*` |
 | Phiếu lương cá nhân (xem/tải PDF) | `/payslips/me`, `/payslips/{id}/pdf` |
+| Tài khoản & phân quyền: tạo/khóa/mở khóa/đặt lại mật khẩu/đổi vai trò, đề nghị cấp tài khoản (HR gửi, Admin xử lý), cấp/thu hồi quyền payroll | `/accounts`, `/account-requests`, `/grants` |
+| Tuyến duyệt, khai báo người duyệt vắng mặt | `/approval-routes`, `/approver-unavailability` |
+| Hồ sơ có hiệu lực của nhân viên (HR): lương, phụ cấp, điều chuyển, người phụ thuộc, bảo hiểm, thuế TNCN, lịch làm việc | `/employees/{id}/salaries` … `/schedules` |
+| Thu nhập khác (thưởng, khấu trừ, hoàn ứng) và doanh thu Sales | `/income-items`, `/sales-revenues` |
+| OT: xác nhận giờ thực tế, HR rà soát, OT ngoài lịch | `/ot-registrations/{id}/actual`, `/ot-unscheduled` |
+| Cấu hình & điều chỉnh lương: adjustment sau khóa, tham số payroll, phân loại thuế loại phụ cấp | `/payroll/adjustments`, `/parameters`, `/allowance-types` |
+| Danh mục (ngày lễ, lịch làm việc, loại nghỉ, biểu thuế), báo cáo, thông báo, nhật ký kiểm toán | `/holidays`, `/reports/*`, `/notifications`, `/audit-logs`, `/job-runs` |
 
 ## Phân quyền ở frontend
 
@@ -66,6 +73,6 @@ Mật khẩu `password123`. Email nhân viên = `<mã nhân viên viết thườ
 
 ## Chưa có giao diện (backend đã có API)
 
-Quản lý tài khoản/yêu cầu tài khoản/grant, tuyến duyệt, hồ sơ có hiệu lực (lương, phụ cấp, người phụ thuộc, bảo hiểm, thuế, lịch làm việc),
-khoản thu nhập & doanh thu Sales, điều chỉnh lương sau khóa (adjustment), tham số payroll, QR/điểm chấm công, xác nhận giờ OT thực tế,
-OT ngoài lịch, báo cáo, nhật ký kiểm toán, quyết định xử lý xung đột lợi ích của kỳ lương.
+Điểm chấm công và mã QR (`/attendance-points`, `/attendance/qr`), ảnh chấm công (`/attendance/{id}/photo`),
+số dư phép và điều chỉnh số dư (`/leave-balances/{id}/adjust`), quyết định xử lý xung đột lợi ích của kỳ lương
+(`payrollApi.resolveConflict` đã có, chưa có biểu mẫu), refresh token (`/auth/refresh`).

@@ -13,6 +13,12 @@ export const overtimeApi = {
   approve: (id, data) => httpClient.post(`/ot-registrations/${id}/approve`, data ?? {}),
   reject: (id, data) => httpClient.post(`/ot-registrations/${id}/reject`, data ?? {}),
   cancel: (id) => httpClient.post(`/ot-registrations/${id}/cancel`),
+  confirmActual: (id, data) => httpClient.post(`/ot-registrations/${id}/actual`, data),
+  hrCheck: (id) => httpClient.post(`/ot-registrations/${id}/hr-check`),
+  unscheduled: () => httpClient.get('/ot-unscheduled'),
+  createUnscheduled: (data) => httpClient.post('/ot-unscheduled', data),
+  confirmUnscheduled: (id, note) => httpClient.post(`/ot-unscheduled/${id}/confirm`, { note }),
+  rejectUnscheduled: (id, note) => httpClient.post(`/ot-unscheduled/${id}/reject`, { note }),
 };
 
 export default overtimeApi;

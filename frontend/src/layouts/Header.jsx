@@ -29,7 +29,7 @@ export function Header({ onMenuClick }) {
     };
   }, []);
 
-  const initials = (user?.fullName || '?')
+  const initials = (user?.fullName || user?.email || '?')
     .split(' ')
     .filter(Boolean)
     .slice(-2)
@@ -56,6 +56,7 @@ export function Header({ onMenuClick }) {
 
       <div className="flex items-center space-x-3 sm:space-x-4">
         <button
+          onClick={() => navigate('/notifications')}
           className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
           title={`${unread} thông báo chưa đọc`}
           aria-label="Thông báo"

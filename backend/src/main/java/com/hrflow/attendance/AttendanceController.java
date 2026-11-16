@@ -49,6 +49,11 @@ public class AttendanceController {
         this.service = service;
     }
 
+    @PostMapping("/api/v1/attendance/qr/verify")
+    public Map<String, Object> verifyQr(@RequestBody ScanRequest r) {
+        return service.scanQr(new AttendanceService.Scan(r.qrPayload(), r.shortCode(), null, null));
+    }
+
     @PostMapping("/api/v1/attendance/check-in")
     public Map<String, Object> checkIn(@RequestBody(required = false) ScanRequest r) {
         return service.checkIn(r == null ? null : new AttendanceService.Scan(r.qrPayload(), r.shortCode(), r.photoBase64(), r.photoMime()));

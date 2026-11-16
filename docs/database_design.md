@@ -4,7 +4,7 @@
 > Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration V1–V15 là schema cũ; **V16–V20 dựng lại toàn bộ schema theo thiết kế này** (xem Mục 10).
 >
 > Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
-> Bản 3.5 (16/11/2026): đồng bộ baseline quy mô 100 nhân sự (V21 bổ sung dữ liệu demo); chấm công QR động + ảnh minh chứng vẫn là chức năng mở rộng theo `company_profile.md` Mục 14.2 và SRS 3.3 (MVP chỉ chấm công cơ bản); schema 52 bảng không đổi.
+> Bản 3.5 (16/11/2026): đồng bộ baseline quy mô 100 nhân sự (V21 bổ sung dữ liệu demo); chấm công QR động + ảnh minh chứng là luồng check-in chính thức (nhóm chốt 17/11/2026: quét QR → chụp ảnh → check-in), các bảng `attendance_point`, `qr_token`, `attendance_photo` thuộc luồng chính; schema 52 bảng không đổi.
 
 ## 1. Mục tiêu và nguyên tắc thiết kế
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -10,6 +10,14 @@ import {
   Zap,
   Calculator,
   Receipt,
+  SlidersHorizontal,
+  Wallet,
+  BarChart3,
+  ShieldCheck,
+  GitBranch,
+  ScrollText,
+  BookOpen,
+  Bell,
   X,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -25,14 +33,23 @@ const NAV_ITEMS = [
   { path: '/overtime', label: 'Tăng ca (OT)', icon: Zap, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
   // Payroll: theo grant (VIEW/PREPARE/APPROVE/LOCK), không theo role.
   { path: '/payroll', label: 'Kỳ lương', icon: Calculator, grant: true },
+  { path: '/payroll/settings', label: 'Cấu hình & điều chỉnh lương', icon: SlidersHorizontal, grant: true, roles: ['HR'] },
   { path: '/payslip', label: 'Phiếu lương cá nhân', icon: Receipt, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  { path: '/income', label: 'Thu nhập khác & doanh thu', icon: Wallet, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
+  { path: '/reports', label: 'Báo cáo', icon: BarChart3, roles: ['ADMIN', 'HR', 'MANAGER'] },
+  { path: '/accounts', label: 'Tài khoản & phân quyền', icon: ShieldCheck, roles: ['ADMIN', 'HR'] },
+  { path: '/approval-routes', label: 'Tuyến duyệt', icon: GitBranch, roles: ['ADMIN', 'HR'] },
+  { path: '/audit', label: 'Nhật ký hệ thống', icon: ScrollText, roles: ['ADMIN', 'HR'] },
+  { path: '/catalog', label: 'Danh mục', icon: BookOpen },
+  { path: '/notifications', label: 'Thông báo', icon: Bell },
 ];
 
 export function Sidebar({ isOpen, onClose }) {
   const { role, hasAnyGrant } = useAuth();
+  const { pathname } = useLocation();
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (item.grant) return hasAnyGrant;
+    if (item.grant) return hasAnyGrant || Boolean(item.roles?.includes(role));
     return !item.roles || item.roles.includes(role);
   });
 
@@ -100,7 +117,7 @@ export function Sidebar({ isOpen, onClose }) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                    isActive
+                    isActive && !(item.path === '/payroll' && pathname.startsWith('/payroll/settings'))
                       ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`

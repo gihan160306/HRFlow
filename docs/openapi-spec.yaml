@@ -3267,8 +3267,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Check-in (cơ bản; kèm QR động + ảnh ≤200KB khi điểm chấm công bật chế độ mở rộng)
-      description: '**Quyền / quy tắc:** Employee, Manager, HR tự chấm công của mình; Admin không chấm công. Người chấm lấy từ phiên. Khi bật chế độ QR/ảnh: QR sai/hết hạn → 422 QR_INVALID/QR_EXPIRED. Đã check-in → 409.'
+      summary: Check-in (bắt buộc QR động + ảnh minh chứng ≤200KB)
+      description: '**Quyền / quy tắc:** Employee, Manager, HR tự chấm công của mình; Admin không chấm công. Người chấm lấy từ phiên. Luồng: quét QR (POST /attendance/qr/verify) → chụp ảnh → check-in kèm qrPayload/shortCode + photoBase64. Thiếu/sai QR → 422 QR_INVALID; QR hết hạn → 422 QR_EXPIRED (cho phép thêm photo-grace-seconds, mặc định 60 giây, để chụp ảnh sau khi quét); thiếu ảnh → 422 PHOTO_REQUIRED. Đã check-in → 409.'
   /api/v1/attendance/check-out:
     post:
       tags:
@@ -3311,8 +3311,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Check-out (cơ bản; kèm QR động khi bật chế độ mở rộng)
+      summary: Check-out (kèm QR động; ảnh bắt buộc nếu điểm chấm công đặt photo_required)
       description: '**Quyền / quy tắc:** Chưa check-in → 409 NO_CHECK_IN.'
+  /api/v1/attendance/qr/verify:
+    post:
+      tags:
+      - Attendance
+      operationId: qr_verify_attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qrPayload:
+                  type: string
+                shortCode:
+                  type: string
+      responses:
+        '200':
+          description: QR hợp lệ – client mở camera chụp ảnh rồi gọi check-in. Chưa ghi dữ liệu chấm công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  pointId:
+                    type: integer
+                    format: int64
+                  pointName:
+                    type: string
+                  photoRequired:
+                    type: boolean
+                  photoMaxKb:
+                    type: integer
+                  qrExpiresAt:
+                    type: string
+                    format: date-time
+                  submitWithinSeconds:
+                    type: integer
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: QR_INVALID / QR_EXPIRED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Bước 1 của check-in – xác thực mã QR vừa quét
+      description: '**Quyền / quy tắc:** Employee, Manager, HR; Admin → 403. Chỉ xác thực QR (TTL 15 giây), không tạo bản ghi công; thành công thì chuyển sang bước chụp ảnh.'
   /api/v1/attendance/qr:
     get:
       tags:

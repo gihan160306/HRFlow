@@ -5,6 +5,7 @@ import RoleRoute from './RoleRoute';
 import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
+import CoverPage from '../features/home/CoverPage';
 import LoginPage from '../features/auth/LoginPage';
 import ChangePasswordPage from '../features/auth/ChangePasswordPage';
 import DashboardPage from '../features/dashboard/DashboardPage';
@@ -23,6 +24,16 @@ import PayrollListPage from '../features/payroll/PayrollListPage';
 import PayrollDetailPage from '../features/payroll/PayrollDetailPage';
 import PayslipPage from '../features/payslip/PayslipPage';
 
+import AccountsPage from '../features/admin/AccountsPage';
+import ApprovalRoutesPage from '../features/admin/ApprovalRoutesPage';
+import AuditLogPage from '../features/admin/AuditLogPage';
+import OvertimeActualPage from '../features/overtime/OvertimeActualPage';
+import IncomePage from '../features/income/IncomePage';
+import PayrollSettingsPage from '../features/payroll/PayrollSettingsPage';
+import ReportsPage from '../features/reports/ReportsPage';
+import NotificationsPage from '../features/notifications/NotificationsPage';
+import CatalogPage from '../features/catalog/CatalogPage';
+
 import { ROLES } from '../utils/constants';
 
 const { ADMIN, HR, MANAGER, EMPLOYEE } = ROLES;
@@ -33,13 +44,15 @@ const guard = (element, props) => <RoleRoute {...props}>{element}</RoleRoute>;
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Trang bìa công ty (công khai): đã đăng nhập thì tự vào dashboard */}
+      <Route path="/" element={<CoverPage />} />
+
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
 
@@ -64,7 +77,20 @@ export function AppRoutes() {
           <Route path="/overtime/registration" element={guard(<OvertimeRegistrationPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
           <Route path="/overtime/approval" element={guard(<OvertimeApprovalPage />, { allowedRoles: [HR, MANAGER], requireEmployee: true })} />
 
+          <Route path="/overtime/actual" element={guard(<OvertimeActualPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
+
+          {/* Quản trị: tài khoản, quyền payroll, tuyến duyệt, nhật ký */}
+          <Route path="/accounts" element={guard(<AccountsPage />, { allowedRoles: [ADMIN, HR] })} />
+          <Route path="/approval-routes" element={guard(<ApprovalRoutesPage />, { allowedRoles: [ADMIN, HR] })} />
+          <Route path="/audit" element={guard(<AuditLogPage />, { allowedRoles: [ADMIN, HR] })} />
+
+          <Route path="/income" element={guard(<IncomePage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />
+          <Route path="/reports" element={guard(<ReportsPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/catalog" element={<CatalogPage />} />
+
           {/* Payroll: theo grant VIEW/PREPARE/APPROVE/LOCK, không theo role */}
+          <Route path="/payroll/settings" element={guard(<PayrollSettingsPage />, { anyGrant: true, allowedRoles: [HR] })} />
           <Route path="/payroll" element={guard(<PayrollListPage />, { anyGrant: true })} />
           <Route path="/payroll/:id" element={guard(<PayrollDetailPage />, { anyGrant: true })} />
 

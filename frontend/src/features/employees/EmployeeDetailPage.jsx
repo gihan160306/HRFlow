@@ -11,6 +11,7 @@ import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Modal from '../../components/common/Modal';
 import InputField from '../../components/common/InputField';
+import EmployeeRecordsPanel from './EmployeeRecordsPanel';
 import { formatDate } from '../../utils/formatDate';
 import { EMPLOYEE_TYPES, WAGE_REGIONS, GENDERS, CONTRACT_TYPES } from '../../utils/constants';
 
@@ -220,6 +221,8 @@ export function EmployeeDetailPage({ self = false }) {
           )}
         </section>
       )}
+
+      {showHrTools && <EmployeeRecordsPanel employeeId={s.id} onChanged={() => s.status === 'ONBOARDING' && reloadCheck()} />}
 
       <Modal isOpen={selfOpen} title="Cập nhật thông tin liên hệ" onClose={() => setSelfOpen(false)}>
         <form onSubmit={saveSelf} className="space-y-4">

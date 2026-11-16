@@ -48,6 +48,7 @@ export function OvertimeSchedulePage() {
         </div>
         <div className="flex gap-3">
           <Link to="/overtime/registration"><Button variant="outline" icon={ClipboardList}>Đăng ký của tôi</Button></Link>
+          <Link to="/overtime/actual"><Button variant="outline">Giờ thực tế</Button></Link>
           {canPlan && <Link to="/overtime/approval"><Button variant="outline">Duyệt đăng ký</Button></Link>}
           {canPlan && <Button icon={Plus} onClick={() => setCreateOpen(true)}>Lập lịch OT</Button>}
         </div>

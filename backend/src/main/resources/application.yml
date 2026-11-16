@@ -28,7 +28,11 @@ hrflow:
   cors:
     allowed-origins: ${HRFLOW_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   attendance:
+    # Check-in bắt buộc: quét QR động -> chụp ảnh minh chứng -> gửi check-in.
+    require-qr: ${ATTENDANCE_REQUIRE_QR:true}
     qr-ttl-seconds: ${QR_TOKEN_TTL_SECONDS:15}
+    # Thời gian cho phép chụp ảnh sau khi quét QR thành công.
+    photo-grace-seconds: ${ATTENDANCE_PHOTO_GRACE_SECONDS:60}
     photo-max-kb: ${ATTENDANCE_PHOTO_MAX_KB:200}
 
 management:

@@ -37,7 +37,7 @@ export function LoginPage() {
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-slate-900 text-center mb-6">Đăng nhập vào hệ thống</h3>
+      <h3 className="text-lg font-bold text-slate-900 text-center mb-5">Đăng nhập vào hệ thống</h3>
 
       {error && <ErrorMessage title="Không đăng nhập được" message={error} className="mb-4" />}
 

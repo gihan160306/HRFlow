@@ -357,9 +357,9 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 |---|---|
 | Mã | FR-07 (chấm công cơ bản; chế độ QR/ảnh của bản ≤ 3.1 giữ trong cùng mã) |
 | Tác nhân | Employee, Manager, HR tự chấm công của mình; Manager xác minh team; HR cấu hình/cấp QR (khi bật chế độ mở rộng), kiểm tra/chốt. Admin không chấm công và không cấp QR |
-| Ưu tiên | MVP: chấm công cơ bản (check-in/check-out trên web). Mở rộng: QR động + ảnh minh chứng (`company_profile.md` Mục 14.2) |
+| Ưu tiên | MVP: check-in bằng **quét QR động → chụp ảnh minh chứng → hệ thống cập nhật dữ liệu chấm công**; check-out theo cấu hình điểm chấm công (quyết định của nhóm ngày 17/11/2026) |
 
-**Mô tả:** MVP cung cấp **chấm công cơ bản**: nhân viên check-in khi bắt đầu ca và check-out khi kết thúc ca trên ứng dụng; hệ thống lưu thời điểm server và tính thời lượng công theo lịch cá nhân. **QR động + ảnh minh chứng** là chế độ mở rộng, bật theo cấu hình điểm chấm công; khi bật, việc check-in/out phải kèm QR hợp lệ (và ảnh nếu cấu hình).
+**Mô tả:** MVP cung cấp **chấm công cơ bản**: nhân viên check-in khi bắt đầu ca và check-out khi kết thúc ca trên ứng dụng; hệ thống lưu thời điểm server và tính thời lượng công theo lịch cá nhân. **Luồng check-in chính thức (chốt 17/11/2026):** nhân viên bấm Check-in → ứng dụng quét QR động → nếu quét thành công (`POST /attendance/qr/verify`, chưa ghi công) thì chuyển sang camera chụp ảnh minh chứng → gửi `POST /attendance/check-in` kèm QR và ảnh → hệ thống ghi nhận và cập nhật dữ liệu chấm công. Check-in không có QR hợp lệ hoặc thiếu ảnh bị từ chối (422 `QR_INVALID`/`QR_EXPIRED`/`PHOTO_REQUIRED`). Sau khi quét thành công, nhân viên có thêm một khoảng ngắn (mặc định 60 giây, cấu hình `photo-grace-seconds`) để chụp và gửi ảnh. Check-out kèm QR; ảnh bắt buộc nếu điểm chấm công đặt `photo_required`.
 
 **Luồng chính (MVP – chấm công cơ bản):**
 1. Nhân viên mở chức năng chấm công → bấm check-in khi bắt đầu ca.
@@ -375,7 +375,7 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 4. QR hợp lệ → (nếu bật) yêu cầu chụp ảnh minh chứng; hệ thống lưu ảnh theo giới hạn dung lượng và quyền truy cập.
 5. Hệ thống lưu thêm kết quả xác thực QR và tham chiếu ảnh.
 
-**Quy tắc QR và ảnh (chỉ áp dụng khi bật chế độ mở rộng):**
+**Quy tắc QR và ảnh (áp dụng cho check-in/check-out):**
 - QR động có nonce và thời hạn ngắn (mặc định 10–15 giây, cấu hình); **không dùng mã tĩnh dài hạn**.
 - QR hết hạn/không hợp lệ → không tạo bản ghi chấm công, giao diện báo lỗi rõ ràng, không tiếp tục chụp ảnh.
 - Ảnh minh chứng: giới hạn dung lượng cấu hình (mục tiêu ≤ 200 KB), chỉ lưu dữ liệu cần thiết, kiểm soát người xem theo quyền; thuộc dữ liệu nhạy cảm (NFR-01).
@@ -1098,7 +1098,7 @@ Các BR là ràng buộc bắt buộc cho thiết kế và code. Công thức, h
 | BR-07 | Đầu vào có căn cứ | Công, PTO, OT, phụ cấp, thưởng, Sales, BH, thuế, khấu trừ có nguồn/trạng thái xác nhận |
 | BR-08 | Thiếu dữ liệu | Không thay bằng 0, lương mẫu hoặc tham số mới nhất; báo lỗi, `Needs Review` |
 | BR-09 | Lịch làm việc | Lịch cá nhân hiệu lực; không mặc định 22/26 công; phút chính xác; `H_std` toàn tháng |
-| BR-10 | Chấm công | MVP: check-in/check-out cơ bản (FR-07); QR động + ảnh minh chứng là mở rộng; trễ/sớm ghi từ phút đầu; không dung sai tự động; không phạt tiền; thiếu công (hoặc QR/ảnh không hợp lệ khi bật) = `Needs Review` |
+| BR-10 | Chấm công | MVP: check-in bằng QR động + ảnh minh chứng, check-out kèm QR (FR-07); trễ/sớm ghi từ phút đầu; không dung sai tự động; không phạt tiền; thiếu công (hoặc QR/ảnh không hợp lệ khi bật) = `Needs Review` |
 | BR-11 | PTO một cấp | Tuyến chính/dự phòng theo Company Profile; không tự duyệt; không tự chuyển người nếu thiếu dự phòng hợp lệ |
 | BR-12 | OT theo lịch và thực tế | Đăng ký trên lịch công bố; trả theo giờ thực tế xác nhận; giờ vượt/OT ngoài lịch phải xác minh, không tự xóa cũng không tự trả |
 | BR-13 | OT chồng lặp | Không trả trùng một phút; chia đoạn theo loại ngày, giờ đêm, thay đổi lương/lịch |
@@ -1381,7 +1381,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 - [ ] Mỗi FR có AC; ma trận truy vết đủ UR, PM; không mã FR trùng hoặc dùng lại mã retire.
 - [x] DEC-01 đến DEC-08 đã được chốt trong baseline SRS 3.1; DEC-09 (gộp chấm công + đánh lại mã FR liền mạch) đã chốt ở bản 3.2; DEC-02 và DEC-09 được sửa ở bản 3.3 để khớp baseline nghiệp vụ.
 - [x] Phạm vi MVP và bộ P/B/PM bắt buộc được xác định tại Mục 8.1; các ca ngoài MVP không chặn nghiệm thu MVP.
-- [x] Chấm công cơ bản là MVP (FR-07); QR động + ảnh minh chứng là mở rộng; hệ mã FR liền mạch FR-01…FR-33.
+- [x] Chấm công FR-07 thuộc MVP với luồng quét QR động → chụp ảnh minh chứng → check-in (chốt 17/11/2026); hệ mã FR liền mạch FR-01…FR-33.
 
 ## 12.2. Ca kiểm thử phân quyền bắt buộc (từ permission_matrix.md)
 
