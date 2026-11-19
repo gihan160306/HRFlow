@@ -1,0 +1,92 @@
+@startuml fig4_8_class_attendance_leave_ot
+!include _style.puml
+hide empty methods
+class Employee
+class AttendancePoint {
+  +code: String
+  +name: String
+  +photoRequired: boolean
+  +active: boolean
+}
+class QrToken {
+  +nonce: String
+  +shortCode: String
+  +issuedAt: Instant
+  +expiresAt: Instant
+  +isExpired(): boolean
+}
+class AttendanceRecord {
+  +workDate: LocalDate
+  +checkInAt: Instant
+  +checkOutAt: Instant
+  +workedMinutes: int
+  +lateMinutes: int
+  +earlyMinutes: int
+  +status: VALID | NEEDS_REVIEW
+}
+class AttendancePhoto {
+  +mime: String
+  +size: int
+}
+class AttendanceCalc <<pure>> {
+  +calculate(schedule, in, out): Result
+}
+class LeaveType {
+  +name: String
+  +deductsBalance: boolean
+}
+class LeaveRequest {
+  +startDate: LocalDate
+  +endDate: LocalDate
+  +durationDays: BigDecimal
+  +reason: String
+  +status: DRAFT | PENDING | APPROVED\n| REJECTED | CANCELLED
+  +submit()
+  +approve()
+  +reject(reason)
+  +cancel()
+}
+class LeaveRequestDay {
+  +leaveDate: LocalDate
+  +minutes: int
+}
+class LeaveBalance {
+  +balanceYear: int
+  +openingDays: BigDecimal
+  +accruedDays: BigDecimal
+  +usedDays: BigDecimal
+  +remaining(): BigDecimal
+}
+class OtSchedule {
+  +workDate: LocalDate
+  +startTime: LocalTime
+  +endTime: LocalTime
+  +status: DRAFT | PUBLISHED | CLOSED | CANCELLED
+}
+class OtRegistration {
+  +consent: boolean
+  +registeredMinutes: int
+  +approvedMinutes: int
+  +status: String
+  +actualMinutes: int
+  +actualStatus: String
+}
+class Approvals <<common>> {
+  +routeOf(requesterId, date): Route
+  +canApprove(requester, primary, backup): boolean
+}
+Employee "1" -- "*" AttendanceRecord
+AttendancePoint "1" -- "*" AttendanceRecord
+AttendancePoint "1" *-- "*" QrToken
+AttendanceRecord "1" o-- "0..2" AttendancePhoto
+AttendanceCalc ..> AttendanceRecord : tính phút công
+Employee "1" -- "*" LeaveRequest
+LeaveType "1" -- "*" LeaveRequest
+LeaveRequest "1" *-- "*" LeaveRequestDay
+Employee "1" -- "*" LeaveBalance
+LeaveRequest ..> LeaveBalance : trừ khi duyệt,\nhoàn khi hủy
+OtSchedule "1" *-- "*" OtRegistration
+Employee "1" -- "*" OtRegistration
+LeaveRequest ..> Approvals
+OtRegistration ..> Approvals
+@enduml

@@ -1,0 +1,23 @@
+@startuml fig4_1_system_architecture
+!include _style.puml
+top to bottom direction
+rectangle "Trình duyệt – React 18 SPA\nroute bảo vệ theo role/grant" as SPA
+rectangle "Nginx\nphục vụ bản build, chuyển tiếp /api" as NG
+rectangle "Tầng nghiệp vụ – Spring Boot (/api/v1)" as BE {
+  component "JwtAuthenticationFilter + SecurityConfig" as F
+  component "Controller\n(auth, hr, attendance, leave, overtime, income, payroll)" as C
+  component "Service\n(Auth, Attendance, Leave, Overtime, Payroll, Payslip)" as S
+  component "PayrollEngine / AttendanceCalc\n(thuần tính toán, BigDecimal)" as ENG
+  component "Common: PeriodGuard, Approvals,\nAudit, Notification" as CM
+  component "Job nền @Scheduled (30 giây)\nsinh phiếu lương PDF" as JOB
+}
+database "PostgreSQL 16\n52 bảng + trigger (Flyway V1–V21)" as DB
+SPA --> NG : HTTP
+NG --> F : /api
+F --> C
+C --> S
+S --> ENG
+S --> CM
+S --> DB : JdbcTemplate
+JOB --> S
+@enduml

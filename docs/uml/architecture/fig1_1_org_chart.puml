@@ -1,0 +1,24 @@
+@startuml fig1_1_org_chart
+!include _style.puml
+hide stereotype
+skinparam rectangleBackgroundColor<<mgr>> #FFF3E0
+skinparam rectangleBorderColor<<mgr>> #EF6C00
+rectangle "<b>Giám đốc</b>" as GD <<mgr>>
+rectangle "<b>Operations</b>\n<b>Manager</b>" as OPS <<mgr>>
+rectangle "<b>Finance</b>\n<b>Manager</b>" as FIN <<mgr>>
+rectangle "<b>HR</b>\n7 người\n1 Lead + 6 NV" as HR
+rectangle "<b>Sales</b>\n18 người\n1 Manager + 17 NV" as SL
+rectangle "<b>Content</b>\n22 người\n1 Lead + 21 NV" as CT
+rectangle "<b>Design &</b>\n<b>Video</b>\n16 người\n1 Lead + 15 NV" as DV
+rectangle "<b>Digital</b>\n<b>Marketing</b>\n20 người\n1 Lead + 19 NV" as DM
+rectangle "<b>Account</b>\n14 người\n1 Lead + 13 NV" as AC
+GD -down-> OPS
+GD -down-> FIN
+GD -down-> HR
+GD -down-> SL
+OPS -down-> CT
+OPS -down-> DV
+OPS -down-> DM
+OPS -down-> AC
+FIN -[hidden]right-> HR
+@enduml

@@ -1,0 +1,39 @@
+@startuml fig4_13_seq_close_calculate
+!include _style.puml
+skinparam maxMessageSize 140
+skinparam ParticipantPadding 8
+skinparam responseMessageBelowArrow true
+autonumber
+actor "HR\n(grant PREPARE)" as HR
+participant PayrollController as C
+participant PayrollService as S
+participant SnapshotBuilder as SB
+participant PayrollEngine as PE
+database PostgreSQL as DB
+HR -> C : POST /payroll/periods/{id}/close-timesheet
+C -> S : closeTimesheet(id)
+S -> S : precheck (thiếu hồ sơ thuế, công chưa xác nhận...)
+loop từng nhân viên trong kỳ
+  S -> SB : build(employeeId, periodId, ...)
+  SB -> DB : đọc công, phép, OT, thu nhập, lương, phụ cấp, hồ sơ thuế/BH
+  SB --> S : Input
+  S -> DB : INSERT timesheet_snapshot (bất biến, vN)
+end
+S --> HR : đã chốt công
+HR -> C : POST /payroll/periods/{id}/calculate
+C -> S : calculate(id)
+note right of S : Client chỉ gửi lệnh "Tính",\nkhông gửi số liệu lương
+S -> DB : BEGIN – đọc snapshot + tham số hiệu lực
+loop từng nhân viên
+  S -> PE : calculate(Input, Params)
+  PE --> S : Gross, bảo hiểm, thuế TNCN, Net, Payable
+  S -> DB : INSERT payroll_line + payroll_line_item
+end
+alt lỗi giữa chừng
+  S -> DB : ROLLBACK (kỳ giữ DRAFT)
+else thành công
+  S -> DB : status = CALCULATED, ghi payroll_audit
+  S -> DB : COMMIT
+end
+S --> HR : kết quả bảng lương
+@enduml

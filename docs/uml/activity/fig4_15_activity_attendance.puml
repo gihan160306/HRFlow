@@ -1,0 +1,42 @@
+@startuml fig4_15_activity_attendance
+!include _style.puml
+|Nhân viên|
+start
+:Bấm Check-in;
+:Quét mã QR động tại điểm chấm công;
+|Hệ thống|
+:Xác thực QR (nonce, hạn 15 giây, điểm hợp lệ);
+if (QR hợp lệ?) then (không)
+  :Từ chối QR_EXPIRED / QR_INVALID\n(không tạo bản ghi);
+  |Nhân viên|
+  :Quét lại QR mới;
+  stop
+else (có)
+endif
+|Nhân viên|
+:Mở camera, chụp ảnh minh chứng;
+:Gửi check-in (QR + ảnh);
+|Hệ thống|
+if (Điểm yêu cầu ảnh\nvà thiếu ảnh?) then (có)
+  :Từ chối PHOTO_REQUIRED;
+  stop
+else (không)
+endif
+if (Ảnh ≤ 200 KB và nonce chưa dùng?) then (không)
+  :Từ chối, không ghi công;
+  stop
+else (có)
+endif
+:Lấy nhân viên từ token;\nghi thời điểm server;
+:Tính phút làm việc, trễ/sớm\ntheo lịch cá nhân (AttendanceCalc);
+if (Thiếu check-out,\nlàm ngoài lịch,\ncheck-in trùng?) then (có)
+  :Đánh dấu NEEDS_REVIEW;
+  |Manager / HR|
+  :Xác minh hoặc điều chỉnh công\n(có ghi nhật ký);
+else (không)
+  :Trạng thái VALID;
+endif
+|Hệ thống|
+:Lưu bản ghi công;
+stop
+@enduml

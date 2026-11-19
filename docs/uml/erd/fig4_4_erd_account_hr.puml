@@ -1,0 +1,105 @@
+@startuml fig4_4_erd_account_hr
+!include _style.puml
+hide circle
+skinparam linetype ortho
+skinparam entityBackgroundColor #F5FAFF
+skinparam entityBorderColor #1565C0
+skinparam defaultFontSize 15
+entity user_account {
+  * id : bigint <<PK>>
+  --
+  employee_id : bigint <<FK>>
+  --
+  email : varchar(255)
+  role : varchar(30)
+  status : varchar(30)
+  token_version : integer
+}
+entity payroll_grant {
+  * id : bigint <<PK>>
+  --
+  * account_id : bigint <<FK>>
+  period_id : bigint <<FK>>
+}
+entity employee {
+  * id : bigint <<PK>>
+  --
+  * department_id : bigint <<FK>>
+  * job_title_id : bigint <<FK>>
+  manager_id : bigint <<FK>>
+  --
+  code : varchar(20)
+  full_name : varchar(150)
+  employee_type : varchar(30)
+  status : varchar(30)
+  hire_date : date
+}
+entity department {
+  * id : bigint <<PK>>
+  --
+  --
+  code : varchar(20)
+  name : varchar(100)
+}
+entity job_title {
+  * id : bigint <<PK>>
+  --
+  department_id : bigint <<FK>>
+  --
+  code : varchar(30)
+  name : varchar(100)
+}
+entity contract {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  previous_contract_id : bigint <<FK>>
+  --
+  contract_no : varchar(50)
+  contract_type : varchar(30)
+  start_date : date
+  end_date : date
+  status : varchar(30)
+}
+entity salary_record {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  contract_id : bigint <<FK>>
+  --
+  base_salary : numeric(15,0)
+  effective_from : date
+  effective_to : date
+}
+entity tax_profile {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  --
+  effective_from : date
+  residency : varchar(30)
+  method : varchar(30)
+  status : varchar(30)
+}
+entity insurance_profile {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  --
+  effective_from : date
+  insurance_salary : numeric(15,0)
+  status : varchar(30)
+}
+employee ||--o{ user_account : employee_id
+user_account ||--o{ payroll_grant : account_id
+department ||--o{ employee : department_id
+job_title ||--o{ employee : job_title_id
+employee ||--o{ employee : manager_id
+department ||--o{ job_title : department_id
+employee ||--o{ contract : employee_id
+contract ||--o{ contract : previous_contract_id
+employee ||--o{ salary_record : employee_id
+contract ||--o{ salary_record : contract_id
+employee ||--o{ tax_profile : employee_id
+employee ||--o{ insurance_profile : employee_id
+@enduml

@@ -1,0 +1,17 @@
+@startuml fig4_20_navigation
+!include _style.puml
+top to bottom direction
+skinparam ranksep 25
+skinparam nodesep 12
+rectangle "/login – Đăng nhập\n(đổi mật khẩu lần đầu: /change-password)" as L
+rectangle "/dashboard – Dashboard, /notifications" as D
+rectangle "**Employee**\n\n/attendance\nChấm công QR + ảnh\n\n/leave\nTạo đơn nghỉ, quỹ phép\n\n/overtime/registration\nĐăng ký OT\n\n/payslip\nPhiếu lương của mình\n\n/profile\nHồ sơ cá nhân" as E
+rectangle "**Manager**\n\n/leave/approval\nDuyệt nghỉ phép\n\n/overtime/approval\nDuyệt OT\n\n/attendance\nXác minh công team\n\n/employees, /contracts\nTeam trực tiếp\n\n/payroll\nDuyệt, khóa kỳ\n(grant APPROVE/LOCK)" as M
+rectangle "**HR**\n\n/employees, /departments\n/contracts\n\n/overtime, /income\nLịch OT, thu nhập,\ndoanh thu Sales\n\n/payroll, /payroll/:id\nKỳ lương\n(grant VIEW/PREPARE)\n\n/payroll/settings\nTham số lương\n\n/reports\nBáo cáo" as H
+rectangle "**Admin**\n\n/accounts\nTài khoản, grant\n\n/approval-routes\nTuyến duyệt\n\n/audit\nNhật ký audit" as A
+L --> D
+D --> E
+D --> M
+D --> H
+D --> A
+@enduml

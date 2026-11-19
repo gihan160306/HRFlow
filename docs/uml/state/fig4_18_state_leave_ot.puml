@@ -1,0 +1,28 @@
+@startuml fig4_18_state_leave_ot
+!include _style.puml
+hide empty description
+state "Đơn nghỉ phép" as L {
+  [*] --> Draft
+  Draft --> Pending : gửi đơn\n[đủ số dư, không trùng]
+  Draft --> Cancelled : hủy
+  Pending --> Approved : người duyệt đồng ý\n[trừ quỹ phép]
+  Pending --> Rejected : từ chối [bắt buộc lý do]
+  Pending --> Cancelled : nhân viên hủy
+  Approved --> Cancelled : hủy theo tuyến riêng\n[hoàn quỹ phép]
+}
+state "Đăng ký OT" as O {
+  state "PENDING" as OtPending
+  state "APPROVED\n(actual_status = NOT_RECORDED)" as OtApproved
+  state "REJECTED" as OtRejected
+  state "CANCELLED" as OtCancelled
+  state "Thực tế CONFIRMED" as ActualConfirmed
+  state "Thực tế NOT_PERFORMED" as NotPerformed
+  [*] --> OtPending : nhân viên đăng ký\n[đồng ý, không trùng lịch]
+  OtPending --> OtApproved : người duyệt đồng ý\n[số phút được duyệt]
+  OtPending --> OtRejected : từ chối [bắt buộc lý do]
+  OtPending --> OtCancelled : hủy
+  OtApproved --> OtCancelled : hủy trước giờ OT
+  OtApproved --> ActualConfirmed : xác nhận giờ thực tế
+  OtApproved --> NotPerformed : không thực hiện
+}
+@enduml

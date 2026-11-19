@@ -1,0 +1,28 @@
+@startuml fig2_1_client_server_jwt
+!include _style.puml
+actor "Người dùng" as U
+node "Trình duyệt" as B {
+  component "React SPA\n(React Router, httpClient)" as SPA
+}
+node "Nginx (cổng 80)" as N {
+  component "Phục vụ file build Vite\n+ proxy /api" as NG
+}
+node "Spring Boot (cổng 8080)" as S {
+  component "JwtAuthenticationFilter" as F
+  component "Controller → Service" as C
+}
+database "PostgreSQL 16" as DB
+U --> SPA : thao tác
+SPA --> NG : (1) POST /api/v1/auth/login\n(email, mật khẩu)
+NG --> F : chuyển tiếp /api
+F --> C
+C --> DB : JdbcTemplate (SQL)
+C ..> SPA : (2) access token JWT (≤ 60 phút)
+SPA --> NG : (3) mọi request kèm\nAuthorization: Bearer <JWT>
+F --> DB : (4) kiểm tra token_version,\ntrạng thái tài khoản
+note right of F
+  Bộ lọc kiểm tra chữ ký, hạn dùng và
+  token_version trước khi vào Controller.
+  Sai/hết hạn → 401.
+end note
+@enduml

@@ -1,0 +1,37 @@
+@startuml fig4_16_activity_monthly_payroll
+!include _style.puml
+|HR|
+start
+:Kết thúc kỳ công;
+:Xử lý PTO/OT tồn đọng,\nxác minh công NEEDS_REVIEW;
+:Nhập thưởng, khấu trừ,\ndoanh thu Sales đã xác nhận;
+:Tạo kỳ lương, precheck;
+if (Còn lỗi\nblocker?) then (có)
+  :Sửa dữ liệu nguồn;
+  detach
+else (không)
+endif
+:Chốt công\n(snapshot bất biến);
+:Bấm Tính lương;
+|Hệ thống|
+:Tính từng nhân viên trong\nmột giao dịch (PayrollEngine);
+:Thiếu hồ sơ thuế/BH → NEEDS_REVIEW\nKỳ → CALCULATED;
+|HR|
+:Rà soát bảng lương;
+if (Cần sửa\nnguồn?) then (có)
+  :Mở chốt có lý do\n(về DRAFT);
+  detach
+else (không)
+endif
+|Finance|
+:Đối soát tài chính;
+|Giám đốc|
+:Phê duyệt (APPROVE)\nKỳ → APPROVED;
+|Finance|
+:Khóa kỳ (LOCK)\nKỳ → LOCKED;
+|Hệ thống|
+:Job nền sinh phiếu lương PDF;
+|Finance|
+:Ghi nhận chi trả (PAID);
+stop
+@enduml

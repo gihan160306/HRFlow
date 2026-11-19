@@ -1,0 +1,21 @@
+@startuml fig4_17_state_payroll_period
+!include _style.puml
+hide empty description
+[*] --> DRAFT : HR (PREPARE) tạo kỳ
+DRAFT --> CALCULATED : HR (PREPARE) tính lương\n[đã chốt công, không lỗi blocker]
+CALCULATED --> DRAFT : HR mở chốt\n[có lý do, ghi audit]
+CALCULATED --> APPROVED : Giám đốc (APPROVE)\n[đã đối soát; người duyệt ≠ người tính;\nđã xử lý xung đột lợi ích nếu có]
+APPROVED --> LOCKED : Finance Manager (LOCK)
+LOCKED --> [*]
+DRAFT : Chốt công, nhập nguồn
+DRAFT : Lỗi khi tính → rollback, giữ DRAFT
+CALCULATED : Rà soát, đối soát
+APPROVED : Bất biến, không tính lại
+LOCKED : Chỉ đọc, sinh phiếu lương PDF
+LOCKED : Sai sót → adjustment ở kỳ mở kế tiếp
+state PaymentStatus {
+  [*] --> UNPAID
+  UNPAID --> PAID : Finance ghi nhận chi trả\n[kỳ đã LOCKED]
+}
+note bottom of PaymentStatus : Trạng thái chi trả tách riêng,\nkhông mở quyền sửa lương
+@enduml

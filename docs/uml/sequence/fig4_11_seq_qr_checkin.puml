@@ -1,0 +1,43 @@
+@startuml fig4_11_seq_qr_checkin
+!include _style.puml
+skinparam maxMessageSize 140
+skinparam ParticipantPadding 8
+skinparam responseMessageBelowArrow true
+autonumber
+actor "HR" as HR
+actor "Employee" as E
+participant "CheckInPanel\n(React)" as UI
+participant AttendanceController as C
+participant AttendanceService as S
+participant AttendanceCalc as CALC
+database PostgreSQL as DB
+== HR cấp QR động cho điểm chấm công ==
+HR -> C : POST /attendance/points/{id}/qr
+C -> S : issueQr(pointId)
+S -> DB : INSERT qr_token (nonce, short_code, expires_at = now + 15s)
+S --> HR : QR hiển thị tại điểm chấm công
+== Bước 1: quét và xác thực QR (chưa ghi công) ==
+E -> UI : bấm Check-in, quét QR
+UI -> C : POST /attendance/qr/verify {qrPayload}
+C -> S : scanQr(scan)
+S -> DB : tìm qr_token theo nonce / mã ngắn
+alt QR hết hạn hoặc không hợp lệ
+  S --> UI : 422 QR_EXPIRED / QR_INVALID
+else QR hợp lệ
+  S --> UI : 200 điểm chấm công hợp lệ
+end
+== Bước 2: chụp ảnh và ghi công ==
+E -> UI : chụp ảnh minh chứng
+UI -> C : POST /attendance/check-in {QR, ảnh ≤ 200 KB}
+C -> S : checkIn(scan)
+S -> S : employeeId lấy từ token (không tin client)
+alt thiếu ảnh khi điểm yêu cầu ảnh
+  S --> UI : 422 PHOTO_REQUIRED
+else hợp lệ
+  S -> DB : kiểm tra nonce chưa dùng, lưu attendance_photo
+  S -> CALC : tính phút làm việc, trễ/sớm theo lịch cá nhân
+  CALC --> S : kết quả
+  S -> DB : INSERT attendance_record (thời điểm server,\nstatus VALID hoặc NEEDS_REVIEW)
+  S --> UI : 200 bản ghi công
+end
+@enduml

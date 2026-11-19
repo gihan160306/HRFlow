@@ -1,0 +1,41 @@
+@startuml fig4_2_backend_layers
+!include _style.puml
+left to right direction
+package "security" {
+  component JwtAuthenticationFilter
+  component JwtService
+  component PayrollAccess
+}
+package "Controller (REST /api/v1)" {
+  component "AuthController\nAttendanceController\nLeaveController\nOvertimeController\nPayrollController" as CTRL
+}
+package "Service (nghiệp vụ, giao dịch)" {
+  component "AuthService\nAttendanceService\nLeaveService\nOvertimeService\nPayrollService\nPayslipService" as SVC
+}
+package "Tính toán thuần (không truy cập CSDL)" {
+  component AttendanceCalc
+  component SnapshotBuilder
+  component PayrollEngine
+}
+package "common" {
+  component PeriodGuard
+  component Approvals
+  component AuditService
+  component NotificationService
+  component GlobalExceptionHandler
+}
+database "PostgreSQL" as DB
+JwtAuthenticationFilter ..> JwtService
+JwtAuthenticationFilter --> CTRL
+CTRL ..> PayrollAccess : kiểm tra grant
+CTRL --> SVC
+SVC --> AttendanceCalc
+SVC --> SnapshotBuilder
+SVC --> PayrollEngine
+SVC --> PeriodGuard
+SVC --> Approvals
+SVC --> AuditService
+SVC --> NotificationService
+SVC --> DB : JdbcTemplate
+GlobalExceptionHandler ..> CTRL : lỗi → 401/403/404/409/422
+@enduml

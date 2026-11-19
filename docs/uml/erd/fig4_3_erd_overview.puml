@@ -1,0 +1,115 @@
+@startuml fig4_3_erd_overview
+!include _style.puml
+hide circle
+hide empty members
+skinparam entityBackgroundColor #FFFFFF
+left to right direction
+skinparam nodesep 12
+skinparam ranksep 40
+skinparam entityBorderColor #1565C0
+package "Nhóm A – Tài khoản, phân quyền & tuyến duyệt (6)" #E3F2FD {
+  entity user_account
+  entity password_history
+  entity account_request
+  entity payroll_grant
+  entity approval_route
+  entity approver_unavailability
+}
+package "Nhóm B – Tổ chức & hồ sơ nhân sự (11)" #E8F5E9 {
+  entity department
+  entity job_title
+  entity employee
+  entity employee_assignment
+  entity contract
+  entity salary_record
+  entity allowance_type
+  entity employee_allowance
+  entity tax_profile
+  entity dependent
+  entity insurance_profile
+}
+package "Nhóm C – Lịch làm việc & chấm công (9)" #FFF3E0 {
+  entity work_schedule
+  entity work_schedule_day
+  entity employee_schedule
+  entity holiday
+  entity attendance_point
+  entity qr_token
+  entity attendance_record
+  entity attendance_photo
+  entity attendance_adjustment
+}
+package "Nhóm D – Nghỉ phép (5)" #F3E5F5 {
+  entity leave_type
+  entity leave_request
+  entity leave_request_day
+  entity leave_balance
+  entity leave_balance_txn
+}
+package "Nhóm E – Làm thêm giờ (4)" #FFFDE7 {
+  entity ot_schedule
+  entity ot_schedule_target
+  entity ot_registration
+  entity ot_unscheduled
+}
+package "Nhóm F – Thu nhập khác & doanh thu Sales (2)" #E0F7FA {
+  entity income_item
+  entity sales_revenue
+}
+package "Nhóm G – Tham số & kỳ lương (9)" #FCE4EC {
+  entity payroll_parameter
+  entity tax_bracket
+  entity payroll_period
+  entity timesheet_snapshot
+  entity payroll_line
+  entity payroll_line_item
+  entity payroll_adjustment
+  entity payslip
+  entity payroll_audit
+}
+package "Nhóm H – Thông báo, audit & tác vụ nền (6)" #ECEFF1 {
+  entity notification
+  entity notification_preference
+  entity approval_log
+  entity audit_log
+  entity background_job
+  entity job_run_log
+}
+user_account -[hidden]-> department
+department -[hidden]-> work_schedule
+work_schedule -[hidden]-> leave_type
+ot_schedule -[hidden]-> income_item
+income_item -[hidden]-> payroll_parameter
+payroll_parameter -[hidden]-> notification
+user_account -[hidden]down-> ot_schedule
+department -[hidden]down-> income_item
+work_schedule -[hidden]down-> payroll_parameter
+leave_type -[hidden]down-> notification
+payroll_period ||--o{ payroll_grant
+contract ||--o{ contract
+contract ||--o{ salary_record
+allowance_type ||--o{ employee_allowance
+work_schedule ||--o{ work_schedule_day
+work_schedule ||--o{ employee_schedule
+attendance_point ||--o{ qr_token
+attendance_point ||--o{ attendance_record
+attendance_point ||--o{ attendance_record
+attendance_photo ||--o{ attendance_record
+attendance_photo ||--o{ attendance_record
+attendance_record ||--o{ attendance_adjustment
+leave_type ||--o{ leave_request
+leave_request ||--o{ leave_request
+leave_request ||--o{ leave_request_day
+leave_balance ||--o{ leave_balance_txn
+leave_request ||--o{ leave_balance_txn
+ot_schedule ||--o{ ot_schedule_target
+ot_schedule ||--o{ ot_registration
+payroll_period ||--o{ timesheet_snapshot
+payroll_period ||--o{ payroll_line
+payroll_line ||--o{ payroll_line_item
+payroll_period ||--o{ payroll_adjustment
+payroll_period ||--o{ payroll_adjustment
+payroll_period ||--o{ payslip
+payroll_line ||--o{ payslip
+payroll_period ||--o{ payroll_audit
+@enduml

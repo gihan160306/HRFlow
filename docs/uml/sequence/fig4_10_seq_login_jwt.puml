@@ -1,0 +1,36 @@
+@startuml fig4_10_seq_login_jwt
+!include _style.puml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 6
+autonumber
+participant "LoginPage\n(React)" as UI
+participant AuthController as AC
+participant AuthService as AS
+participant JwtService as JS
+database PostgreSQL as DB
+UI -> AC : POST /auth/login\n(email, mật khẩu)
+AC -> AS : login(email, password)
+AS -> DB : SELECT user_account\nWHERE email
+alt sai mật khẩu / không tồn tại
+  AS -> DB : tăng failed_attempts\n(khóa tạm sau 5 lần)
+  AS --> UI : 401 Unauthorized
+else hợp lệ
+  AS -> AS : BCrypt.matches()
+  AS -> DB : reset failed_attempts,\nlast_login_at
+  AS -> JS : generate(userId, email,\ntokenVersion)
+  JS --> AS : JWT (hạn 60 phút)
+  AS --> UI : 200 {accessToken, user}
+end
+== Các request sau đó ==
+UI -> AC : GET /api/v1/...\nAuthorization: Bearer JWT
+note over AC, DB
+  JwtAuthenticationFilter chạy trước Controller:
+  kiểm tra chữ ký, hạn dùng (JwtService)
+  và so khớp token_version, trạng thái tài khoản (DB)
+end note
+alt token hết hạn / bị thu hồi
+  AC --> UI : 401
+else hợp lệ
+  AC --> UI : 200 dữ liệu
+end
+@enduml

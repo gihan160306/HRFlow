@@ -1,0 +1,37 @@
+@startuml fig4_12_seq_leave_approval
+!include _style.puml
+skinparam maxMessageSize 140
+skinparam ParticipantPadding 8
+skinparam responseMessageBelowArrow true
+autonumber
+actor Employee as E
+actor "Manager\n(người duyệt)" as M
+participant LeaveController as C
+participant LeaveService as S
+participant Approvals as A
+participant NotificationService as N
+database PostgreSQL as DB
+E -> C : POST /leave-requests (loại nghỉ, thời gian, lý do)
+C -> S : create(body, submit=true)
+S -> DB : kiểm tra số dư, trùng đơn, lịch làm việc
+S -> S : phân rã đơn theo từng ngày làm việc
+S -> DB : INSERT leave_request + leave_request_day
+S -> A : routeOf(requesterId, date)
+A --> S : người duyệt chính / dự phòng
+S -> DB : status = PENDING, ghi approval_log
+S -> N : thông báo cho người duyệt
+M -> C : GET /leave-requests/inbox
+C -> S : inbox()
+S --> M : danh sách đơn chờ duyệt
+M -> C : POST /leave-requests/{id}/approve (hoặc reject + lý do)
+C -> S : approve(id, reason)
+S -> A : canApprove(requester, primary, backup)
+alt tự duyệt hoặc không đúng tuyến
+  S --> M : 403 / bị từ chối
+else được phép
+  S -> DB : cập nhật status APPROVED / REJECTED
+  S -> DB : trừ quỹ phép (leave_balance_txn), ghi approval_log
+  S -> N : thông báo kết quả cho nhân viên
+  S --> M : 200
+end
+@enduml

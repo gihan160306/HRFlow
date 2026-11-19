@@ -1,0 +1,42 @@
+@startuml fig3_4_usecase_payroll_payslip
+!include _style.puml
+left to right direction
+skinparam ranksep 18
+skinparam nodesep 30
+actor "HR (PREPARE)" as HR
+actor "Finance Manager\n(đối soát, LOCK)" as FIN
+actor "Giám đốc\n(APPROVE)" as GD
+actor "Employee" as EMP
+rectangle "Chuẩn bị và tính lương" as G1 {
+  usecase "Tạo kỳ lương" as P1
+  usecase "Precheck dữ liệu" as P2
+  usecase "Chốt công\n(snapshot bất biến)" as P3
+  usecase "Tính lương" as P4
+  usecase "Rà soát / mở chốt\ncó lý do" as P5
+  usecase "Tạo adjustment ở\nkỳ mở kế tiếp" as P10
+}
+rectangle "Đối soát, khóa, chi trả" as G2 {
+  usecase "Đối soát tài chính" as P6
+  usecase "Khóa kỳ" as P8
+  usecase "Ghi nhận chi trả" as P9
+  usecase "Sinh phiếu lương PDF\n(job nền)" as S1
+}
+rectangle "Phê duyệt" as G3 {
+  usecase "Phê duyệt bảng lương" as P7
+}
+rectangle "Phiếu lương" as G4 {
+  usecase "Xem / tải phiếu lương\ncủa mình" as S2
+}
+HR --> G1
+FIN --> G2
+G3 <-- GD
+G4 <-- EMP
+P3 .> P2 : <<include>>
+P4 .> P3 : <<include>>
+P5 .> P4 : <<extend>>
+P8 .> S1 : <<include>>
+G1 -[hidden]right-> G3
+G1 -[hidden]right-> G4
+G2 -[hidden]right-> G3
+G2 -[hidden]right-> G4
+@enduml

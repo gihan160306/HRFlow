@@ -1,0 +1,17 @@
+@startuml fig4_19_state_contract
+!include _style.puml
+hide empty description
+[*] --> Draft : tạo hợp đồng
+Draft --> Active : ký, đến ngày hiệu lực
+Active --> ExpiringSoon : còn ≤ 30 ngày đến hạn
+ExpiringSoon --> Expired : quá ngày kết thúc
+ExpiringSoon --> Active : gia hạn / ký phụ lục
+Active --> Terminated : chấm dứt (offboarding)
+ExpiringSoon --> Terminated : chấm dứt
+Expired --> [*]
+Terminated --> [*]
+Draft : Chưa hiệu lực
+Active : Có lương hiệu lực (salary_record)
+ExpiringSoon : Cảnh báo cho HR (trạng thái dẫn xuất, CSDL vẫn lưu ACTIVE)
+Terminated : Ghi ngày và lý do chấm dứt
+@enduml

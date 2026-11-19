@@ -1,0 +1,42 @@
+@startuml fig3_3_usecase_ot_income
+!include _style.puml
+left to right direction
+skinparam ranksep 18
+skinparam nodesep 30
+actor "HR" as HR
+actor "Employee" as EMP
+actor "Manager /\nngười duyệt" as MGR
+actor "Sales Manager,\nFinance Manager" as FS
+rectangle "HR" as G1 {
+  usecase "Lập và công bố lịch OT" as O1
+  usecase "Nhập phụ cấp, thưởng,\nkhấu trừ" as I1
+  usecase "Nhập doanh thu Sales" as I2
+  usecase "Tính hoa hồng\nvà thưởng KPI" as I5
+}
+rectangle "Nhân viên" as G2 {
+  usecase "Đăng ký OT" as O2
+  usecase "Ghi nhận OT ngoài lịch" as O5
+}
+rectangle "Người duyệt" as G3 {
+  usecase "Duyệt đăng ký OT" as O3
+  usecase "Xác nhận giờ OT thực tế" as O4
+  usecase "Xác minh OT ngoài lịch" as O6
+}
+rectangle "Xác nhận doanh thu" as G4 {
+  usecase "Xác nhận người phụ trách\nvà điều kiện doanh thu" as I3
+  usecase "Xác nhận tiền thực nhận" as I4
+}
+HR --> G1
+G2 <-- EMP
+G3 <-- MGR
+FS --> G4
+I2 .> I3 : <<include>>
+I2 .> I4 : <<include>>
+I5 .> I2 : <<include>>
+O4 .> O3 : <<include>>
+O6 .> O5 : <<extend>>
+G1 -[hidden]right-> G3
+G1 -[hidden]right-> G2
+G4 -[hidden]right-> G3
+G4 -[hidden]right-> G2
+@enduml

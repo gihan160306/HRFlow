@@ -1,0 +1,108 @@
+@startuml fig4_6_erd_payroll
+!include _style.puml
+hide circle
+skinparam linetype ortho
+skinparam entityBackgroundColor #F5FAFF
+skinparam entityBorderColor #1565C0
+skinparam defaultFontSize 15
+entity employee {
+  * id : bigint <<PK>>
+  --
+  * department_id : bigint <<FK>>
+  * job_title_id : bigint <<FK>>
+  manager_id : bigint <<FK>>
+  --
+  code : varchar(20)
+  full_name : varchar(150)
+  employee_type : varchar(30)
+  status : varchar(30)
+  hire_date : date
+}
+entity payroll_period {
+  * id : bigint <<PK>>
+  --
+  --
+  period_year : integer
+  period_month : integer
+  status : varchar(30)
+  payment_status : varchar(30)
+  snapshot_version : integer
+  calc_version : integer
+}
+entity timesheet_snapshot {
+  * id : bigint <<PK>>
+  --
+  * period_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  --
+  snapshot_version : integer
+  data : jsonb
+}
+entity payroll_line {
+  * id : bigint <<PK>>
+  --
+  * period_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  --
+  status : varchar(30)
+  gross : numeric(15,0)
+  insurance_total : numeric(15,0)
+  pit : numeric(15,0)
+  net_entitlement : numeric(15,0)
+  payable : numeric(15,0)
+}
+entity payroll_line_item {
+  * id : bigint <<PK>>
+  --
+  * line_id : bigint <<FK>>
+  --
+  category : varchar(20)
+  name : varchar(200)
+  amount : numeric(15,0)
+}
+entity payroll_adjustment {
+  * id : bigint <<PK>>
+  --
+  * origin_period_id : bigint <<FK>>
+  applied_period_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  --
+  adj_type : varchar(30)
+  amount : numeric(15,0)
+  status : varchar(30)
+}
+entity payslip {
+  * id : bigint <<PK>>
+  --
+  * period_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  * line_id : bigint <<FK>>
+  --
+  file_name : varchar(200)
+  generated_at : timestamptz
+  published_at : timestamptz
+}
+entity payroll_audit {
+  * id : bigint <<PK>>
+  --
+  * period_id : bigint <<FK>>
+  --
+  action : varchar(50)
+  from_status : varchar(30)
+  to_status : varchar(30)
+  created_at : timestamptz
+}
+employee ||--o{ employee : manager_id
+payroll_period ||--o{ timesheet_snapshot : period_id
+employee ||--o{ timesheet_snapshot : employee_id
+payroll_period ||--o{ payroll_line : period_id
+employee ||--o{ payroll_line : employee_id
+payroll_line ||--o{ payroll_line_item : line_id
+payroll_period ||--o{ payroll_adjustment : origin_period_id
+payroll_period ||--o{ payroll_adjustment : applied_period_id
+employee ||--o{ payroll_adjustment : employee_id
+payroll_period ||--o{ payslip : period_id
+employee ||--o{ payslip : employee_id
+payroll_line ||--o{ payslip : line_id
+payroll_period ||--o{ payroll_audit : period_id
+@enduml

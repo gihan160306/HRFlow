@@ -1,0 +1,120 @@
+@startuml fig4_5_erd_attendance_leave_ot
+!include _style.puml
+hide circle
+skinparam linetype ortho
+skinparam entityBackgroundColor #F5FAFF
+skinparam entityBorderColor #1565C0
+skinparam defaultFontSize 15
+entity employee {
+  * id : bigint <<PK>>
+  --
+  * department_id : bigint <<FK>>
+  * job_title_id : bigint <<FK>>
+  manager_id : bigint <<FK>>
+  --
+  code : varchar(20)
+  full_name : varchar(150)
+  employee_type : varchar(30)
+  status : varchar(30)
+  hire_date : date
+}
+entity attendance_point {
+  * id : bigint <<PK>>
+  --
+  --
+  code : varchar(30)
+  name : varchar(150)
+  photo_required : boolean
+}
+entity qr_token {
+  * id : bigint <<PK>>
+  --
+  * point_id : bigint <<FK>>
+  --
+  nonce : varchar(64)
+  expires_at : timestamptz
+}
+entity attendance_record {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  check_in_point_id : bigint <<FK>>
+  check_out_point_id : bigint <<FK>>
+  check_in_photo_id : bigint <<FK>>
+  check_out_photo_id : bigint <<FK>>
+  --
+  work_date : date
+  check_in_at : timestamptz
+  check_out_at : timestamptz
+  worked_minutes : integer
+  status : varchar(30)
+}
+entity leave_request {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  * leave_type_id : bigint <<FK>>
+  parent_request_id : bigint <<FK>>
+  primary_approver_id : bigint <<FK>>
+  backup_approver_id : bigint <<FK>>
+  --
+  start_date : date
+  end_date : date
+  duration_days : numeric(8,4)
+  status : varchar(30)
+}
+entity leave_request_day {
+  * id : bigint <<PK>>
+  --
+  * leave_request_id : bigint <<FK>>
+  --
+  leave_date : date
+  minutes : integer
+}
+entity leave_balance {
+  * id : bigint <<PK>>
+  --
+  * employee_id : bigint <<FK>>
+  --
+  balance_year : integer
+  used_days : numeric(8,4)
+}
+entity ot_schedule {
+  * id : bigint <<PK>>
+  --
+  department_id : bigint <<FK>>
+  --
+  work_date : date
+  start_time : time
+  end_time : time
+  status : varchar(30)
+}
+entity ot_registration {
+  * id : bigint <<PK>>
+  --
+  * schedule_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  primary_approver_id : bigint <<FK>>
+  backup_approver_id : bigint <<FK>>
+  --
+  registered_minutes : integer
+  status : varchar(30)
+  approved_minutes : integer
+  actual_minutes : integer
+}
+employee ||--o{ employee : manager_id
+attendance_point ||--o{ qr_token : point_id
+employee ||--o{ attendance_record : employee_id
+attendance_point ||--o{ attendance_record : check_in_point_id
+attendance_point ||--o{ attendance_record : check_out_point_id
+employee ||--o{ leave_request : employee_id
+leave_request ||--o{ leave_request : parent_request_id
+employee ||--o{ leave_request : primary_approver_id
+employee ||--o{ leave_request : backup_approver_id
+leave_request ||--o{ leave_request_day : leave_request_id
+employee ||--o{ leave_balance : employee_id
+ot_schedule ||--o{ ot_registration : schedule_id
+employee ||--o{ ot_registration : employee_id
+employee ||--o{ ot_registration : primary_approver_id
+employee ||--o{ ot_registration : backup_approver_id
+@enduml

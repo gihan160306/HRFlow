@@ -1,0 +1,53 @@
+@startuml fig3_1_usecase_overview
+!include _style.puml
+top to bottom direction
+skinparam ranksep 12
+skinparam nodesep 25
+actor "Employee" as EMP
+actor "Manager" as MGR
+actor "HR" as HR
+actor "Admin" as ADM
+rectangle "Employee" as G1 {
+  usecase "Đăng nhập, đổi mật khẩu" as U1
+  usecase "Chấm công QR + ảnh" as U2
+  usecase "Gửi đơn nghỉ phép" as U3
+  usecase "Đăng ký OT" as U4
+  usecase "Xem phiếu lương\ncủa mình" as U5
+}
+rectangle "Manager" as G2 {
+  usecase "Duyệt nghỉ phép/OT" as U6
+  usecase "Xác minh công team" as U7
+  usecase "Phê duyệt bảng lương\n(grant APPROVE)" as U12
+  usecase "Khóa kỳ, ghi nhận\nchi trả (grant LOCK)" as U13
+}
+rectangle "HR" as G3 {
+  usecase "Quản lý hồ sơ,\nhợp đồng" as U8
+  usecase "Quản lý lịch làm việc,\nlịch lễ, lịch OT" as U9
+  usecase "Nhập thưởng, khấu trừ,\ndoanh thu Sales" as U10
+  usecase "Chốt công, tính lương\n(grant PREPARE)" as U11
+  usecase "Báo cáo, dashboard" as U16
+}
+rectangle "Admin" as G4 {
+  usecase "Quản lý tài khoản,\ngrant, tuyến duyệt" as U14
+  usecase "Xem nhật ký audit" as U15
+}
+EMP --> G1
+MGR --> G2
+HR --> G3
+ADM --> G4
+U1 -[hidden]down-> U2
+U2 -[hidden]down-> U3
+U3 -[hidden]down-> U4
+U4 -[hidden]down-> U5
+U6 -[hidden]down-> U7
+U7 -[hidden]down-> U12
+U12 -[hidden]down-> U13
+U8 -[hidden]down-> U9
+U9 -[hidden]down-> U10
+U10 -[hidden]down-> U11
+U11 -[hidden]down-> U16
+U14 -[hidden]down-> U15
+EMP -[hidden]right-> MGR
+MGR -[hidden]right-> HR
+HR -[hidden]right-> ADM
+@enduml

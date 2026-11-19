@@ -1,0 +1,74 @@
+@startuml fig4_9_class_payroll_payslip
+!include _style.puml
+hide empty methods
+left to right direction
+skinparam nodesep 15
+skinparam ranksep 30
+class PayrollPeriod {
+  +periodYear: int
+  +periodMonth: int
+  +status: DRAFT | CALCULATED\n| APPROVED | LOCKED
+  +paymentStatus: String
+}
+class TimesheetSnapshot {
+  +data: JSON
+}
+class PayrollLine {
+  +status: OK | NEEDS_REVIEW
+  +gross: BigDecimal
+  +pit: BigDecimal
+  +net: BigDecimal
+  +payable: BigDecimal
+}
+class PayrollLineItem {
+  +category: String
+  +name: String
+  +amount: BigDecimal
+}
+class PayrollAdjustment {
+  +adjType: String
+  +amount: BigDecimal
+}
+class Payslip {
+  +pdf: byte[]
+}
+class PayrollAudit <<append-only>> {
+  +action: String
+}
+class SnapshotBuilder <<service>> {
+  +build(employeeId, periodId, ...): Input
+}
+class PayrollEngine <<pure>> {
+  +{static} calculate(Input, Params): Result
+}
+class PayrollService <<service>> {
+  +closeTimesheet(id)
+  +calculate(id)
+  +reconcile(id, note)
+  +approve(id)
+  +lock(id)
+  +markPaid(id, ref, date)
+}
+class PayslipService <<service>> {
+  +runPendingJobs()  «@Scheduled 30s»
+  +pdf(id, download)
+}
+class PeriodGuard <<common>> {
+  +assertOpen(date)
+  +isFrozen(from, to): boolean
+}
+class SimplePdf
+PayrollPeriod "1" *-- "*" TimesheetSnapshot
+PayrollPeriod "1" *-- "*" PayrollLine
+PayrollLine "1" *-- "*" PayrollLineItem
+PayrollLine "1" -- "0..1" Payslip
+PayrollPeriod "1" *-- "*" PayrollAudit
+PayrollAdjustment "*" --> "1" PayrollPeriod : origin
+PayrollAdjustment "*" --> "0..1" PayrollPeriod : applied
+PayrollService ..> SnapshotBuilder
+PayrollService ..> PayrollEngine
+PayrollService ..> PeriodGuard
+PayrollService ..> PayrollAudit
+PayslipService ..> SimplePdf
+PayslipService ..> Payslip
+@enduml

@@ -1,0 +1,35 @@
+@startuml fig4_14_seq_approve_lock_payslip
+!include _style.puml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 6
+autonumber
+actor "Giám đốc\n(APPROVE)" as GD
+actor "Finance Manager\n(LOCK)" as FIN
+participant PayrollService as S
+database PostgreSQL as DB
+participant "background_job" as J
+participant PayslipService as PS
+FIN -> S : reconcile(id, note)
+S -> DB : reconciled_by, payroll_audit
+GD -> S : POST .../approve
+S -> S : kiểm tra grant APPROVE,\nngười duyệt ≠ người tính,\nxung đột lợi ích
+alt vi phạm
+  S --> GD : 403 / 409
+else hợp lệ
+  S -> DB : status = APPROVED
+end
+FIN -> S : POST .../lock
+S -> S : kiểm tra grant LOCK
+S -> DB : status = LOCKED
+S -> J : INSERT job\nsinh phiếu lương
+S --> FIN : 200
+loop @Scheduled mỗi 30 giây
+  PS -> J : lấy job đang chờ
+  PS -> DB : đọc payroll_line của kỳ
+  PS -> PS : dựng PDF (SimplePdf)
+  PS -> DB : INSERT payslip (bất biến)
+  PS -> J : DONE / thử lại khi lỗi
+end
+FIN -> S : markPaid(ref, ngày chi)
+note right : PAID tách riêng,\nkhông mở quyền sửa lương
+@enduml
