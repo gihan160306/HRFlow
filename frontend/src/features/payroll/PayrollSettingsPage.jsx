@@ -62,17 +62,16 @@ export function PayrollSettingsPage() {
   ];
 
   const paramColumns = [
-    { key: 'code', header: 'Tham số', render: (p) => (<><p className="font-semibold text-slate-900">{p.name}</p><p className="text-xs font-mono text-slate-500">{p.code}{p.region ? ` • ${lbl(REGIONS, p.region)}` : ''}</p></>) },
+    { key: 'code', header: 'Tham số', render: (p) => (<><p className="font-semibold text-slate-900">{p.name}</p>{p.region && <p className="text-xs text-slate-500">{lbl(REGIONS, p.region)}</p>}</>) },
     { key: 'category', header: 'Nhóm', render: (p) => (p.category === 'LEGAL' ? 'Pháp lý' : 'Công ty') },
     { key: 'value', header: 'Giá trị', render: (p) => <b className="text-slate-900">{Number(p.value).toLocaleString('vi-VN')} <span className="font-normal text-slate-500">{p.unit}</span></b> },
     { key: 'range', header: 'Hiệu lực', render: (p) => `${formatDate(p.effectiveFrom)} – ${p.effectiveTo ? formatDate(p.effectiveTo) : 'nay'}` },
     { key: 'version', header: 'Phiên bản', render: (p) => `v${p.version}` },
     { key: 'status', header: 'Trạng thái', render: (p) => (<><span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${p.status === 'VERIFIED_SIM' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{p.status === 'VERIFIED_SIM' ? 'Đã xác nhận' : 'Cần rà soát'}</span>{p.confirmedBy && <p className="text-xs text-slate-400 mt-1">{p.confirmedBy}</p>}</>) },
-    { key: 'sourceRef', header: 'Nguồn', render: (p) => p.sourceRef || '-' },
   ];
 
   const allowanceColumns = [
-    { key: 'name', header: 'Loại phụ cấp', render: (t) => (<><p className="font-semibold text-slate-900">{t.name}</p><p className="text-xs font-mono text-slate-500">{t.code}</p></>) },
+    { key: 'name', header: 'Loại phụ cấp', render: (t) => <p className="font-semibold text-slate-900">{t.name}</p> },
     { key: 'taxClass', header: 'Thuế TNCN', render: (t) => lbl(TAX_CLASSES, t.taxClass) },
     { key: 'insuranceIncluded', header: 'Tính vào lương đóng BH', render: (t) => (t.insuranceIncluded ? 'Có' : 'Không') },
     { key: 'includedInOtBase', header: 'Tính vào đơn giá OT', render: (t) => (t.includedInOtBase ? 'Có' : 'Không') },

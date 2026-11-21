@@ -181,8 +181,22 @@ public class PayslipService {
         return s;
     }
 
+    /** Chi tiết phiếu: tóm tắt + snapshot dòng lương đã khóa + các khoản mục, để frontend dựng phiếu lương có dấu. */
     public Map<String, Object> get(long id) {
-        return authorize(id);
+        Map<String, Object> s = new java.util.LinkedHashMap<>(authorize(id));
+        s.put("line", Sql.one(jdbc, "Không tìm thấy dòng lương", """
+                SELECT l.department_name, l.job_title_name, l.h_std, l.h_paid, l.base_salary, l.salary_attendance, l.ot_pay,
+                       l.allowances, l.commission, l.kpi_bonus, l.bonuses, l.other_additions, l.gross_adjustment, l.gross,
+                       l.non_taxable_income, l.exempt_income, l.taxable_income, l.bhxh, l.bhyt, l.bhtn, l.insurance_total,
+                       l.family_relief, l.assessable_income, l.pit, l.legal_deductions, l.net_adjustment, l.net_entitlement,
+                       l.advance_recovery, l.reimbursements, l.payable, p.start_date, p.end_date, p.locked_at
+                FROM payslip s JOIN payroll_line l ON l.id = s.line_id JOIN payroll_period p ON p.id = s.period_id WHERE s.id = ?
+                """, id));
+        s.put("items", Sql.list(jdbc, """
+                SELECT i.seq, i.category, i.code, i.name, i.amount FROM payroll_line_item i JOIN payslip s ON s.line_id = i.line_id
+                WHERE s.id = ? ORDER BY i.seq
+                """, id));
+        return s;
     }
 
     public Map<String, Object> pdf(long id, boolean download) {

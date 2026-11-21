@@ -31,7 +31,7 @@ export const SelectField = forwardRef(function SelectField(
         <select
           ref={ref}
           id={selectId}
-          className={`block w-full rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 px-3.5 py-2.5 bg-white ${
+          className={`block w-full rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 px-3.5 py-2.5 bg-white disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed ${
             error
               ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 bg-red-50/30'
               : 'border-slate-300 text-slate-900 focus:border-blue-500'

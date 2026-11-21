@@ -9,6 +9,7 @@ import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import EmptyState from '../../components/common/EmptyState';
 import { formatDateTime } from '../../utils/formatDate';
+import { emitNotificationsChanged } from '../../utils/notificationEvents';
 
 const SIZE = 20;
 
@@ -24,8 +25,15 @@ export function NotificationsPage() {
     try { await fn(); reload(); } catch (err) { setActionError(err.message); }
   };
 
+  const markAllRead = () => run(async () => {
+    await notificationApi.readAll();
+    emitNotificationsChanged();
+  });
+
   const open = async (n) => {
-    if (!n.readAt) await notificationApi.markRead(n.id).catch(() => {});
+    if (!n.readAt) {
+      await notificationApi.markRead(n.id).then(emitNotificationsChanged).catch(() => {});
+    }
     if (n.link && n.link.startsWith('/')) navigate(n.link);
     else reload();
   };
@@ -37,7 +45,7 @@ export function NotificationsPage() {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Thông báo</h1>
           <p className="text-sm text-slate-500 mt-0.5">Thông báo về đơn nghỉ phép, OT, kỳ lương và tài khoản.</p>
         </div>
-        <Button variant="outline" icon={CheckCheck} onClick={() => run(() => notificationApi.readAll())}>Đánh dấu đã đọc tất cả</Button>
+        <Button variant="outline" icon={CheckCheck} onClick={markAllRead}>Đánh dấu đã đọc tất cả</Button>
       </div>
 
       {actionError && <ErrorMessage message={actionError} />}

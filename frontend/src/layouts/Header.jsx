@@ -4,6 +4,7 @@ import { Bell, LogOut, ChevronDown, Menu, KeyRound, UserRound } from 'lucide-rea
 import { useAuth } from '../hooks/useAuth';
 import dashboardApi from '../api/dashboardApi';
 import { ROLE_LABELS } from '../utils/constants';
+import { NOTIFICATIONS_CHANGED } from '../utils/notificationEvents';
 
 const POLL_MS = 45000;
 
@@ -23,9 +24,11 @@ export function Header({ onMenuClick }) {
         .catch(() => {});
     load();
     const timer = setInterval(load, POLL_MS);
+    window.addEventListener(NOTIFICATIONS_CHANGED, load);
     return () => {
       cancelled = true;
       clearInterval(timer);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, load);
     };
   }, []);
 

@@ -102,7 +102,7 @@ public class AuthService {
     public Map<String, Object> me(long accountId) {
         Map<String, Object> row = Sql.camel(jdbc.queryForMap("""
                 SELECT a.id AS account_id, a.email, a.role, a.employee_id, a.must_change_password,
-                       e.full_name, e.code AS employee_code, d.name AS department_name,
+                       e.full_name, e.code AS employee_code, e.department_id, d.name AS department_name,
                        j.code AS job_title_code, j.name AS job_title_name,
                        a.attendance_point_id, ap.name AS attendance_point_name
                 FROM user_account a

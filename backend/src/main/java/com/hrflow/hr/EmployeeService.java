@@ -58,6 +58,28 @@ public class EmployeeService {
         return n != null && n > 0;
     }
 
+    /**
+     * Phạm vi danh sách/hồ sơ của Manager: cấp dưới trực tiếp + mọi người giữ chức danh quản lý nằm dưới
+     * trong cây báo cáo (vd. Giám đốc thấy các Lead dù họ báo cáo qua Operations Manager).
+     * Không ảnh hưởng quyền duyệt (vẫn dùng isTeamMember). Hai tham số: id của manager, dùng 2 lần.
+     */
+    private static final String PROFILE_SCOPE = """
+            (e.manager_id = ? OR e.id IN (
+                WITH RECURSIVE sub(id) AS (
+                    SELECT id FROM employee WHERE manager_id = ?
+                    UNION
+                    SELECT c.id FROM employee c JOIN sub ON c.manager_id = sub.id
+                )
+                SELECT x.id FROM sub JOIN employee x ON x.id = sub.id JOIN job_title jt ON jt.id = x.job_title_id
+                WHERE jt.managerial))
+            """;
+
+    public boolean isInProfileScope(long managerEmployeeId, long employeeId) {
+        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM employee e WHERE e.id = ? AND " + PROFILE_SCOPE, Integer.class,
+                employeeId, managerEmployeeId, managerEmployeeId);
+        return n != null && n > 0;
+    }
+
     /** own | team | company scope: HR toàn công ty, Manager team + bản thân, Employee bản thân. Admin không có. */
     public boolean canSeeOperational(AuthUser u, long employeeId) {
         if (u.is("HR")) {
@@ -90,7 +112,8 @@ public class EmployeeService {
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" WHERE 1=1");
         if (u.is("MANAGER")) {
-            where.append(" AND e.manager_id = ?");
+            where.append(" AND ").append(PROFILE_SCOPE);
+            args.add(u.employeeId());
             args.add(u.employeeId());
         }
         if (q != null && !q.isBlank()) {
@@ -143,7 +166,7 @@ public class EmployeeService {
         String visibility;
         if (u.is("HR") || (u.employeeId() != null && u.employeeId() == id)) {
             visibility = "FULL";
-        } else if (u.is("MANAGER") && u.employeeId() != null && isTeamMember(u.employeeId(), id)) {
+        } else if (u.is("MANAGER") && u.employeeId() != null && isInProfileScope(u.employeeId(), id)) {
             visibility = "BASIC";
         } else if (u.is("ADMIN")) {
             visibility = "MINIMAL";

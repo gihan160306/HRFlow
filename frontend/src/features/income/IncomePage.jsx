@@ -31,16 +31,20 @@ const box = 'bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-
 const txt = (v) => (v && String(v).trim() ? String(v).trim() : undefined);
 
 const now = new Date();
+const SALES_TITLES = ['SALES_EXEC', 'SALES_MANAGER', 'FIN_MANAGER'];
 
 export function IncomePage() {
-  const { isHR } = useAuth();
+  const { isHR, user } = useAuth();
+  // Doanh thu Sales chỉ có ý nghĩa với HR, Sales và Finance Manager (permission_matrix Mục 3.3).
+  const canSeeSales = isHR || SALES_TITLES.includes(user?.jobTitleCode);
+  const canRecordSale = ['SALES_EXEC', 'SALES_MANAGER'].includes(user?.jobTitleCode);
   const [tab, setTab] = useState('items');
   const [year, setYear] = useState(String(now.getFullYear()));
   const [month, setMonth] = useState('');
 
   const query = { year: year || undefined, month: month || undefined };
   const items = useAsync(() => incomeApi.items(query), [year, month]);
-  const sales = useAsync(() => incomeApi.sales(query), [year, month]);
+  const sales = useAsync(() => incomeApi.sales(query), [year, month], { enabled: canSeeSales });
   const people = useAsync(() => employeeApi.options(), []);
 
   const [itemOpen, setItemOpen] = useState(false);
@@ -108,12 +112,12 @@ export function IncomePage() {
         </div>
         <div className="flex gap-2">
           {isHR && tab === 'items' && <Button icon={Plus} onClick={() => setItemOpen(true)}>Thêm khoản</Button>}
-          {tab === 'sales' && <Button icon={Plus} onClick={() => setSaleOpen(true)}>Ghi nhận doanh thu</Button>}
+          {tab === 'sales' && canRecordSale && <Button icon={Plus} onClick={() => setSaleOpen(true)}>Ghi nhận doanh thu</Button>}
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <Tabs tabs={[{ key: 'items', label: 'Khoản thu nhập / khấu trừ', count: items.data?.length }, { key: 'sales', label: 'Doanh thu Sales', count: sales.data?.length }]} active={tab} onChange={setTab} />
+        <Tabs tabs={[{ key: 'items', label: 'Khoản thu nhập / khấu trừ', count: items.data?.length }, ...(canSeeSales ? [{ key: 'sales', label: 'Doanh thu Sales', count: sales.data?.length }] : [])]} active={tab} onChange={setTab} />
         <div className="ml-auto flex gap-2">
           <InputField id="inc-year" label="Năm" type="number" className="w-28" value={year} onChange={(e) => setYear(e.target.value)} />
           <SelectField id="inc-month" label="Tháng" className="w-32" placeholder="Tất cả" options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `Tháng ${i + 1}` }))} value={month} onChange={(e) => setMonth(e.target.value)} />

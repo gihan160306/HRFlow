@@ -26,7 +26,8 @@ import logoSvg from '../assets/logo.svg';
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { path: '/employees', label: 'Nhân viên', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER'] },
-  { path: '/departments', label: 'Phòng ban', icon: Building2, roles: ['ADMIN', 'HR', 'MANAGER'] },
+  // Manager không có thao tác nào trên danh mục phòng ban -> ẩn khỏi menu.
+  { path: '/departments', label: 'Phòng ban', icon: Building2, roles: ['ADMIN', 'HR'] },
   { path: '/contracts', label: 'Hợp đồng', icon: FileCheck2, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
   { path: '/attendance', label: 'Chấm công', icon: Clock, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },
   { path: '/leave', label: 'Nghỉ phép', icon: CalendarDays, roles: ['HR', 'MANAGER', 'EMPLOYEE'] },

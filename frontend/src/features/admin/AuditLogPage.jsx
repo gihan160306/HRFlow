@@ -48,7 +48,7 @@ export function AuditLogPage() {
     { key: 'action', header: 'Hành động', render: (l) => <span className="font-mono text-xs">{l.action}</span> },
     { key: 'entity', header: 'Đối tượng', render: (l) => `${l.entityType || '-'}${l.entityId ? ` #${l.entityId}` : ''}` },
     { key: 'result', header: 'Kết quả', render: (l) => (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${l.result === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+      <span className={`inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold border ${l.result === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
         {l.result === 'SUCCESS' ? 'Thành công' : 'Bị từ chối'}
       </span>
     ) },

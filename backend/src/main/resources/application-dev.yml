@@ -9,3 +9,9 @@ logging:
   level:
     com.hrflow: DEBUG
     org.flywaydb: INFO
+
+# Du lieu demo lich su luong 08–10/2026 (V23): tu chay quy trinh chot cong -> tinh -> duyet -> khoa -> phieu luong mot lan.
+hrflow:
+  demo:
+    payroll-history:
+      enabled: ${HRFLOW_DEMO_PAYROLL_HISTORY:true}

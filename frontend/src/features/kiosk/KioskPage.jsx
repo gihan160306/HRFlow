@@ -164,6 +164,10 @@ export function KioskPage() {
     return () => clearTimeout(t);
   }, [phase, count, scan, info, backToScan, fail]);
 
+  const handleLogout = () => {
+    if (window.confirm('Đăng xuất máy chấm công tại quầy?')) logout();
+  };
+
   const actionLabel = (a) => (a === 'CHECK_OUT' ? 'Check-out' : 'Check-in');
 
   return (
@@ -173,14 +177,23 @@ export function KioskPage() {
           <p className="text-xs uppercase tracking-widest text-slate-400">Máy chấm công tại quầy</p>
           <h1 className="text-lg font-bold">{info?.pointName || 'Đang tải điểm chấm công...'}</h1>
         </div>
+        <div className="flex items-center gap-5">
         <div className="text-right">
           <p className="text-3xl font-mono font-extrabold tabular-nums">{now.toLocaleTimeString('vi-VN')}</p>
           <p className="text-xs text-slate-400">{now.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
         </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10"
+          >
+            <LogOut className="w-4 h-4" /> Đăng xuất
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
-        <div className="relative w-full max-w-3xl aspect-video rounded-3xl overflow-hidden bg-black border border-white/10">
+        <div className="relative w-full max-w-3xl max-h-[65vh] aspect-video rounded-3xl overflow-hidden bg-black border border-white/10">
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover -scale-x-100" />
           <canvas ref={canvasRef} className="hidden" />
 
@@ -238,10 +251,8 @@ export function KioskPage() {
       </main>
 
       <footer className="flex items-center justify-between px-6 py-3 text-xs text-slate-500 border-t border-white/10">
-        <span>Ảnh chỉ dùng để đối chiếu chấm công, không nhận diện khuôn mặt. {info?.email}</span>
-        <button type="button" onClick={logout} className="inline-flex items-center gap-1.5 hover:text-slate-200">
-          <LogOut className="w-4 h-4" /> Đăng xuất máy quầy
-        </button>
+        <span>Ảnh chỉ dùng để đối chiếu chấm công, không nhận diện khuôn mặt.</span>
+        <span>{info?.email}</span>
       </footer>
     </div>
   );

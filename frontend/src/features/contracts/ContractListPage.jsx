@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, RefreshCw, XCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Download, FileText, Plus, RefreshCw, X, XCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useAsync from '../../hooks/useAsync';
 import contractApi from '../../api/contractApi';
@@ -13,6 +13,8 @@ import SelectField from '../../components/common/SelectField';
 import InputField from '../../components/common/InputField';
 import PromptDialog from '../../components/common/PromptDialog';
 import ContractForm from './ContractForm';
+import ContractDocument from './ContractDocument';
+import { exportElementToPdf } from '../../utils/exportPdf';
 import { formatDate, todayIso } from '../../utils/formatDate';
 import { CONTRACT_TYPES } from '../../utils/constants';
 
@@ -30,6 +32,38 @@ export function ContractListPage() {
   const [form, setForm] = useState(null); // { mode, contract }
   const [terminate, setTerminate] = useState(null);
   const [terminateDate, setTerminateDate] = useState(todayIso());
+  const [viewing, setViewing] = useState(null); // dữ liệu văn bản hợp đồng
+  const [busy, setBusy] = useState(null);
+  const [docError, setDocError] = useState(null);
+  const exportRef = useRef(null);
+
+  useEffect(() => {
+    if (!viewing) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setViewing(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [viewing]);
+
+  const openDocument = async (c) => {
+    setBusy(`v${c.id}`);
+    setDocError(null);
+    try {
+      setViewing(await contractApi.document(c.id));
+    } catch (err) {
+      setDocError(err.message || 'Không tải được hợp đồng');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadPdf = async () => {
+    setBusy('pdf');
+    try {
+      await exportElementToPdf(exportRef.current, `HopDong_${viewing.contractNo}_${viewing.employee?.code || ''}.pdf`, { multiPage: true, margin: 6 });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const { data, loading, error, reload } = useAsync(
     () => contractApi.list({ status, expiringDays: expiring ? 30 : undefined }),
@@ -55,6 +89,8 @@ export function ContractListPage() {
         </label>
       </div>
 
+      {docError && <ErrorMessage message={docError} />}
+
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
           <Loading />
@@ -72,7 +108,7 @@ export function ContractListPage() {
                   <th className="px-4 py-3.5">Loại</th>
                   <th className="px-4 py-3.5">Hiệu lực</th>
                   <th className="px-4 py-3.5">Trạng thái</th>
-                  {isHR && <th className="px-4 py-3.5 text-right">Thao tác</th>}
+                  <th className="px-4 py-3.5 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -88,17 +124,16 @@ export function ContractListPage() {
                       )}
                     </td>
                     <td className="px-4 py-3.5"><StatusBadge status={c.status} /></td>
-                    {isHR && (
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                        {['ACTIVE', 'EXPIRED'].includes(c.status) && (
-                          <Button size="sm" variant="outline" icon={RefreshCw} onClick={() => setForm({ mode: 'renew', contract: c })}>Gia hạn</Button>
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <Button size="sm" variant="outline" icon={FileText} isLoading={busy === `v${c.id}`} onClick={() => openDocument(c)}>Xem hợp đồng</Button>
+                        {isHR && ['ACTIVE', 'EXPIRED'].includes(c.status) && (
+                          <Button size="sm" variant="outline" icon={RefreshCw} className="ml-2" onClick={() => setForm({ mode: 'renew', contract: c })}>Gia hạn</Button>
                         )}
-                        {['ACTIVE', 'DRAFT'].includes(c.status) && (
+                        {isHR && ['ACTIVE', 'DRAFT'].includes(c.status) && (
                           <Button size="sm" variant="ghost" icon={XCircle} className="ml-2 text-red-600"
                             onClick={() => { setTerminateDate(todayIso()); setTerminate(c); }}>Chấm dứt</Button>
                         )}
                       </td>
-                    )}
                   </tr>
                 ))}
               </tbody>
@@ -106,6 +141,31 @@ export function ContractListPage() {
           </div>
         )}
       </div>
+
+      {viewing && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm p-4 sm:p-8"
+          onClick={(e) => e.target === e.currentTarget && setViewing(null)}>
+          <div className="mx-auto w-full max-w-[794px]">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-white">Hợp đồng {viewing.contractNo} – {viewing.employeeName}</p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" icon={Download} isLoading={busy === 'pdf'} onClick={downloadPdf}>Tải PDF</Button>
+                <button type="button" aria-label="Đóng" onClick={() => setViewing(null)}
+                  className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-md shadow-xl">
+              <ContractDocument doc={viewing} />
+            </div>
+          </div>
+          {/* Bản dựng ngoài màn hình để chụp PDF đúng khổ, không bị ảnh hưởng bởi cuộn/thu phóng */}
+          <div aria-hidden="true" className="fixed top-0 -left-[10000px]">
+            <ContractDocument ref={exportRef} doc={viewing} />
+          </div>
+        </div>
+      )}
 
       <ContractForm
         isOpen={Boolean(form)}

@@ -117,6 +117,54 @@ public class ContractController {
         return c;
     }
 
+    /**
+     * Dữ liệu đầy đủ để dựng văn bản hợp đồng (PDF): hợp đồng, nhân viên, phòng ban/chức danh,
+     * lương và phụ cấp hiệu lực tại ngày bắt đầu, người đại diện công ty. Cùng phạm vi quyền với {@link #get}.
+     */
+    @GetMapping("/{id}/document")
+    public Map<String, Object> document(@PathVariable long id) {
+        Map<String, Object> c = get(id);
+        long employeeId = ((Number) c.get("employeeId")).longValue();
+        LocalDate start = (LocalDate) c.get("startDate");
+
+        Map<String, Object> doc = new java.util.LinkedHashMap<>(c);
+        doc.put("employee", Sql.one(jdbc, "Không tìm thấy nhân viên", """
+                SELECT e.code, e.full_name, e.gender, e.date_of_birth, e.national_id, e.address, e.phone,
+                       e.personal_email, e.work_email, e.employee_type, e.hire_date, e.work_location,
+                       d.code AS department_code, d.name AS department_name, d.description AS department_description,
+                       j.code AS job_title_code, j.name AS job_title_name, j.managerial,
+                       m.full_name AS manager_name, mj.name AS manager_title
+                FROM employee e
+                JOIN department d ON d.id = e.department_id
+                JOIN job_title j ON j.id = e.job_title_id
+                LEFT JOIN employee m ON m.id = e.manager_id
+                LEFT JOIN job_title mj ON mj.id = m.job_title_id
+                WHERE e.id = ?
+                """, employeeId));
+
+        List<Map<String, Object>> salary = Sql.list(jdbc, """
+                SELECT base_salary FROM salary_record WHERE employee_id = ?
+                ORDER BY (contract_id = ?) DESC NULLS LAST,
+                         (effective_from <= ? AND (effective_to IS NULL OR effective_to >= ?)) DESC, effective_from DESC
+                LIMIT 1
+                """, employeeId, id, start, start);
+        doc.put("baseSalary", salary.isEmpty() ? null : salary.get(0).get("baseSalary"));
+
+        LocalDate asOf = start.isAfter(Vn.today()) ? start : Vn.today();
+        doc.put("allowances", Sql.list(jdbc, """
+                SELECT t.code, t.name, a.amount FROM employee_allowance a JOIN allowance_type t ON t.id = a.allowance_type_id
+                WHERE a.employee_id = ? AND a.effective_from <= ? AND (a.effective_to IS NULL OR a.effective_to >= ?)
+                ORDER BY t.id
+                """, employeeId, asOf, asOf));
+
+        List<Map<String, Object>> rep = Sql.list(jdbc, """
+                SELECT e.full_name, e.gender, 'Giám đốc' AS title FROM employee e JOIN job_title j ON j.id = e.job_title_id
+                WHERE j.code = 'DIRECTOR' AND e.status <> 'TERMINATED' ORDER BY e.id LIMIT 1
+                """);
+        doc.put("representative", rep.isEmpty() ? null : rep.get(0));
+        return doc;
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional

@@ -67,7 +67,7 @@ export function AppRoutes() {
           <Route path="/employees/:id" element={guard(<EmployeeDetailPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
           <Route path="/profile" element={guard(<EmployeeDetailPage self />, { requireEmployee: true })} />
 
-          <Route path="/departments" element={guard(<DepartmentListPage />, { allowedRoles: [ADMIN, HR, MANAGER] })} />
+          <Route path="/departments" element={guard(<DepartmentListPage />, { allowedRoles: [ADMIN, HR] })} />
 
           {/* Hợp đồng: HR toàn bộ; nhân viên/quản lý chỉ xem của mình; Admin không truy cập */}
           <Route path="/contracts" element={guard(<ContractListPage />, { allowedRoles: [HR, MANAGER, EMPLOYEE], requireEmployee: true })} />

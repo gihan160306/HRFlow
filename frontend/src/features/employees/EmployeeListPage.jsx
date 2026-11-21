@@ -26,11 +26,14 @@ const STATUS_OPTIONS = [
 
 export function EmployeeListPage() {
   const navigate = useNavigate();
-  const { isHR, isAdmin, isManager } = useAuth();
+  const { user, isHR, isAdmin, isManager } = useAuth();
 
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
+  // Manager: bộ lọc mặc định là phòng ban của chính manager đó.
+  const [departmentId, setDepartmentId] = useState(
+    isManager && user?.departmentId ? String(user.departmentId) : ''
+  );
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(0); // backend phân trang từ 0
   const [terminateTarget, setTerminateTarget] = useState(null);
@@ -46,6 +49,20 @@ export function EmployeeListPage() {
   }, [q]);
 
   const { data: depts } = useAsync(() => departmentApi.list(), []);
+  // Manager chỉ thấy team (backend giới hạn) -> chỉ đưa vào bộ lọc các phòng ban có người trong team.
+  const { data: team } = useAsync(
+    () => employeeApi.list({ page: 0, size: 200 }),
+    [],
+    { enabled: isManager }
+  );
+
+  let deptOptions = (depts || []).map((d) => ({ value: String(d.id), label: d.name }));
+  if (isManager) {
+    const allowed = new Set((team?.content || []).map((e) => String(e.departmentId)));
+    if (user?.departmentId) allowed.add(String(user.departmentId));
+    deptOptions = deptOptions.filter((o) => allowed.has(o.value));
+  }
+  const deptLocked = isManager && deptOptions.length <= 1;
   const { data, loading, error, reload } = useAsync(
     () => employeeApi.list({ page, size: PAGE_SIZE, q: query, departmentId, status }),
     [page, query, departmentId, status]
@@ -74,10 +91,12 @@ export function EmployeeListPage() {
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
         <InputField placeholder="Tìm theo họ tên, mã NV, email..." icon={Search} value={q} onChange={(e) => setQ(e.target.value)} />
         <SelectField
-          placeholder="Tất cả phòng ban"
+          placeholder={deptLocked ? null : 'Tất cả phòng ban'}
           value={departmentId}
+          disabled={deptLocked}
+          title={deptLocked ? 'Phòng ban bạn quản lý' : undefined}
           onChange={(e) => { setDepartmentId(e.target.value); setPage(0); }}
-          options={(depts || []).map((d) => ({ value: d.id, label: d.name }))}
+          options={deptOptions}
         />
         <SelectField
           placeholder="Tất cả trạng thái"

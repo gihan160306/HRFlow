@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import DateInput from './DateInput';
 
 export const InputField = forwardRef(function InputField(
   {
@@ -14,6 +15,11 @@ export const InputField = forwardRef(function InputField(
   ref
 ) {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const inputClass = `block w-full rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 py-2.5 ${
+    error
+      ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 bg-red-50/30'
+      : 'border-slate-300 text-slate-900 focus:border-blue-500 bg-white'
+  }`;
 
   return (
     <div className={`w-full ${className}`}>
@@ -33,18 +39,21 @@ export const InputField = forwardRef(function InputField(
           </div>
         )}
 
-        <input
-          ref={ref}
-          id={inputId}
-          className={`block w-full rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            Icon ? 'pl-10' : 'pl-3.5'
-          } pr-3.5 py-2.5 ${
-            error
-              ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 bg-red-50/30'
-              : 'border-slate-300 text-slate-900 focus:border-blue-500 bg-white'
-          }`}
-          {...props}
-        />
+        {props.type === 'date' ? (
+          <DateInput
+            ref={ref}
+            id={inputId}
+            className={`${inputClass} ${Icon ? 'pl-10' : 'pl-3.5'}`}
+            {...props}
+          />
+        ) : (
+          <input
+            ref={ref}
+            id={inputId}
+            className={`${inputClass} ${Icon ? 'pl-10' : 'pl-3.5'} pr-3.5`}
+            {...props}
+          />
+        )}
       </div>
 
       {error ? (

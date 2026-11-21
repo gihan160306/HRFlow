@@ -11,6 +11,14 @@
   }
 }
 
+/* html2canvas đo đường chân chữ bằng một ảnh GIF nhỏ (data URI) chèn vào document gốc. Preflight của
+   Tailwind (img { display: block; vertical-align: middle }) làm sai phép đo, khiến chữ trong PDF bị vẽ
+   lệch xuống so với khung/viền. Trả ảnh đo về inline/baseline. */
+img[src^="data:image/gif"] {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -35,13 +43,31 @@
   #printable-payslip, #printable-payslip * {
     visibility: visible;
   }
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html, body {
+    background: #fff !important;
+  }
   #printable-payslip {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    max-width: none;
     margin: 0;
-    padding: 20px;
+    box-shadow: none !important;
+    border-radius: 0;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    font-size: 12px;
+  }
+  #printable-payslip, #printable-payslip * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ps-avoid-break {
+    break-inside: avoid;
   }
   .no-print {
     display: none !important;
