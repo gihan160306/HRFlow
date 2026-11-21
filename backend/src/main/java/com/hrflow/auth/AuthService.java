@@ -87,10 +87,10 @@ public class AuthService {
     }
 
     public Map<String, Object> tokenResponse(long accountId) {
-        Map<String, Object> a = jdbc.queryForMap("SELECT email, token_version, must_change_password FROM user_account WHERE id = ?",
+        Map<String, Object> a = jdbc.queryForMap("SELECT email, role, token_version, must_change_password FROM user_account WHERE id = ?",
                 accountId);
         JwtService.Issued issued = jwt.generate(accountId, (String) a.get("email"),
-                ((Number) a.get("token_version")).intValue());
+                ((Number) a.get("token_version")).intValue(), "KIOSK".equals(a.get("role")));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("token", issued.token());
         out.put("expiresAt", issued.expiresAt());
@@ -103,9 +103,11 @@ public class AuthService {
         Map<String, Object> row = Sql.camel(jdbc.queryForMap("""
                 SELECT a.id AS account_id, a.email, a.role, a.employee_id, a.must_change_password,
                        e.full_name, e.code AS employee_code, d.name AS department_name,
-                       j.code AS job_title_code, j.name AS job_title_name
+                       j.code AS job_title_code, j.name AS job_title_name,
+                       a.attendance_point_id, ap.name AS attendance_point_name
                 FROM user_account a
                 LEFT JOIN employee e ON e.id = a.employee_id
+                LEFT JOIN attendance_point ap ON ap.id = a.attendance_point_id
                 LEFT JOIN department d ON d.id = e.department_id
                 LEFT JOIN job_title j ON j.id = e.job_title_id
                 WHERE a.id = ?

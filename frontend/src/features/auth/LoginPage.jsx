@@ -26,7 +26,7 @@ export function LoginPage() {
     setIsLoading(true);
     try {
       const u = await login(email.trim(), password);
-      const target = u.mustChangePassword ? '/change-password' : location.state?.from || '/dashboard';
+      const target = u.mustChangePassword ? '/change-password' : u.role === 'KIOSK' ? '/kiosk' : location.state?.from || '/dashboard';
       navigate(target, { replace: true });
     } catch (err) {
       setError(err.message || 'Đăng nhập không thành công');

@@ -24,7 +24,8 @@ import jakarta.validation.constraints.NotNull;
 public class AccountController {
 
     public record CreateAccountRequest(Long employeeId, @NotBlank @Email String email, @NotBlank String role,
-                                       String temporaryPassword, @NotBlank String reason, Long requestId) {
+                                       String temporaryPassword, @NotBlank String reason, Long requestId,
+                                       Long attendancePointId) {
     }
 
     public record ReasonRequest(@NotBlank String reason) {
@@ -67,7 +68,8 @@ public class AccountController {
     @PostMapping("/api/v1/accounts")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> create(@Valid @RequestBody CreateAccountRequest r) {
-        return service.createAccount(r.employeeId(), r.email(), r.role(), r.temporaryPassword(), r.reason(), r.requestId());
+        return service.createAccount(r.employeeId(), r.email(), r.role(), r.temporaryPassword(), r.reason(), r.requestId(),
+                r.attendancePointId());
     }
 
     @PostMapping("/api/v1/accounts/{id}/lock")

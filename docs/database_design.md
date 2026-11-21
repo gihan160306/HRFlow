@@ -5,7 +5,7 @@
 >
 > Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
 > Bản 3.5 (16/11/2026): đồng bộ baseline quy mô 100 nhân sự (V21 bổ sung dữ liệu demo); chấm công QR động + ảnh minh chứng là luồng check-in chính thức (nhóm chốt 17/11/2026: quét QR → chụp ảnh → check-in), các bảng `attendance_point`, `qr_token`, `attendance_photo` thuộc luồng chính; schema 52 bảng không đổi.
-> Bản 3.6 (21/11/2026, SRS 3.4 – DEC-10): đổi sang **máy chấm công tại quầy**. Thiết kế đích: bỏ `qr_token` (QR của điểm chấm công do HR cấp, mã ngắn) và thêm `employee_qr_token` (QR cá nhân động của nhân viên, dùng một lần, kiêm phiên quét tại quầy); `user_account` thêm loại tài khoản thiết bị `KIOSK` và cột `attendance_point_id`; `attendance_point` bỏ `photo_required` (ảnh luôn bắt buộc); `attendance_record` thêm `check_in_kiosk_id`/`check_out_kiosk_id`; `attendance_photo` thêm `captured_by`. Vẫn 52 bảng. **Chưa triển khai** – thực hiện bằng migration mới, dự kiến `V22__kiosk_attendance.sql` (nếu số V22 đã được dùng thì lấy số kế tiếp) (Mục 10); các mục đánh dấu *(V22)* là thiết kế đích chưa có trong migration hiện tại.
+> Bản 3.6 (21/11/2026, SRS 3.4 – DEC-10): đổi sang **máy chấm công tại quầy**. Thiết kế đích: bỏ `qr_token` (QR của điểm chấm công do HR cấp, mã ngắn) và thêm `employee_qr_token` (QR cá nhân động của nhân viên, dùng một lần, kiêm phiên quét tại quầy); `user_account` thêm loại tài khoản thiết bị `KIOSK` và cột `attendance_point_id`; `attendance_point` bỏ `photo_required` (ảnh luôn bắt buộc); `attendance_record` thêm `check_in_kiosk_id`/`check_out_kiosk_id`; `attendance_photo` thêm `captured_by`. Vẫn 52 bảng. **Đã triển khai** bằng `V22__kiosk_attendance.sql` (Mục 10); các mục đánh dấu *(V22)* là phần thay đổi của migration này.
 
 ## 1. Mục tiêu và nguyên tắc thiết kế
 
@@ -650,7 +650,6 @@ Chỉ mục:
 | `id` | bigint | ✓ |  | PK |
 | `code` | varchar(30) | ✓ |  |  |
 | `name` | varchar(150) | ✓ |  |  |
-| `photo_required` | boolean | ✓ | true |  |
 | `active` | boolean | ✓ | true |  |
 | `created_at` | timestamptz | ✓ | now() | Thời điểm tạo (UTC) |
 | `updated_at` | timestamptz | ✓ | now() | Thời điểm cập nhật |
@@ -1429,7 +1428,7 @@ Kết quả chạy tác vụ nền / tác vụ hằng ngày (idempotent theo `jo
 
 - **Migration dữ liệu tham chiếu (`V19__reference_data.sql`, thay cho seed V14)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
 - **Dữ liệu demo (`V20__demo_seed.sql`)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật `admin@hnqmedia.example` **không gắn hồ sơ nhân viên**; tài khoản nhân viên `nv001…nv040@hnqmedia.example` (V20) và `nv041…nv100@hnqmedia.example` (V21, tổng 100 nhân sự) (mật khẩu demo `password123`); không dùng 22 ngày công làm mặc định; `wage_region = REGION_I` chỉ là giả định dữ liệu mẫu (OPEN-01).
-- *(V22)* **Máy chấm công demo**: điểm `RECEPTION` (Quầy lễ tân) và một tài khoản thiết bị `KIOSK` (ví dụ `kiosk.letan@hnqmedia.example`) gắn với điểm này; không gắn hồ sơ nhân viên, không có grant.
+- *(V22)* **Máy chấm công demo**: điểm `RECEPTION` (Quầy lễ tân) và một tài khoản thiết bị `KIOSK` `kiosk.letan@hnqmedia.example` (mật khẩu demo `password123`) gắn với điểm này; không gắn hồ sơ nhân viên, không có grant.
 - **Grant payroll seed** (DEC-03): HR → `PREPARE` (và `VIEW` theo nhiệm vụ); Director → `APPROVE`; Finance Manager → `LOCK`. Admin **không** có grant payroll. Mỗi grant có người cấp, lý do, số quyết định và hiệu lực.
 
 ## 9. Sao lưu và khôi phục
@@ -1453,7 +1452,7 @@ Không sửa migration đã chạy. Các chênh lệch dưới đây được x�
 | `V18__guards_and_triggers.sql` | Trigger Mục 6 (`fn_block_modify_append_only`, `fn_guard_payroll_line*`, `fn_guard_payroll_period`) và trigger `updated_at`. |
 | `V19__reference_data.sql` | Phòng ban, chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, `payroll_parameter`, biểu thuế. |
 | `V20__demo_seed.sql` | 40 nhân sự HNQ đầu tiên (34 FT, 3 PT, 2 thử việc, 1 TTS), tài khoản Admin không gắn hồ sơ, hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, người phụ thuộc, tuyến duyệt, quỹ phép 2026, kỳ 11/2026 DRAFT, grant payroll DEC-03. |
-| `V22__kiosk_attendance.sql` *(dự kiến, chưa triển khai)* | Chấm công tại quầy (DEC-10): thêm `KIOSK` vào `chk_user_account_role`, thêm `user_account.attendance_point_id` + `chk_user_account_kiosk`; tạo `employee_qr_token`; xóa `qr_token`; bỏ `attendance_point.photo_required`; thêm `attendance_record.check_in_kiosk_id`/`check_out_kiosk_id`, `attendance_photo.captured_by`; seed điểm quầy lễ tân + tài khoản `KIOSK` demo. |
+| `V22__kiosk_attendance.sql` | Chấm công tại quầy (DEC-10): thêm `KIOSK` vào `chk_user_account_role`, thêm `user_account.attendance_point_id` + `chk_user_account_kiosk`; tạo `employee_qr_token`; xóa `qr_token`; bỏ `attendance_point.photo_required`; thêm `attendance_record.check_in_kiosk_id`/`check_out_kiosk_id`, `attendance_photo.captured_by`; seed điểm quầy lễ tân + tài khoản `KIOSK` demo. |
 | `V21__demo_seed_100_employees.sql` | Bổ sung NV041–NV100 để đủ 100 nhân sự (85 FT, 8 PT, 5 thử việc, 2 TTS; HR 7, Content 22, Design 16, Digital 20, Account 14, Sales 18) cùng hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, tuyến duyệt, quỹ phép 2026. |
 
 **Lưu ý khi áp dụng:** V16 xóa toàn bộ dữ liệu của schema cũ. Backend hiện đã truy vấn theo schema mới (đã đối chiếu cột `INSERT/UPDATE` với V17); DB dev cũ cần xóa volume hoặc chấp nhận V16 xóa dữ liệu khi chạy Flyway.

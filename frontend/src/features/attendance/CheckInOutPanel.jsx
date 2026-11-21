@@ -1,43 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut } from 'lucide-react';
+import { Clock, QrCode } from 'lucide-react';
 import Button from '../../components/common/Button';
-import InputField from '../../components/common/InputField';
-import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
-import attendanceApi from '../../api/attendanceApi';
+import MyQrModal from './MyQrModal';
 import { formatTime } from '../../utils/formatDate';
 
 /**
- * Chấm công theo API thật: today -> check-in -> check-out.
- * Điểm chấm công yêu cầu QR sẽ trả lỗi QR_INVALID; khi đó nhân viên nhập mã ngắn hiển thị tại điểm chấm công.
+ * Chấm công tại quầy (SRS FR-07, DEC-10): nhân viên bấm "Chấm công" để hiện QR cá nhân,
+ * đưa vào máy chấm công đặt ở quầy; máy quét mã, chụp ảnh minh chứng rồi ghi check-in/check-out.
+ * Lượt chấm đầu tiên trong ngày là check-in, lượt sau là check-out.
  */
 export function CheckInOutPanel({ record, onChanged }) {
   const [now, setNow] = useState(new Date());
-  const [shortCode, setShortCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [qrOpen, setQrOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const run = async (fn) => {
-    setBusy(true);
-    setError('');
-    try {
-      await fn({ shortCode: shortCode.trim() || undefined });
-      setShortCode('');
-      onChanged?.();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const checkedIn = Boolean(record?.checkInAt);
   const checkedOut = Boolean(record?.checkOutAt);
+  const label = checkedOut ? 'Đã chấm đủ hôm nay' : checkedIn ? 'Chấm công ra (check-out)' : 'Chấm công vào (check-in)';
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 space-y-4">
@@ -69,21 +53,20 @@ export function CheckInOutPanel({ record, onChanged }) {
             {record?.status && <StatusBadge status={record.status} />}
           </div>
 
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <Button onClick={() => run(attendanceApi.checkIn)} isLoading={busy} disabled={checkedIn} icon={LogIn} className="flex-1 sm:flex-initial">
-              {checkedIn ? 'Đã check-in' : 'Check-in'}
-            </Button>
-            <Button variant="outline" onClick={() => run(attendanceApi.checkOut)} isLoading={busy} disabled={!checkedIn || checkedOut} icon={LogOut} className="flex-1 sm:flex-initial">
-              {checkedOut ? 'Đã check-out' : 'Check-out'}
-            </Button>
-          </div>
+          <Button onClick={() => setQrOpen(true)} disabled={checkedOut} icon={QrCode} className="w-full sm:w-auto">
+            {label}
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-xs">
-        <InputField label="Mã chấm công ngắn (nếu điểm chấm công yêu cầu)" value={shortCode} onChange={(e) => setShortCode(e.target.value)} placeholder="Để trống nếu không dùng QR" />
-      </div>
-      {error && <ErrorMessage message={error} />}
+      <p className="text-xs text-slate-500">
+        Chấm công tại <b>máy chấm công ở quầy lễ tân</b>: bấm nút để hiện mã QR cá nhân (đổi mỗi 15 giây, chỉ dùng một lần),
+        đưa vào camera của máy quầy, máy sẽ chụp ảnh minh chứng. Không chấm được tại quầy (máy hỏng, quên điện thoại, đi công tác)
+        thì gửi <b>đề nghị điều chỉnh công</b> kèm minh chứng.
+        {record?.checkInPoint && <> Vào ca tại: {record.checkInPoint}.</>}
+      </p>
+
+      <MyQrModal isOpen={qrOpen} onClose={() => setQrOpen(false)} record={record} onDone={onChanged} />
     </div>
   );
 }

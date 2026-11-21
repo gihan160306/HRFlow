@@ -5,6 +5,7 @@ import useAsync from '../../hooks/useAsync';
 import attendanceApi from '../../api/attendanceApi';
 import CheckInOutPanel from './CheckInOutPanel';
 import AttendanceHistory from './AttendanceHistory';
+import AttendancePointsPanel from './AttendancePointsPanel';
 import StatCard from '../../components/dashboard/StatCard';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -87,7 +88,7 @@ export function AttendancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Chấm công</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Ghi nhận giờ làm việc hằng ngày và theo dõi bảng công</p>
+          <p className="text-sm text-slate-500 mt-0.5">Chấm công tại máy quầy bằng QR cá nhân và theo dõi bảng công</p>
         </div>
         <div className="flex items-end gap-3">
           <InputField label="Tháng" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />
@@ -167,6 +168,8 @@ export function AttendancePage() {
           )}
         />
       )}
+
+      {isHR && <AttendancePointsPanel />}
 
       <Modal isOpen={adjOpen} title="Đề nghị điều chỉnh công" onClose={() => setAdjOpen(false)}>
         <form onSubmit={submitAdjustment} className="space-y-4">

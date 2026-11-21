@@ -15,6 +15,7 @@ import EmployeeFormPage from '../features/employees/EmployeeFormPage';
 import DepartmentListPage from '../features/departments/DepartmentListPage';
 import ContractListPage from '../features/contracts/ContractListPage';
 import AttendancePage from '../features/attendance/AttendancePage';
+import KioskPage from '../features/kiosk/KioskPage';
 import LeaveRequestPage from '../features/leave/LeaveRequestPage';
 import LeaveApprovalPage from '../features/leave/LeaveApprovalPage';
 import OvertimeSchedulePage from '../features/overtime/OvertimeSchedulePage';
@@ -36,7 +37,7 @@ import CatalogPage from '../features/catalog/CatalogPage';
 
 import { ROLES } from '../utils/constants';
 
-const { ADMIN, HR, MANAGER, EMPLOYEE } = ROLES;
+const { ADMIN, HR, MANAGER, EMPLOYEE, KIOSK } = ROLES;
 
 // Lớp UX: ẩn trang không có quyền. Backend vẫn là nơi kiểm quyền thật sự (401/403/404).
 const guard = (element, props) => <RoleRoute {...props}>{element}</RoleRoute>;
@@ -52,6 +53,9 @@ export function AppRoutes() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
+        {/* Máy chấm công tại quầy: toàn màn hình, không menu (SRS FR-07, DEC-10) */}
+        <Route path="/kiosk" element={guard(<KioskPage />, { allowedRoles: [KIOSK] })} />
+
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />

@@ -4,6 +4,8 @@ export const ROLES = {
   HR: 'HR',
   MANAGER: 'MANAGER',
   EMPLOYEE: 'EMPLOYEE',
+  // Tài khoản thiết bị của máy chấm công tại quầy – không phải role của người dùng (SRS Mục 2.4).
+  KIOSK: 'KIOSK',
 };
 
 export const ROLE_LABELS = {
@@ -11,6 +13,7 @@ export const ROLE_LABELS = {
   HR: 'Nhân sự (HR)',
   MANAGER: 'Quản lý',
   EMPLOYEE: 'Nhân viên',
+  KIOSK: 'Máy chấm công tại quầy',
 };
 
 // Quyền payroll cấp riêng theo tài khoản (payroll_grant), không suy ra từ role.

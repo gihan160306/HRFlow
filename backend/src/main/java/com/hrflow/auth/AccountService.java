@@ -24,12 +24,14 @@ import com.hrflow.security.Principals;
 @Service
 public class AccountService {
 
-    private static final Set<String> ROLES = Set.of("EMPLOYEE", "MANAGER", "HR", "ADMIN");
+    private static final Set<String> ROLES = Set.of("EMPLOYEE", "MANAGER", "HR", "ADMIN", "KIOSK");
     private static final Set<String> PERMS = Set.of("VIEW", "PREPARE", "APPROVE", "LOCK");
     private static final String ACCOUNT_SELECT = """
             SELECT a.id, a.email, a.role, a.status, a.employee_id, e.code AS employee_code, e.full_name AS employee_name,
+                   a.attendance_point_id, ap.name AS attendance_point_name,
                    a.must_change_password, a.locked_until, a.disable_at, a.last_login_at
             FROM user_account a LEFT JOIN employee e ON e.id = a.employee_id
+            LEFT JOIN attendance_point ap ON ap.id = a.attendance_point_id
             """;
 
     private final JdbcTemplate jdbc;
@@ -59,10 +61,30 @@ public class AccountService {
 
     @Transactional
     public Map<String, Object> createAccount(Long employeeId, String email, String role, String tempPassword,
-                                             String reason, Long requestId) {
+                                             String reason, Long requestId, Long attendancePointId) {
         AuthUser admin = Principals.requireRole("ADMIN");
         requireRole(role);
-        if (employeeId == null && !"ADMIN".equals(role)) {
+        boolean kiosk = "KIOSK".equals(role);
+        if (kiosk) {
+            // Tài khoản thiết bị máy chấm công tại quầy (FR-07, FR-31): không gắn nhân viên, gắn đúng một điểm chấm công.
+            if (employeeId != null) {
+                throw BusinessException.unprocessable("KIOSK_NOT_EMPLOYEE", "Tài khoản máy chấm công không gắn hồ sơ nhân viên");
+            }
+            if (attendancePointId == null) {
+                throw BusinessException.unprocessable("ATTENDANCE_POINT_REQUIRED", "Tài khoản máy chấm công phải gắn một điểm chấm công");
+            }
+            Boolean active = jdbc.query("SELECT active FROM attendance_point WHERE id = ?",
+                    rs -> rs.next() ? rs.getBoolean(1) : null, attendancePointId);
+            if (active == null) {
+                throw new ResourceNotFoundException("Không tìm thấy điểm chấm công");
+            }
+            if (!active) {
+                throw BusinessException.conflict("INVALID_STATE", "Điểm chấm công đã ngừng hoạt động");
+            }
+        } else if (attendancePointId != null) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Chỉ tài khoản máy chấm công (KIOSK) mới gắn điểm chấm công");
+        }
+        if (employeeId == null && !"ADMIN".equals(role) && !kiosk) {
             throw BusinessException.unprocessable("EMPLOYEE_REQUIRED", "Tài khoản không phải Admin phải gắn hồ sơ nhân viên");
         }
         if (employeeId != null) {
@@ -86,9 +108,9 @@ public class AccountService {
         String password = tempPassword == null || tempPassword.isBlank() ? generatePassword() : tempPassword;
         AuthService.validatePolicy(password);
         Long id = jdbc.queryForObject("""
-                INSERT INTO user_account(email, password_hash, role, status, employee_id, must_change_password)
-                VALUES (?, 'x', ?, 'ACTIVE', ?, TRUE) RETURNING id
-                """, Long.class, email.trim(), role, employeeId);
+                INSERT INTO user_account(email, password_hash, role, status, employee_id, attendance_point_id, must_change_password)
+                VALUES (?, 'x', ?, 'ACTIVE', ?, ?, TRUE) RETURNING id
+                """, Long.class, email.trim(), role, employeeId, attendancePointId);
         auth.setPassword(id, password, true);
         if (requestId != null) {
             jdbc.update("""
@@ -145,6 +167,10 @@ public class AccountService {
         if (admin.userId() == id) {
             throw BusinessException.forbidden("SELF_ROLE_CHANGE", "Không tự đổi role của chính mình");
         }
+        if ("KIOSK".equals(role) || "KIOSK".equals(acc.get("role"))) {
+            throw BusinessException.unprocessable("KIOSK_ROLE_FIXED",
+                    "Không đổi tài khoản người dùng thành tài khoản máy chấm công hoặc ngược lại");
+        }
         boolean hasEmployee = acc.get("employeeId") != null;
         if (hasEmployee && "ADMIN".equals(role)) {
             throw BusinessException.unprocessable("ADMIN_NOT_EMPLOYEE", "Tài khoản gắn hồ sơ nhân viên không thể là Admin");
@@ -180,10 +206,10 @@ public class AccountService {
     public Map<String, Object> createRequest(long employeeId, String role, String reason) {
         AuthUser hr = Principals.requireRole("HR");
         requireRole(role);
-        if ("ADMIN".equals(role)) {
-            throw BusinessException.unprocessable("ADMIN_NOT_EMPLOYEE", "Không đề nghị role Admin cho nhân viên");
+        if ("ADMIN".equals(role) || "KIOSK".equals(role)) {
+            throw BusinessException.unprocessable("ADMIN_NOT_EMPLOYEE", "Chỉ đề nghị role Employee/Manager/HR cho nhân viên");
         }
-        Integer emp = jdbc.queryForObject("SELECT COUNT(*) FROM employee WHERE id = ? AND status <> 'TERMINATED'", Integer.class, employeeId);
+        Integer emp =jdbc.queryForObject("SELECT COUNT(*) FROM employee WHERE id = ? AND status <> 'TERMINATED'", Integer.class, employeeId);
         if (emp == null || emp == 0) {
             throw new ResourceNotFoundException("Không tìm thấy nhân viên đang làm việc");
         }
@@ -216,7 +242,7 @@ public class AccountService {
         }
         String mail = email == null || email.isBlank() ? (String) r.get("work_email") : email;
         Map<String, Object> created = createAccount(((Number) r.get("employee_id")).longValue(), mail,
-                (String) r.get("requested_role"), tempPassword, note == null ? "Xử lý đề nghị #" + id : note, id);
+                (String) r.get("requested_role"), tempPassword, note == null ? "Xử lý đề nghị #" + id : note, id, null);
         jdbc.update("UPDATE account_request SET process_note = ? WHERE id = ?", note, id);
         Map<String, Object> out = new LinkedHashMap<>(created);
         out.put("request", Sql.camel(jdbc.queryForMap(REQUEST_SELECT + " WHERE r.id = ?", id)));

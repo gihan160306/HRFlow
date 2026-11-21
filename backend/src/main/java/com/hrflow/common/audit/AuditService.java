@@ -41,6 +41,11 @@ public class AuditService {
         record(action, entityType, entityId, "SUCCESS", reason, before, after);
     }
 
+    /**
+     * Gọi record() nội bộ không đi qua proxy nên phải tự mở giao dịch riêng ở đây;
+     * nếu không, sự kiện DENIED bị rollback cùng giao dịch nghiệp vụ.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void denied(String action, String entityType, Object entityId, String reason) {
         record(action, entityType, entityId, "DENIED", reason, null, null);
     }

@@ -13,6 +13,8 @@ function normalizeUser(u, mustChangePassword) {
     role: String(u.role || '').toUpperCase(),
     fullName: u.fullName || u.email,
     employeeId: u.employeeId ?? null,
+    attendancePointId: u.attendancePointId ?? null,
+    attendancePointName: u.attendancePointName ?? null,
     employeeCode: u.employeeCode ?? null,
     departmentName: u.departmentName ?? null,
     jobTitleName: u.jobTitleName ?? null,
@@ -121,6 +123,7 @@ export function AuthProvider({ children }) {
       isHR: role === ROLES.HR,
       isManager: role === ROLES.MANAGER,
       isEmployee: role === ROLES.EMPLOYEE,
+      isKiosk: role === ROLES.KIOSK,
     };
   }, [user, token, login, logout, changePassword, isInitializing]);
 

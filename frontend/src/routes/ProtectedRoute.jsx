@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export function ProtectedRoute({ children }) {
-  const { isAuthenticated, isInitializing, mustChangePassword } = useAuth();
+  const { isAuthenticated, isInitializing, mustChangePassword, isKiosk } = useAuth();
   const location = useLocation();
 
   if (isInitializing) {
@@ -21,6 +21,11 @@ export function ProtectedRoute({ children }) {
   // Tài khoản mới/được reset phải đổi mật khẩu trước khi dùng hệ thống.
   if (mustChangePassword && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
+  }
+
+  // Máy chấm công tại quầy (tài khoản KIOSK) chỉ dùng màn hình /kiosk toàn màn hình.
+  if (isKiosk && !mustChangePassword && location.pathname !== '/kiosk') {
+    return <Navigate to="/kiosk" replace />;
   }
 
   return children ?? <Outlet />;

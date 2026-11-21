@@ -41,6 +41,19 @@ Mật khẩu `password123`. Email nhân viên = `<mã nhân viên viết thườ
 | Manager (Finance) | `nv003@hnqmedia.example` | Grant payroll `LOCK` |
 | Manager (Lead) | `nv008@hnqmedia.example` | Duyệt PTO/OT của team |
 | Employee | `nv009@hnqmedia.example` | |
+| Máy chấm công tại quầy | `kiosk.letan@hnqmedia.example` | Tài khoản thiết bị `KIOSK`, gắn điểm "Quầy lễ tân", chỉ vào được `/kiosk` |
+
+## Demo máy chấm công tại quầy (SRS FR-07, DEC-10)
+
+1. Trên laptop làm máy quầy: chạy backend + `npm run dev`, mở `http://localhost:3000` và đăng nhập `kiosk.letan@hnqmedia.example`
+   → trang `/kiosk` mở camera. Trình duyệt chỉ cho dùng camera trên `localhost` hoặc HTTPS, nên máy quầy phải mở bằng `localhost`.
+2. Trên điện thoại cùng Wi-Fi: mở `http://<IP của laptop>:3000` (Vite đã bật `host: true`; mở cổng 3000 trên Windows Firewall nếu cần),
+   đăng nhập nhân viên → **Chấm công** → đưa mã QR vào camera của máy quầy. Điện thoại chỉ hiển thị QR, không cần camera.
+3. Máy quầy chào tên nhân viên, đếm 3 giây, chụp ảnh rồi ghi check-in/check-out; điện thoại tự báo kết quả.
+   Lượt đầu trong ngày là check-in; quét lại trong 30 phút sau check-in không tạo check-out.
+
+Proxy (Vite khi dev, nginx khi Docker) bỏ header `Origin` của request `/api`, nên truy cập bằng IP LAN không cần sửa CORS của backend.
+Muốn trỏ dev server tới backend ở cổng khác: `VITE_PROXY_TARGET=http://localhost:18080 npm run dev`.
 
 ## Chức năng đã nối API thật
 
@@ -51,7 +64,8 @@ Mật khẩu `password123`. Email nhân viên = `<mã nhân viên viết thườ
 | Nhân viên (danh sách phân trang, chi tiết, tạo/sửa, onboarding, nghỉ việc, hồ sơ của tôi) | `/employees`, `/employees/options`, `/me/profile` |
 | Phòng ban | `/departments`, `/job-titles` |
 | Hợp đồng (tạo, gia hạn, chấm dứt) | `/contracts` |
-| Chấm công (check-in/out, bảng công, điều chỉnh công, xác nhận công) | `/attendance/*` |
+| Chấm công tại quầy: hiện QR cá nhân (đổi mỗi 15 giây) để máy quầy quét, bảng công, ảnh minh chứng, điều chỉnh công, xác nhận công, điểm chấm công (HR) | `/attendance/my-qr`, `/attendance/*`, `/attendance-points` |
+| Máy chấm công tại quầy (tài khoản `KIOSK`, trang `/kiosk` toàn màn hình): camera quét QR → chụp ảnh → ghi công | `/kiosk/me`, `/kiosk/scan`, `/kiosk/punch` |
 | Nghỉ phép (xem trước, nháp/gửi, hủy, yêu cầu hủy, duyệt/từ chối) | `/leave-requests/*`, `/leave-balances/me` |
 | Tăng ca (lập/công bố/đóng lịch, đăng ký, duyệt) | `/ot-schedules`, `/ot-registrations` |
 | Kỳ lương (tạo, kiểm tra đầu vào, chốt công, tính, đối soát, duyệt, khóa, chi trả, CSV, nhật ký) | `/payroll/periods/*` |
@@ -66,13 +80,12 @@ Mật khẩu `password123`. Email nhân viên = `<mã nhân viên viết thườ
 
 ## Phân quyền ở frontend
 
-- Role lấy từ backend (`ADMIN`, `HR`, `MANAGER`, `EMPLOYEE`); quyền payroll (`VIEW`/`PREPARE`/`APPROVE`/`LOCK`) lấy từ `grants` của `/auth/me`
+- Role lấy từ backend (`ADMIN`, `HR`, `MANAGER`, `EMPLOYEE`; tài khoản thiết bị `KIOSK` của máy chấm công chỉ vào được `/kiosk`); quyền payroll (`VIEW`/`PREPARE`/`APPROVE`/`LOCK`) lấy từ `grants` của `/auth/me`
   và quyết định hiển thị menu/nút của Kỳ lương. Nút thao tác trên kỳ lương lấy từ `allowedActions` do backend trả về.
 - Ẩn/hiện trang chỉ là lớp trải nghiệm; backend vẫn kiểm tra quyền ở mọi API (401/403/404).
 - Token JWT lưu trong `localStorage`; khi backend trả 401 (hết hạn/thu hồi) frontend tự đăng xuất.
 
 ## Chưa có giao diện (backend đã có API)
 
-Điểm chấm công và mã QR (`/attendance-points`, `/attendance/qr`), ảnh chấm công (`/attendance/{id}/photo`),
-số dư phép và điều chỉnh số dư (`/leave-balances/{id}/adjust`), quyết định xử lý xung đột lợi ích của kỳ lương
+Số dư phép và điều chỉnh số dư (`/leave-balances/{id}/adjust`), quyết định xử lý xung đột lợi ích của kỳ lương
 (`payrollApi.resolveConflict` đã có, chưa có biểu mẫu), refresh token (`/auth/refresh`).

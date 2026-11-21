@@ -6,17 +6,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /** 401 khi thiếu/hỏng token, 403 khi không đủ quyền; thân lỗi theo ApiError (DEC-01). */
 @Configuration
 public class SecurityConfig {
+
+    private static final AuthorizationManager<RequestAuthorizationContext> NOT_KIOSK = AuthorizationManagers.allOf(
+            AuthenticatedAuthorizationManager.authenticated(),
+            AuthorizationManagers.not(AuthorityAuthorizationManager.hasRole("KIOSK")));
 
     private final JwtAuthenticationFilter jwtFilter;
 
@@ -41,7 +50,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health", "/api/v1/health", "/api/v1/auth/login",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated())
+                        // Máy chấm công tại quầy (tài khoản thiết bị KIOSK) chỉ gọi được nhóm /kiosk/** (PM-22 cho chiều ngược lại)
+                        .requestMatchers("/api/v1/kiosk/**").hasRole("KIOSK")
+                        .requestMatchers("/api/v1/auth/**").authenticated()
+                        // Mọi API khác: đã đăng nhập VÀ không phải KIOSK (PM-21)
+                        .anyRequest().access(NOT_KIOSK))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -1,20 +1,15 @@
 package com.hrflow.attendance;
 
-import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,12 +30,12 @@ import com.hrflow.security.Principals;
 @Service
 public class AttendanceService {
 
-    static final String QR_PREFIX = "HRFLOW-QR:";
     private static final Set<String> METHODS = Set.of("QR", "MANUAL", "BUSINESS_TRIP", "ABSENCE");
 
     static final String SELECT = """
             SELECT a.id, a.employee_id, e.code AS employee_code, e.full_name AS employee_name, a.work_date,
                    a.check_in_at, a.check_out_at, pi.name AS check_in_point, po.name AS check_out_point,
+                   ki.email AS check_in_kiosk, ko.email AS check_out_kiosk,
                    (a.check_in_photo_id IS NOT NULL) AS has_check_in_photo, (a.check_out_photo_id IS NOT NULL) AS has_check_out_photo,
                    (a.check_in_nonce IS NOT NULL) AS qr_verified_in, (a.check_out_nonce IS NOT NULL) AS qr_verified_out,
                    a.method, a.scheduled_minutes, a.worked_minutes, a.late_minutes, a.early_minutes,
@@ -51,6 +46,7 @@ public class AttendanceService {
                    COALESCE(ce.full_name, ca.email) AS confirmed_by_name, a.confirmed_at, a.note
             FROM attendance_record a JOIN employee e ON e.id = a.employee_id
             LEFT JOIN attendance_point pi ON pi.id = a.check_in_point_id LEFT JOIN attendance_point po ON po.id = a.check_out_point_id
+            LEFT JOIN user_account ki ON ki.id = a.check_in_kiosk_id LEFT JOIN user_account ko ON ko.id = a.check_out_kiosk_id
             LEFT JOIN user_account ca ON ca.id = a.confirmed_by LEFT JOIN employee ce ON ce.id = ca.employee_id
             """;
 
@@ -61,17 +57,9 @@ public class AttendanceService {
     private final AuditService audit;
     private final EmployeeService employees;
     private final Json json;
-    private final boolean requireQr;
-    private final int qrTtl;
-    private final int photoMaxKb;
-    private final int photoGraceSeconds;
 
     public AttendanceService(JdbcTemplate jdbc, WorkCalendar calendar, TimesheetService timesheets, PeriodGuard guard,
-                             AuditService audit, EmployeeService employees, Json json,
-                             @Value("${hrflow.attendance.require-qr:true}") boolean requireQr,
-                             @Value("${hrflow.attendance.qr-ttl-seconds:15}") int qrTtl,
-                             @Value("${hrflow.attendance.photo-max-kb:200}") int photoMaxKb,
-                             @Value("${hrflow.attendance.photo-grace-seconds:60}") int photoGraceSeconds) {
+                             AuditService audit, EmployeeService employees, Json json) {
         this.jdbc = jdbc;
         this.calendar = calendar;
         this.timesheets = timesheets;
@@ -79,184 +67,10 @@ public class AttendanceService {
         this.audit = audit;
         this.employees = employees;
         this.json = json;
-        this.requireQr = requireQr;
-        this.qrTtl = qrTtl;
-        this.photoMaxKb = photoMaxKb;
-        this.photoGraceSeconds = photoGraceSeconds;
     }
 
-    // ---------------- check-in / check-out ----------------
-
-    public record Scan(String qrPayload, String shortCode, String photoBase64, String photoMime) {
-    }
-
-    private record Verified(Long pointId, String nonce, Long photoId) {
-    }
-
-    private record QrHit(long pointId, String nonce, Instant expiresAt) {
-    }
-
-    /** Tra mã QR; {@code graceSeconds} cho phép thêm thời gian chụp ảnh sau khi quét thành công. */
-    private QrHit lookupQr(Scan scan, int graceSeconds) {
-        List<Map<String, Object>> rows;
-        if (scan.qrPayload() != null && !scan.qrPayload().isBlank()) {
-            String p = scan.qrPayload().trim();
-            if (!p.startsWith(QR_PREFIX)) {
-                throw BusinessException.unprocessable("QR_INVALID", "Mã QR không hợp lệ");
-            }
-            rows = jdbc.queryForList("SELECT point_id, nonce, expires_at FROM qr_token WHERE nonce = ?", p.substring(QR_PREFIX.length()));
-        } else {
-            rows = jdbc.queryForList("""
-                    SELECT point_id, nonce, expires_at FROM qr_token WHERE short_code = ? AND expires_at + make_interval(secs => ?) > now()
-                    ORDER BY issued_at DESC LIMIT 1
-                    """, scan.shortCode().trim(), graceSeconds);
-        }
-        if (rows.isEmpty()) {
-            throw BusinessException.unprocessable("QR_INVALID", "Mã QR không hợp lệ");
-        }
-        Map<String, Object> t = rows.get(0);
-        Instant exp = ((Timestamp) t.get("expires_at")).toInstant();
-        if (exp.plusSeconds(graceSeconds).isBefore(Instant.now())) {
-            throw BusinessException.unprocessable("QR_EXPIRED", "Mã QR đã hết hạn, hãy quét lại mã mới");
-        }
-        return new QrHit(((Number) t.get("point_id")).longValue(), (String) t.get("nonce"), exp);
-    }
-
-    private static boolean hasQr(Scan scan) {
-        return scan != null && ((scan.qrPayload() != null && !scan.qrPayload().isBlank())
-                || (scan.shortCode() != null && !scan.shortCode().isBlank()));
-    }
-
-    /**
-     * Bước 1 của check-in: quét QR. Thành công thì client mở camera chụp ảnh minh chứng
-     * rồi gọi check-in kèm cả QR và ảnh. Chưa ghi dữ liệu chấm công.
-     */
-    public Map<String, Object> scanQr(Scan scan) {
-        long emp = Principals.employeeId();
-        requireWorking(emp);
-        if (!hasQr(scan)) {
-            throw BusinessException.unprocessable("QR_INVALID", "Chưa có mã QR");
-        }
-        QrHit hit = lookupQr(scan, 0);
-        Map<String, Object> p = Sql.one(jdbc, "Không tìm thấy điểm chấm công",
-                "SELECT id, name, photo_required, active FROM attendance_point WHERE id = ?", hit.pointId());
-        if (!Boolean.TRUE.equals(p.get("active"))) {
-            throw BusinessException.conflict("INVALID_STATE", "Điểm chấm công đã ngừng hoạt động");
-        }
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("valid", true);
-        out.put("pointId", hit.pointId());
-        out.put("pointName", p.get("name"));
-        out.put("photoRequired", true);
-        out.put("photoMaxKb", photoMaxKb);
-        out.put("qrExpiresAt", hit.expiresAt());
-        out.put("submitWithinSeconds", photoGraceSeconds);
-        return out;
-    }
-
-    private Verified verify(Scan scan, long employeeId, boolean photoMandatory) {
-        Long pointId = null;
-        String nonce = null;
-        if (hasQr(scan)) {
-            QrHit hit = lookupQr(scan, photoGraceSeconds);
-            pointId = hit.pointId();
-            nonce = hit.nonce();
-        } else if (requireQr) {
-            throw BusinessException.unprocessable("QR_INVALID", "Điểm chấm công yêu cầu quét mã QR");
-        }
-        Long photoId = null;
-        boolean photoRequired = pointId != null && (photoMandatory || Boolean.TRUE.equals(
-                jdbc.queryForObject("SELECT photo_required FROM attendance_point WHERE id = ?", Boolean.class, pointId)));
-        if (scan != null && scan.photoBase64() != null && !scan.photoBase64().isBlank()) {
-            byte[] bytes;
-            try {
-                bytes = Base64.getDecoder().decode(scan.photoBase64());
-            } catch (IllegalArgumentException ex) {
-                throw BusinessException.unprocessable("PHOTO_INVALID", "Ảnh minh chứng không hợp lệ");
-            }
-            if (bytes.length > photoMaxKb * 1024L) {
-                throw BusinessException.unprocessable("PHOTO_TOO_LARGE", "Ảnh minh chứng tối đa " + photoMaxKb + "KB");
-            }
-            KeyHolder kh = new GeneratedKeyHolder();
-            final byte[] content = bytes;
-            final String mime = scan.photoMime() == null ? "image/jpeg" : scan.photoMime();
-            jdbc.update(con -> {
-                var ps = con.prepareStatement("INSERT INTO attendance_photo(employee_id, content, mime_type, size_bytes) VALUES (?, ?, ?, ?)",
-                        new String[] {"id"});
-                ps.setLong(1, employeeId);
-                ps.setBytes(2, content);
-                ps.setString(3, mime);
-                ps.setInt(4, content.length);
-                return ps;
-            }, kh);
-            photoId = kh.getKey().longValue();
-        } else if (photoRequired) {
-            throw BusinessException.unprocessable("PHOTO_REQUIRED", "Điểm chấm công yêu cầu ảnh minh chứng");
-        }
-        return new Verified(pointId, nonce, photoId);
-    }
-
-    @Transactional
-    public Map<String, Object> checkIn(Scan scan) {
-        long emp = Principals.employeeId();
-        requireWorking(emp);
-        LocalDate today = Vn.today();
-        guard.assertOpen(today);
-        Verified v = verify(scan, emp, true);
-        List<Map<String, Object>> existing = jdbc.queryForList(
-                "SELECT id, check_in_at, method FROM attendance_record WHERE employee_id = ? AND work_date = ? FOR UPDATE", emp, today);
-        if (!existing.isEmpty()) {
-            throw BusinessException.conflict("ALREADY_CHECKED_IN", "Hôm nay bạn đã có bản ghi chấm công");
-        }
-        Instant now = Instant.now();
-        DayPlan plan = calendar.plan(emp, today);
-        String method = v.pointId() != null ? "QR" : "MANUAL";
-        Result r = AttendanceCalc.compute(plan, now, null, method, today);
-        Long id = jdbc.queryForObject("""
-                INSERT INTO attendance_record(employee_id, work_date, check_in_at, check_in_point_id, check_in_nonce, check_in_photo_id,
-                       method, scheduled_minutes, worked_minutes, late_minutes, early_minutes, status, review_reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-                """, Long.class, emp, today, Timestamp.from(now), v.pointId(), v.nonce(), v.photoId(), method,
-                r.scheduledMinutes(), r.workedMinutes(), r.lateMinutes(), r.earlyMinutes(), r.status(), r.reviewReason());
-        return get(id);
-    }
-
-    @Transactional
-    public Map<String, Object> checkOut(Scan scan) {
-        long emp = Principals.employeeId();
-        requireWorking(emp);
-        LocalDate today = Vn.today();
-        guard.assertOpen(today);
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT id, check_in_at, check_out_at, method FROM attendance_record
-                WHERE employee_id = ? AND work_date = ? FOR UPDATE
-                """, emp, today);
-        if (rows.isEmpty() || rows.get(0).get("check_in_at") == null || !"QR".equals(rows.get(0).get("method")) && !"MANUAL".equals(rows.get(0).get("method"))) {
-            throw BusinessException.conflict("NO_CHECK_IN", "Chưa check-in hôm nay");
-        }
-        Map<String, Object> rec = rows.get(0);
-        if (rec.get("check_out_at") != null) {
-            throw BusinessException.conflict("ALREADY_CHECKED_OUT", "Hôm nay đã check-out");
-        }
-        Verified v = verify(scan, emp, false);
-        Instant now = Instant.now();
-        Instant in = ((Timestamp) rec.get("check_in_at")).toInstant();
-        Result r = AttendanceCalc.compute(calendar.plan(emp, today), in, now, (String) rec.get("method"), today);
-        jdbc.update("""
-                UPDATE attendance_record SET check_out_at = ?, check_out_point_id = ?, check_out_nonce = ?, check_out_photo_id = ?,
-                       scheduled_minutes = ?, worked_minutes = ?, late_minutes = ?, early_minutes = ?, status = ?,
-                       review_reason = ?, version = version + 1 WHERE id = ?
-                """, Timestamp.from(now), v.pointId(), v.nonce(), v.photoId(), r.scheduledMinutes(), r.workedMinutes(),
-                r.lateMinutes(), r.earlyMinutes(), r.status(), r.reviewReason(), rec.get("id"));
-        return get(((Number) rec.get("id")).longValue());
-    }
-
-    private void requireWorking(long employeeId) {
-        String status = jdbc.queryForObject("SELECT status FROM employee WHERE id = ?", String.class, employeeId);
-        if ("TERMINATED".equals(status) || "ONBOARDING".equals(status)) {
-            throw BusinessException.conflict("INVALID_STATE", "Nhân viên chưa/không còn làm việc nên không chấm công");
-        }
-    }
+    // Ghi check-in/check-out chỉ qua máy chấm công tại quầy (KioskService, SRS FR-07 – DEC-10);
+    // nhân viên chỉ lấy QR cá nhân (EmployeeQrService) và xem kết quả qua today().
 
     public Map<String, Object> today() {
         long emp = Principals.employeeId();
@@ -557,61 +371,37 @@ public class AttendanceService {
         return out;
     }
 
-    // ---------------- điểm chấm công, QR, ảnh ----------------
+    // ---------------- điểm chấm công, ảnh ----------------
+
+    private static final String POINT_SELECT = """
+            SELECT p.id, p.code, p.name, p.active,
+                   (SELECT COUNT(*) FROM user_account u WHERE u.attendance_point_id = p.id AND u.role = 'KIOSK'
+                      AND u.status = 'ACTIVE') AS kiosk_count
+            FROM attendance_point p
+            """;
 
     public List<Map<String, Object>> points() {
         Principals.current();
-        return Sql.list(jdbc, "SELECT id, code, name, photo_required, active FROM attendance_point ORDER BY id");
+        return Sql.list(jdbc, POINT_SELECT + " ORDER BY p.id");
     }
 
+    /** HR cấu hình điểm chấm công; máy quầy gắn với điểm qua tài khoản KIOSK (Admin tạo theo yêu cầu HR). */
     @Transactional
-    public Map<String, Object> savePoint(Long id, String code, String name, Boolean photoRequired, Boolean active) {
+    public Map<String, Object> savePoint(Long id, String code, String name, Boolean active) {
         Principals.requireRole("HR");
-        boolean photo = photoRequired == null || photoRequired;
         boolean act = active == null || active;
         if (id == null) {
-            Long nid = jdbc.queryForObject("INSERT INTO attendance_point(code, name, photo_required, active) VALUES (?, ?, ?, ?) RETURNING id",
-                    Long.class, code.trim(), name.trim(), photo, act);
+            Long nid = jdbc.queryForObject("INSERT INTO attendance_point(code, name, active) VALUES (?, ?, ?) RETURNING id",
+                    Long.class, code.trim(), name.trim(), act);
             audit.success("CREATE_ATTENDANCE_POINT", "attendance_point", nid, name, null, null);
-            return Sql.one(jdbc, "Không tìm thấy điểm", "SELECT id, code, name, photo_required, active FROM attendance_point WHERE id = ?", nid);
+            return Sql.one(jdbc, "Không tìm thấy điểm", POINT_SELECT + " WHERE p.id = ?", nid);
         }
-        int n = jdbc.update("UPDATE attendance_point SET code = ?, name = ?, photo_required = ?, active = ? WHERE id = ?", code.trim(), name.trim(), photo, act, id);
+        int n = jdbc.update("UPDATE attendance_point SET code = ?, name = ?, active = ? WHERE id = ?", code.trim(), name.trim(), act, id);
         if (n == 0) {
             throw new ResourceNotFoundException("Không tìm thấy điểm chấm công");
         }
         audit.success("UPDATE_ATTENDANCE_POINT", "attendance_point", id, name, null, null);
-        return Sql.one(jdbc, "Không tìm thấy điểm", "SELECT id, code, name, photo_required, active FROM attendance_point WHERE id = ?", id);
-    }
-
-    @Transactional
-    public Map<String, Object> issueQr(long pointId) {
-        AuthUser hr = Principals.requireRole("HR");
-        Map<String, Object> p = Sql.one(jdbc, "Không tìm thấy điểm chấm công", "SELECT id, name, photo_required, active FROM attendance_point WHERE id = ?", pointId);
-        if (!Boolean.TRUE.equals(p.get("active"))) {
-            throw BusinessException.conflict("INVALID_STATE", "Điểm chấm công đã ngừng hoạt động");
-        }
-        SecureRandom rnd = new SecureRandom();
-        byte[] buf = new byte[16];
-        rnd.nextBytes(buf);
-        StringBuilder nonce = new StringBuilder();
-        for (byte b : buf) {
-            nonce.append(String.format("%02x", b));
-        }
-        String shortCode = String.format("%06d", rnd.nextInt(1_000_000));
-        Instant now = Instant.now();
-        Instant exp = now.plusSeconds(qrTtl);
-        jdbc.update("INSERT INTO qr_token(point_id, nonce, short_code, issued_at, expires_at, issued_by) VALUES (?, ?, ?, ?, ?, ?)",
-                pointId, nonce.toString(), shortCode, Timestamp.from(now), Timestamp.from(exp), hr.userId());
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("pointId", pointId);
-        out.put("pointName", p.get("name"));
-        out.put("qrPayload", QR_PREFIX + nonce);
-        out.put("shortCode", shortCode);
-        out.put("issuedAt", now);
-        out.put("expiresAt", exp);
-        out.put("ttlSeconds", qrTtl);
-        out.put("photoRequired", p.get("photoRequired"));
-        return out;
+        return Sql.one(jdbc, "Không tìm thấy điểm", POINT_SELECT + " WHERE p.id = ?", id);
     }
 
     public Map<String, Object> photo(long id, String kind) {

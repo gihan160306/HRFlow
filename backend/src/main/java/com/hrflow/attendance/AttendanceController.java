@@ -26,9 +26,6 @@ import jakarta.validation.constraints.NotNull;
 @RestController
 public class AttendanceController {
 
-    public record ScanRequest(String qrPayload, String shortCode, String photoBase64, String photoMime) {
-    }
-
     public record NoteBody(String note) {
     }
 
@@ -40,28 +37,21 @@ public class AttendanceController {
     public record AbsenceRequest(@NotNull Long employeeId, @NotEmpty List<LocalDate> dates, @NotBlank String reason) {
     }
 
-    public record PointRequest(@NotBlank String code, @NotBlank String name, Boolean photoRequired, Boolean active) {
+    public record PointRequest(@NotBlank String code, @NotBlank String name, Boolean active) {
     }
 
     private final AttendanceService service;
+    private final EmployeeQrService qr;
 
-    public AttendanceController(AttendanceService service) {
+    public AttendanceController(AttendanceService service, EmployeeQrService qr) {
         this.service = service;
+        this.qr = qr;
     }
 
-    @PostMapping("/api/v1/attendance/qr/verify")
-    public Map<String, Object> verifyQr(@RequestBody ScanRequest r) {
-        return service.scanQr(new AttendanceService.Scan(r.qrPayload(), r.shortCode(), null, null));
-    }
-
-    @PostMapping("/api/v1/attendance/check-in")
-    public Map<String, Object> checkIn(@RequestBody(required = false) ScanRequest r) {
-        return service.checkIn(r == null ? null : new AttendanceService.Scan(r.qrPayload(), r.shortCode(), r.photoBase64(), r.photoMime()));
-    }
-
-    @PostMapping("/api/v1/attendance/check-out")
-    public Map<String, Object> checkOut(@RequestBody(required = false) ScanRequest r) {
-        return service.checkOut(r == null ? null : new AttendanceService.Scan(r.qrPayload(), r.shortCode(), r.photoBase64(), r.photoMime()));
+    /** QR cá nhân động để đưa vào máy chấm công tại quầy (FR-07, DEC-10). */
+    @GetMapping("/api/v1/attendance/my-qr")
+    public Map<String, Object> myQr() {
+        return qr.issue();
     }
 
     @GetMapping("/api/v1/attendance/today")
@@ -130,17 +120,12 @@ public class AttendanceController {
     @PostMapping("/api/v1/attendance-points")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> createPoint(@Valid @RequestBody PointRequest r) {
-        return service.savePoint(null, r.code(), r.name(), r.photoRequired(), r.active());
+        return service.savePoint(null, r.code(), r.name(), r.active());
     }
 
     @PutMapping("/api/v1/attendance-points/{id}")
     public Map<String, Object> updatePoint(@PathVariable long id, @Valid @RequestBody PointRequest r) {
-        return service.savePoint(id, r.code(), r.name(), r.photoRequired(), r.active());
-    }
-
-    @GetMapping("/api/v1/attendance/qr")
-    public Map<String, Object> qr(@RequestParam long pointId) {
-        return service.issueQr(pointId);
+        return service.savePoint(id, r.code(), r.name(), r.active());
     }
 
     @GetMapping("/api/v1/attendance/{id}/photo")

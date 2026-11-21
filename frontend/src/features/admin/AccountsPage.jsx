@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import useAsync from '../../hooks/useAsync';
 import adminApi from '../../api/adminApi';
 import employeeApi from '../../api/employeeApi';
+import attendanceApi from '../../api/attendanceApi';
 import Button from '../../components/common/Button';
 import Tabs from '../../components/common/Tabs';
 import DataTable from '../../components/common/DataTable';
@@ -15,7 +16,9 @@ import { formatDateTime } from '../../utils/formatDate';
 import { ROLE_LABELS, PAYROLL_GRANTS } from '../../utils/constants';
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
-const NON_ADMIN_ROLES = ROLE_OPTIONS.filter((r) => r.value !== 'ADMIN');
+// Đề nghị cấp tài khoản cho nhân viên: chỉ Employee/Manager/HR. KIOSK là tài khoản thiết bị, không đổi qua lại với role người dùng.
+const NON_ADMIN_ROLES = ROLE_OPTIONS.filter((r) => r.value !== 'ADMIN' && r.value !== 'KIOSK');
+const USER_ROLES = ROLE_OPTIONS.filter((r) => r.value !== 'KIOSK');
 const GRANT_OPTIONS = Object.values(PAYROLL_GRANTS).map((v) => ({ value: v, label: v }));
 const ACCOUNT_STATUS = {
   ACTIVE: { label: 'Hoạt động', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -46,6 +49,7 @@ export function AccountsPage() {
   const people = useAsync(() => employeeApi.options(), [], { enabled: isHR });
   // Admin chỉ xem được định danh tối thiểu của nhân viên: dùng để chọn người chưa có tài khoản.
   const staff = useAsync(() => employeeApi.list({ page: 0, size: 200 }), [], { enabled: isAdmin });
+  const points = useAsync(() => attendanceApi.points(), [], { enabled: isAdmin });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createFrom, setCreateFrom] = useState(null); // account request đang xử lý
@@ -65,7 +69,7 @@ export function AccountsPage() {
   const showTemp = (title, res) => setNotice({ title, text: res?.temporaryPassword });
 
   const accountColumns = [
-    { key: 'email', header: 'Tài khoản', render: (a) => (<><p className="font-semibold text-slate-900">{a.email}</p><p className="text-xs text-slate-500">{a.employeeName ? `${a.employeeCode} – ${a.employeeName}` : 'Admin kỹ thuật (không có hồ sơ nhân viên)'}</p></>) },
+    { key: 'email', header: 'Tài khoản', render: (a) => (<><p className="font-semibold text-slate-900">{a.email}</p><p className="text-xs text-slate-500">{a.employeeName ? `${a.employeeCode} – ${a.employeeName}` : a.role === 'KIOSK' ? `Máy chấm công • ${a.attendancePointName || ''}` : 'Admin kỹ thuật (không có hồ sơ nhân viên)'}</p></>) },
     { key: 'role', header: 'Vai trò', render: (a) => ROLE_LABELS[a.role] || a.role },
     { key: 'status', header: 'Trạng thái', render: (a) => <Pill map={ACCOUNT_STATUS} value={a.status} /> },
     { key: 'mustChangePassword', header: 'Đổi MK', render: (a) => (a.mustChangePassword ? 'Bắt buộc' : '-') },
@@ -77,7 +81,7 @@ export function AccountsPage() {
             ? <Button size="sm" variant="outline" icon={Unlock} onClick={() => askReason(`Mở khóa ${a.email}`, 'Mở khóa', (r) => adminApi.unlockAccount(a.id, r).then(accounts.reload))}>Mở khóa</Button>
             : <Button size="sm" variant="outline" icon={Lock} onClick={() => askReason(`Khóa ${a.email}`, 'Khóa', (r) => adminApi.lockAccount(a.id, r).then(accounts.reload), 'danger')}>Khóa</Button>}
           <Button size="sm" variant="outline" icon={KeyRound} onClick={() => askReason(`Đặt lại mật khẩu ${a.email}`, 'Đặt lại', (r) => adminApi.resetPassword(a.id, r).then((res) => { showTemp(`Mật khẩu tạm của ${a.email}`, res); accounts.reload(); }))}>Đặt lại MK</Button>
-          <Button size="sm" variant="outline" icon={UserCog} onClick={() => setRoleFor(a)}>Vai trò</Button>
+          {a.role !== 'KIOSK' && <Button size="sm" variant="outline" icon={UserCog} onClick={() => setRoleFor(a)}>Vai trò</Button>}
         </div>
       ),
     },
@@ -113,12 +117,13 @@ export function AccountsPage() {
     },
   ];
 
-  const accountOptions = (accounts.data || []).filter((a) => a.role !== 'ADMIN' && a.status === 'ACTIVE')
+  const accountOptions = (accounts.data || []).filter((a) => a.role !== 'ADMIN' && a.role !== 'KIOSK' && a.status === 'ACTIVE')
     .map((a) => ({ value: a.id, label: `${a.employeeName || a.email} (${a.email})` }));
   const noAccountOptions = (staff.data?.content || [])
     .filter((e) => !e.hasAccount && e.status !== 'TERMINATED')
     .map((e) => ({ value: e.id, label: `${e.code} – ${e.fullName}` }));
   const peopleOptions =(people.data || []).map((p) => ({ value: p.id, label: `${p.code} – ${p.fullName}` }));
+  const pointOptions = (points.data || []).filter((p) => p.active).map((p) => ({ value: p.id, label: `${p.name} (${p.code})` }));
 
   return (
     <div className="space-y-6">
@@ -159,11 +164,12 @@ export function AccountsPage() {
       <FormModal
         isOpen={createOpen || Boolean(createFrom)}
         title={createFrom ? `Cấp tài khoản cho ${createFrom.employeeName}` : 'Tạo tài khoản'}
-        description="Để trống mật khẩu để hệ thống tự sinh mật khẩu tạm. Người dùng bắt buộc đổi mật khẩu ở lần đăng nhập đầu."
+        description="Để trống mật khẩu để hệ thống tự sinh mật khẩu tạm. Người dùng bắt buộc đổi mật khẩu ở lần đăng nhập đầu. Tài khoản máy chấm công tại quầy: chọn vai trò Máy chấm công, bỏ trống nhân viên và chọn điểm chấm công."
         fields={[
-          ...(createFrom ? [] : [{ name: 'employeeId', label: 'Nhân viên', type: 'select', options: noAccountOptions, placeholder: 'Không gắn nhân viên (Admin kỹ thuật)', helperText: 'Chỉ liệt kê nhân viên chưa có tài khoản.' }]),
+          ...(createFrom ? [] : [{ name: 'employeeId', label: 'Nhân viên', type: 'select', options: noAccountOptions, placeholder: 'Không gắn nhân viên (Admin kỹ thuật / máy chấm công)', helperText: 'Chỉ liệt kê nhân viên chưa có tài khoản.' }]),
           { name: 'email', label: 'Email đăng nhập', type: 'email', required: true, half: true },
-          { name: 'role', label: 'Vai trò', type: 'select', options: ROLE_OPTIONS, required: true, half: true },
+          { name: 'role', label: 'Vai trò', type: 'select', options: createFrom ? NON_ADMIN_ROLES : ROLE_OPTIONS, required: true, half: true },
+          ...(createFrom ? [] : [{ name: 'attendancePointId', label: 'Điểm chấm công (chỉ cho máy chấm công)', type: 'select', options: pointOptions, placeholder: 'Không áp dụng', helperText: 'Bắt buộc khi vai trò là Máy chấm công tại quầy.' }]),
           { name: 'temporaryPassword', label: 'Mật khẩu tạm (tuỳ chọn)', half: true, helperText: 'Tối thiểu theo chính sách mật khẩu.' },
           { name: 'reason', label: 'Lý do / căn cứ', type: 'textarea', required: true },
         ]}
@@ -176,6 +182,7 @@ export function AccountsPage() {
             email: v.email.trim(), role: v.role, reason: v.reason.trim(),
             temporaryPassword: v.temporaryPassword?.trim() || undefined,
             requestId: createFrom?.id,
+            attendancePointId: !createFrom && v.role === 'KIOSK' && v.attendancePointId ? Number(v.attendancePointId) : undefined,
           });
           showTemp(`Đã tạo tài khoản ${v.email}`, res);
           accounts.reload();
@@ -227,7 +234,7 @@ export function AccountsPage() {
         isOpen={Boolean(roleFor)}
         title={`Đổi vai trò – ${roleFor?.email || ''}`}
         fields={[
-          { name: 'role', label: 'Vai trò mới', type: 'select', options: ROLE_OPTIONS, required: true },
+          { name: 'role', label: 'Vai trò mới', type: 'select', options: USER_ROLES, required: true },
           { name: 'reason', label: 'Lý do', type: 'textarea', required: true },
         ]}
         initial={{ role: roleFor?.role }}
