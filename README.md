@@ -54,7 +54,7 @@ Tài khoản demo (mật khẩu `password123`; dữ liệu tạo bởi migration
 | Admin | `admin@hnqmedia.example` | Quản trị kỹ thuật, không gắn hồ sơ nhân viên, không có quyền payroll |
 | HR | `nv004@hnqmedia.example` | HR Lead; grant payroll `VIEW`, `PREPARE` |
 | Manager (Giám đốc) | `nv001@hnqmedia.example` | Grant payroll `APPROVE` |
-| Manager (Finance) | `nv003@hnqmedia.example` | Grant payroll `LOCK` |
+| Manager (Finance) | `nv003@hnqmedia.example` | Grant payroll `VIEW` (đối soát, V25), `LOCK` |
 | Manager (Lead) | `nv008@hnqmedia.example` | Lead Content, duyệt PTO/OT của team |
 | Employee | `nv009@hnqmedia.example` | Nhân viên Content |
 

@@ -24,7 +24,7 @@ import com.hrflow.security.AuthUser;
 
 /**
  * Dữ liệu demo lịch sử lương (V23): đưa các kỳ 08, 09, 10/2026 đi hết quy trình nghiệp vụ THẬT bằng đúng người có
- * grant payroll: HR Lead chốt công + tính lương, HR Executive đối soát, HR Lead ghi nhận quyết định xử lý xung đột,
+ * grant payroll: HR Lead chốt công + tính lương, Finance Manager đối soát (V25), HR Lead ghi nhận quyết định xử lý xung đột,
  * Giám đốc duyệt, Finance Manager khóa kỳ (tạo phiếu lương PDF) và ghi nhận chi trả.
  * Sau khi kỳ 08 khóa, tạo thêm điều chỉnh truy lĩnh/truy thu để kỳ 09 áp dụng.
  *
@@ -78,7 +78,6 @@ public class DemoPayrollHistorySeeder implements ApplicationRunner {
             return;
         }
         long hrLead = account("NV004");
-        long hrExec = account("NV005");
         long director = account("NV001");
         long finance = account("NV003");
         String mm = String.format("%02d", month);
@@ -98,7 +97,7 @@ public class DemoPayrollHistorySeeder implements ApplicationRunner {
             } else if ("DRAFT".equals(status)) {
                 as(hrLead, () -> payroll.calculate(id));
             } else if ("CALCULATED".equals(status) && p.get("reconciled_at") == null) {
-                as(hrExec, () -> payroll.reconcile(id, "Đối soát tổng Gross/BH/thuế/thực chi khớp; đã đối chiếu bảng công tháng " + month));
+                as(finance, () -> payroll.reconcile(id, "Đối soát tổng Gross/BH/thuế/thực chi khớp; đã đối chiếu bảng công tháng " + month));
             } else if ("CALCULATED".equals(status)) {
                 as(director, () -> payroll.approve(id));
             } else if ("APPROVED".equals(status)) {
