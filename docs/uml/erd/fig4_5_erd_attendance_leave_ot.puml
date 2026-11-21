@@ -18,25 +18,42 @@ entity employee {
   status : varchar(30)
   hire_date : date
 }
+entity user_account {
+  * id : bigint <<PK>>
+  --
+  employee_id : bigint <<FK>>
+  attendance_point_id : bigint <<FK>>
+  --
+  email : varchar(255)
+  role : varchar(30)
+  status : varchar(30)
+  token_version : integer
+}
 entity attendance_point {
   * id : bigint <<PK>>
   --
   --
   code : varchar(30)
   name : varchar(150)
-  photo_required : boolean
+  active : boolean
 }
-entity qr_token {
+entity employee_qr_token {
   * id : bigint <<PK>>
   --
-  * point_id : bigint <<FK>>
+  * employee_id : bigint <<FK>>
+  attendance_id : bigint <<FK>>
   --
   nonce : varchar(64)
   expires_at : timestamptz
+  scanned_at : timestamptz
+  punch_type : varchar(20)
+  used_at : timestamptz
 }
 entity attendance_record {
   * id : bigint <<PK>>
   --
+  check_in_kiosk_id : bigint <<FK>>
+  check_out_kiosk_id : bigint <<FK>>
   * employee_id : bigint <<FK>>
   check_in_point_id : bigint <<FK>>
   check_out_point_id : bigint <<FK>>
@@ -103,7 +120,12 @@ entity ot_registration {
   actual_minutes : integer
 }
 employee ||--o{ employee : manager_id
-attendance_point ||--o{ qr_token : point_id
+employee ||--o{ user_account : employee_id
+attendance_point ||--o{ user_account : attendance_point_id
+employee ||--o{ employee_qr_token : employee_id
+attendance_record ||--o{ employee_qr_token : attendance_id
+user_account ||--o{ attendance_record : check_in_kiosk_id
+user_account ||--o{ attendance_record : check_out_kiosk_id
 employee ||--o{ attendance_record : employee_id
 attendance_point ||--o{ attendance_record : check_in_point_id
 attendance_point ||--o{ attendance_record : check_out_point_id

@@ -45,8 +45,9 @@ SHOW = {  # cột bổ sung cần hiển thị (ngoài PK/FK); None = 5 cột đ
     "leave_request": ["start_date", "end_date", "duration_days", "status"],
     "ot_registration": ["registered_minutes", "approved_minutes", "status", "actual_minutes"],
     "ot_schedule": ["work_date", "start_time", "end_time", "status"],
-    "qr_token": ["nonce", "expires_at"],
-    "attendance_point": ["code", "name", "photo_required"],
+    "employee_qr_token": ["nonce", "expires_at", "scanned_at", "punch_type", "used_at"],
+    "attendance_point": ["code", "name", "active"],
+    "user_account": ["email", "role", "status", "token_version"],
     "leave_balance": ["balance_year", "used_days"],
     "leave_request_day": ["leave_date", "minutes"],
     "department": ["code", "name"], "job_title": ["code", "name"],
@@ -103,6 +104,8 @@ def overview():
     body += [f"{firsts[i]} -[hidden]down-> {firsts[i+4]}" for i in range(4)]
     body += relations(allt, skip=("employee", "user_account", "department", "job_title"))
     body.append("@enduml")
+    # quan hệ máy chấm công (KIOSK) – điểm chấm công cắt ngang nhóm A/C: không cho ảnh hưởng bố cục
+    body = [l.replace("attendance_point ||--o{ user_account", "attendance_point ||-[norank]-o{ user_account") for l in body]
     (HERE / "erd" / "fig4_3_erd_overview.puml").write_text("\n".join(body) + "\n", encoding="utf-8")
     print("ghi overview", len(allt), "bảng")
 
@@ -112,6 +115,6 @@ if __name__ == "__main__":
     write("fig4_4_erd_account_hr", "ERD nhóm tài khoản, tổ chức và hồ sơ nhân sự",
           "user_account payroll_grant employee department job_title contract salary_record tax_profile insurance_profile".split())
     write("fig4_5_erd_attendance_leave_ot", "ERD nhóm chấm công, nghỉ phép và làm thêm giờ",
-          "employee attendance_point qr_token attendance_record leave_request leave_request_day leave_balance ot_schedule ot_registration".split())
+          "employee user_account attendance_point employee_qr_token attendance_record leave_request leave_request_day leave_balance ot_schedule ot_registration".split())
     write("fig4_6_erd_payroll", "ERD nhóm kỳ lương và phiếu lương",
           "employee payroll_period timesheet_snapshot payroll_line payroll_line_item payroll_adjustment payslip payroll_audit".split())

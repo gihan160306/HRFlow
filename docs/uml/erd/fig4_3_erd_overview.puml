@@ -34,7 +34,7 @@ package "Nhóm C – Lịch làm việc & chấm công (9)" #FFF3E0 {
   entity employee_schedule
   entity holiday
   entity attendance_point
-  entity qr_token
+  entity employee_qr_token
   entity attendance_record
   entity attendance_photo
   entity attendance_adjustment
@@ -85,13 +85,14 @@ user_account -[hidden]down-> ot_schedule
 department -[hidden]down-> income_item
 work_schedule -[hidden]down-> payroll_parameter
 leave_type -[hidden]down-> notification
+attendance_point ||-[norank]-o{ user_account
 payroll_period ||--o{ payroll_grant
 contract ||--o{ contract
 contract ||--o{ salary_record
 allowance_type ||--o{ employee_allowance
 work_schedule ||--o{ work_schedule_day
 work_schedule ||--o{ employee_schedule
-attendance_point ||--o{ qr_token
+attendance_record ||--o{ employee_qr_token
 attendance_point ||--o{ attendance_record
 attendance_point ||--o{ attendance_record
 attendance_photo ||--o{ attendance_record

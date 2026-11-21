@@ -6,7 +6,8 @@ Tài liệu này quy định **quyền nghiệp vụ cần có** của HRFlow t�
 
 - Hệ thống có đúng 4 role truy cập nền tảng: `Employee`, `Manager`, `HR`, `Admin`. Chức danh Director, Operations Manager, Finance Manager, HR Lead, Sales Manager và các Lead không phải role thứ năm; chức danh, tuyến quản lý, tuyến phê duyệt và các grant nghiệp vụ phải được lưu/cấu hình riêng. Không suy quyền đặc biệt chỉ từ tên chức danh hoặc role nền tảng.
 - `Employee` truy cập dữ liệu cá nhân được phép. `Manager` truy cập dữ liệu cá nhân và dữ liệu vận hành của cấp dưới trực tiếp theo nhiệm vụ; không mặc nhiên xem lương cấp dưới. `HR` truy cập dữ liệu nhân sự toàn công ty cần thiết cho nghiệp vụ; quyền xem/tính/duyệt lương vẫn phải theo phân quyền payroll. `Admin` quản trị tài khoản, role nền tảng và cấu hình kỹ thuật; không mặc nhiên xem lương, duyệt lương hoặc khóa kỳ lương.
-- `employee_id` phải lấy từ token/session và quan hệ quản lý trong DB, không tin giá trị client gửi.
+- Ngoài 4 role của người dùng có **tài khoản thiết bị `KIOSK`** cho máy chấm công tại quầy (Mục 2). Tài khoản này không phải role thứ năm, không gắn hồ sơ nhân viên, không nhận grant và chỉ được gọi chức năng chấm công tại quầy.
+- `employee_id` phải lấy từ token/session và quan hệ quản lý trong DB, không tin giá trị client gửi. Riêng chấm công tại quầy, nhân viên được xác định từ mã QR cá nhân do server cấp cho phiên đăng nhập của chính nhân viên đó, không từ dữ liệu máy quầy gửi.
 - Không ai được tự duyệt đơn do mình tạo. PTO/OT dùng một cấp duyệt; người dự phòng phải được cấu hình trước và quyết định phải ghi `approval_log`.
 - Lương, thông tin định danh và tài khoản ngân hàng chỉ trả về đúng phạm vi quyền. Kỳ lương `LOCKED` chỉ đọc; sai sót dùng `payroll_adjustment`.
 - `audit_log` và `payroll_audit` là append-only; không có API sửa/xóa và phải chặn `UPDATE/DELETE` ở DB.
@@ -21,6 +22,12 @@ Ký hiệu: `✓` = được thực hiện trong phạm vi; `own` = dữ liệu 
 | `Manager` | Các Lead, Sales Manager, Operations Manager, Finance Manager và Director/người được bổ nhiệm quản lý trực tiếp | Quyền cá nhân và quyền quản lý đúng tuyến; phê duyệt PTO/OT theo tuyến được cấu hình; không tự có quyền payroll |
 | `HR` | HR Executive/HR Lead | Hồ sơ, hợp đồng, công, phép, OT, dữ liệu đầu vào và xử lý lương theo quyền được cấp |
 | `Admin` | Người quản trị kỹ thuật ngoài 100 nhân sự | Tài khoản, role, cấu hình và audit kỹ thuật; không mặc nhiên có quyền xem hay duyệt lương |
+
+**Tài khoản thiết bị `KIOSK` (từ bản 1.1):**
+
+| Loại tài khoản | Áp dụng | Phạm vi |
+|---|---|---|
+| `KIOSK` | Máy chấm công cố định có camera đặt tại điểm chấm công (ví dụ quầy lễ tân) | Chỉ quét QR cá nhân của nhân viên, chụp và gửi ảnh minh chứng cho đúng một điểm chấm công được gắn; không xem hồ sơ, bảng công, ảnh đã lưu, lương hay bất kỳ dữ liệu nào khác; không chấm công cho chính mình |
 
 Director sử dụng role nền tảng `Manager`; chức danh Director không tự cấp quyền truy cập toàn bộ dữ liệu hoặc quyền payroll. HR Lead duyệt PTO/OT của Director theo tuyến một cấp. Finance Manager xác nhận tiền thực nhận/đối soát; Sales Manager xác nhận Sales owner/KPI. Company Profile quy định Giám đốc phê duyệt bảng lương (`APPROVE`), Finance Manager khóa kỳ (`LOCK`) sau phê duyệt; grant cấp riêng cho đúng tài khoản, không cấp chung theo role.
 
@@ -44,14 +51,20 @@ Director sử dụng role nền tảng `Manager`; chức danh Director không t�
 | Tạo/sửa/gia hạn hợp đồng | — | — | ✓ theo căn cứ hợp lệ | — | Hợp đồng |
 | Quản lý phụ cấp/khấu trừ | R own | R own | ✓ theo nhiệm vụ và căn cứ | — | Khoản thu nhập |
 | Quản lý tài khoản, khóa/mở, role | — | — | — | ✓ | Tài khoản, role nền tảng, trạng thái |
+| Yêu cầu tạo/khóa tài khoản thiết bị `KIOSK` cho máy chấm công | — | — | ✓ | — | Yêu cầu của HR; Admin thực hiện |
+| Tạo/khóa/đặt lại mật khẩu tài khoản thiết bị `KIOSK` | — | — | — | ✓ theo yêu cầu HR, có audit | Tài khoản thiết bị |
 
 ### 3.2. Chấm công, nghỉ phép và OT
 
 | Nghiệp vụ | Employee | Manager | HR | Admin | Dữ liệu nghiệp vụ liên quan |
 |---|---:|---:|---:|---:|---|
-| Check-in/check-out | own | own | own | — | Bản ghi chấm công |
+| Hiển thị QR cá nhân để chấm công (check-in/check-out) | own | own | own | — | Mã QR cá nhân động: hạn ngắn, dùng một lần, server cấp theo phiên đăng nhập |
+| Quét QR cá nhân, chụp ảnh minh chứng và ghi công tại quầy | — | — | — | — | **Chỉ tài khoản thiết bị `KIOSK`** gắn với điểm chấm công đang hoạt động; người dùng gọi chức năng này → `403` |
+| Cấu hình điểm chấm công; gắn/gỡ máy chấm công (`KIOSK`) với điểm | — | — | ✓ | — | Điểm chấm công, tài khoản thiết bị |
+| Xem ảnh minh chứng chấm công | own | own/team | own/company theo nhiệm vụ | — | Ảnh minh chứng; mỗi lượt xem có audit; tài khoản `KIOSK` không xem lại ảnh |
+| Gửi điều chỉnh công khi không chấm được tại quầy | own | own | own; thay nhân viên khi có căn cứ | — | Yêu cầu điều chỉnh công, minh chứng |
 | Xem bảng công | own | own/team | own/company theo nhiệm vụ | — | Bản ghi chấm công |
-| Xác minh/chỉnh công | — | team, được ủy quyền | ✓ | — | Bản ghi chấm công và lịch sử điều chỉnh |
+| Xác minh/chỉnh công; duyệt điều chỉnh công | — | team, được ủy quyền; không tự duyệt của mình | ✓; không tự duyệt của mình | — | Bản ghi chấm công và lịch sử điều chỉnh |
 | Lưu nháp, gửi/hủy PTO khi còn `PENDING`; yêu cầu hủy/điều chỉnh đơn đã duyệt | own | own | own | — | Đơn nghỉ phép; hủy/điều chỉnh đơn đã duyệt phải được xử lý hợp lệ, không sửa lịch sử |
 | Xem PTO và số dư phép | own | own/team | own/company theo nhiệm vụ | — | Đơn nghỉ phép/quỹ phép |
 | Duyệt/từ chối PTO | — | Theo tuyến duyệt Mục 4 Company Profile | HR Lead/HR Executive chỉ khi thuộc tuyến hợp lệ | — | Không suy quyền duyệt chỉ từ team/role |
@@ -61,7 +74,6 @@ Director sử dụng role nền tảng `Manager`; chức danh Director không t�
 | Duyệt/từ chối đăng ký OT | — | Theo tuyến duyệt Mục 4 Company Profile | HR Lead/HR Executive chỉ khi thuộc tuyến hợp lệ | — | Lịch/đăng ký OT |
 | Xác nhận giờ OT thực tế và phần vượt giờ đã duyệt | — | team, người quản lý có thẩm quyền xác nhận | ✓ kiểm tra, đối chiếu | — | Giờ thực tế, minh chứng và kết quả xác nhận theo Mục 7.1 Company Profile |
 | Xem lịch sử phê duyệt | own | own/team và đơn được giao duyệt | own/company theo nhiệm vụ | Chỉ audit kỹ thuật đã lọc | Lịch sử phê duyệt |
-| Cấp QR chấm công | — | — | ✓ | — | Chính sách QR chấm công |
 
 Tuyến duyệt PTO/OT bắt buộc bám `company_profile.md`:
 
@@ -133,6 +145,7 @@ Chỉ doanh thu dịch vụ đã nghiệm thu và thực nhận, sau chiết kh�
 8. Khi người duyệt có xung đột lợi ích, phải dùng người thay thế được chỉ định trước. Không có người thay thế hợp lệ thì giữ trạng thái chờ.
 9. Mọi quyền đặc biệt và ủy quyền phải có người cấp, người nhận, phạm vi, ngày bắt đầu/kết thúc, lý do và trạng thái hiệu lực; thu hồi quyền phải có hiệu lực ngay theo cấu hình.
 10. Tài khoản bị vô hiệu hóa/nhân viên đã nghỉ việc không được tiếp tục truy cập hệ thống, nhưng lịch sử nghiệp vụ và audit phải được bảo toàn.
+11. Tài khoản thiết bị `KIOSK` chỉ gọi được chức năng chấm công tại quầy; mã QR cá nhân chỉ dùng một lần trong thời hạn ngắn; mọi lượt quét bị từ chối được ghi audit.
 
 | Mã kiểm thử | Tình huống | Kết quả mong đợi |
 |---|---|---|
@@ -156,6 +169,9 @@ Chỉ doanh thu dịch vụ đã nghiệm thu và thực nhận, sau chiết kh�
 | PM-18 | Tài khoản terminated đăng nhập | `401`/`403`; lịch sử vẫn còn |
 | PM-19 | Admin mở dashboard/report lương | Không có dữ liệu lương nếu chưa được cấp `VIEW` |
 | PM-20 | Quyền/grant hết hiệu lực hoặc đã thu hồi | Từ chối thao tác ngay theo thời điểm hiệu lực |
+| PM-21 | Tài khoản thiết bị `KIOSK` gọi API ngoài chấm công tại quầy (hồ sơ, bảng công, ảnh, lương…) | `403`; không trả dữ liệu |
+| PM-22 | Người dùng Employee/Manager/HR/Admin gọi API của máy chấm công tại quầy | `403`; không ghi công |
+| PM-23 | Máy quầy gửi QR cá nhân hết hạn, đã dùng hoặc không do server cấp | `422`; không ghi công, có audit |
 
 ## 5. Yêu cầu bàn giao sang tài liệu kỹ thuật
 
@@ -163,8 +179,8 @@ Chỉ doanh thu dịch vụ đã nghiệm thu và thực nhận, sau chiết kh�
 - `database_design.md` phải lưu đủ: role nền tảng; chức danh; quan hệ quản lý; tuyến duyệt chính/dự phòng; grant payroll theo tài khoản, phạm vi, người cấp và thời hạn; audit/approval log; trạng thái kỳ lương.
 - OpenAPI phải nêu lỗi `401/403/404/409/422`, quyền yêu cầu và trường dữ liệu trả về; không cho client tự truyền quyền hoặc người thực hiện quyết định.
 - Migration/seed chỉ là cách triển khai. Nếu seed hiện có quyền mẫu trái với baseline này, phải sửa seed/migration hoặc cấu hình sau khi được phê duyệt; không coi dữ liệu demo là quyết định nghiệp vụ.
-- Test plan cần bao phủ toàn bộ PM-01 đến PM-20, gồm kiểm tra quyền trực tiếp qua API/service và kiểm tra dữ liệu nhạy cảm trong response/export.
+- Test plan cần bao phủ toàn bộ PM-01 đến PM-23, gồm kiểm tra quyền trực tiếp qua API/service và kiểm tra dữ liệu nhạy cảm trong response/export.
 
 ## 6. Trạng thái tài liệu
 
-Ma trận này là baseline nghiệp vụ phiên bản 1.0 cho việc viết SRS và thiết kế kỹ thuật. Các bảng dữ liệu, tên migration, endpoint và mã lỗi cụ thể sẽ được chốt trong tài liệu kỹ thuật tiếp theo; chúng không được dùng để âm thầm thay đổi quy tắc nghiệp vụ tại đây.
+Ma trận này là baseline nghiệp vụ phiên bản 1.1 (21/11/2026) cho việc viết SRS và thiết kế kỹ thuật. Bản 1.1 thay quyền "HR cấp QR chấm công" bằng mô hình máy chấm công tại quầy: nhân viên hiển thị QR cá nhân, tài khoản thiết bị `KIOSK` quét và chụp ảnh, HR cấu hình điểm chấm công; bổ sung PM-21…PM-23 (SRS 3.4, DEC-10). Các bảng dữ liệu, tên migration, endpoint và mã lỗi cụ thể sẽ được chốt trong tài liệu kỹ thuật tiếp theo; chúng không được dùng để âm thầm thay đổi quy tắc nghiệp vụ tại đây.

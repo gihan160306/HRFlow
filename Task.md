@@ -154,7 +154,8 @@ Dữ liệu cần có các tình huống khác nhau như nhân viên mới, nhâ
 
 #### A. Nhiệm vụ 1: Hoàn thiện chức năng chấm công
 
-- Check-in và check-out.
+- Check-in và check-out tại **máy chấm công đặt ở quầy lễ tân**: nhân viên đăng nhập web trên điện thoại, bấm Chấm công để hiện mã QR cá nhân; máy quầy (màn hình camera, không phải máy cầm tay) quét mã, quét thành công thì chuyển sang chụp ảnh minh chứng ngay; sau đó dữ liệu điểm danh hiển thị trên web (SRS FR-07, DEC-10).
+- Tài khoản thiết bị `KIOSK` cho máy quầy: chỉ gọi được chức năng chấm công tại quầy, gắn một điểm chấm công.
 - Ghi nhận thời gian vào làm, ra về.
 - Xác định ngày công thực tế.
 - Xử lý đi muộn, về sớm và thiếu lượt chấm công.
@@ -162,7 +163,7 @@ Dữ liệu cần có các tình huống khác nhau như nhân viên mới, nhâ
 - Cho phép quản lý hoặc HR xem dữ liệu chấm công của nhân viên theo quyền.
 - Kiểm tra dữ liệu chấm công bất thường hoặc trùng lặp.
 
-Nếu dự án triển khai QR hoặc ảnh chụp minh chứng, cần kiểm tra tính hợp lệ của token, thời hạn QR và quyền truy cập ảnh theo phạm vi đã thống nhất.
+Cần kiểm tra: QR cá nhân do server cấp, hết hạn sau thời gian ngắn và chỉ dùng một lần; quét lại ngay sau check-in không tạo check-out; thiếu ảnh không ghi công; tài khoản `KIOSK` không gọi được API khác và người dùng không gọi được API của máy quầy; quyền xem ảnh minh chứng theo phạm vi own/team/company. Không chấm được tại quầy thì dùng điều chỉnh công có minh chứng.
 
 #### B. Nhiệm vụ 2: Nghỉ phép (PTO)
 
@@ -451,10 +452,13 @@ Tên bảng trên là đề xuất thiết kế, cần đối chiếu với sche
 
 ### 5.3. Kiểm thử chấm công
 
-- Check-in đúng giờ.
-- Check-out hợp lệ.
-- Check-in hai lần trong cùng một phiên làm việc.
-- Check-out khi chưa check-in.
+- Check-in đúng giờ tại máy quầy (QR hợp lệ → chụp ảnh → ghi công).
+- Check-out hợp lệ tại máy quầy.
+- Quét lại ngay sau check-in (không được tạo check-out).
+- Quét sau khi đã đủ check-in và check-out trong ngày.
+- QR hết hạn, QR đã dùng (ảnh chụp màn hình mã cũ), QR không do hệ thống cấp.
+- Quét xong nhưng không gửi ảnh trong thời hạn; gửi ảnh quá dung lượng.
+- Tài khoản `KIOSK` gọi API khác; nhân viên gọi API của máy quầy.
 - Đi muộn hoặc về sớm.
 - Thiếu lượt chấm công.
 - Chấm công vào ngày nghỉ.

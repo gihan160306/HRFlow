@@ -1,10 +1,11 @@
 # Thiết kế cơ sở dữ liệu – HRFlow
 
-> Phiên bản 3.5 · cập nhật 16/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
+> Phiên bản 3.6 · cập nhật 21/11/2026 · Hệ quản trị: **PostgreSQL 16** · Migration: **Flyway** (`backend/src/main/resources/db/migration`).
 > Đây là **thiết kế dữ liệu đích** đã đồng bộ với `company_profile.md`, `permission_matrix.md` và `payroll_rules.md`. Migration V1–V15 là schema cũ; **V16–V20 dựng lại toàn bộ schema theo thiết kế này** (xem Mục 10).
 >
 > Bản 3.4: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` tới khi có quyết định xử lý xung đột được HNQ xác nhận – OPEN-05); bỏ cột `conflict_approver_account_id`; bỏ mặc định `REGION_I` của `employee.wage_region` (OPEN-01); đánh dấu bảng QR/ảnh là mở rộng; thống nhất kiểu tiền; sửa mô tả dữ liệu seed và grant.
 > Bản 3.5 (16/11/2026): đồng bộ baseline quy mô 100 nhân sự (V21 bổ sung dữ liệu demo); chấm công QR động + ảnh minh chứng là luồng check-in chính thức (nhóm chốt 17/11/2026: quét QR → chụp ảnh → check-in), các bảng `attendance_point`, `qr_token`, `attendance_photo` thuộc luồng chính; schema 52 bảng không đổi.
+> Bản 3.6 (21/11/2026, SRS 3.4 – DEC-10): đổi sang **máy chấm công tại quầy**. Thiết kế đích: bỏ `qr_token` (QR của điểm chấm công do HR cấp, mã ngắn) và thêm `employee_qr_token` (QR cá nhân động của nhân viên, dùng một lần, kiêm phiên quét tại quầy); `user_account` thêm loại tài khoản thiết bị `KIOSK` và cột `attendance_point_id`; `attendance_point` bỏ `photo_required` (ảnh luôn bắt buộc); `attendance_record` thêm `check_in_kiosk_id`/`check_out_kiosk_id`; `attendance_photo` thêm `captured_by`. Vẫn 52 bảng. **Chưa triển khai** – thực hiện bằng migration mới, dự kiến `V22__kiosk_attendance.sql` (nếu số V22 đã được dùng thì lấy số kế tiếp) (Mục 10); các mục đánh dấu *(V22)* là thiết kế đích chưa có trong migration hiện tại.
 
 ## 1. Mục tiêu và nguyên tắc thiết kế
 
@@ -34,7 +35,7 @@ Tổng cộng **52 bảng** nghiệp vụ (không tính `flyway_schema_history`)
 
 | Bảng | Vai trò |
 |---|---|
-| `user_account` | Tài khoản đăng nhập (email, BCrypt hash, role, trạng thái, số lần sai, khóa tạm, `token_version` để thu hồi JWT, ngày tự vô hiệu). 1 nhân viên ↔ tối đa 1 tài khoản; Admin hệ thống không gắn nhân viên. |
+| `user_account` | Tài khoản đăng nhập (email, BCrypt hash, role, trạng thái, số lần sai, khóa tạm, `token_version` để thu hồi JWT, ngày tự vô hiệu). 1 nhân viên ↔ tối đa 1 tài khoản; Admin hệ thống không gắn nhân viên. *(V22)* Tài khoản thiết bị `KIOSK` của máy chấm công tại quầy: không gắn nhân viên, bắt buộc gắn một `attendance_point`. |
 | `password_history` | Lịch sử hash mật khẩu để chặn dùng lại mật khẩu cũ. |
 | `account_request` | HR đề nghị Admin cấp tài khoản cho nhân viên mới (tách vai trò HR/Admin). |
 | `payroll_grant` | Quyền payroll VIEW/PREPARE/APPROVE/LOCK cấp riêng cho tài khoản, độc lập với role; có hiệu lực từ–đến, có thể giới hạn theo kỳ (`period_id`), lưu lý do + số quyết định, thu hồi bằng `revoked_at`. |
@@ -65,10 +66,10 @@ Tổng cộng **52 bảng** nghiệp vụ (không tính `flyway_schema_history`)
 | `work_schedule_day` | Ca sáng/chiều theo từng thứ trong tuần của một lịch. |
 | `employee_schedule` | Lịch áp dụng cho nhân viên theo hiệu lực. |
 | `holiday` | Ngày lễ/Tết (có/không hưởng lương). |
-| `attendance_point` | *(Mở rộng)* Điểm chấm công (màn hình kiosk QR), có yêu cầu ảnh hay không. |
-| `qr_token` | *(Mở rộng)* Mã QR động do HR cấp: nonce ngẫu nhiên 24 byte + mã ngắn 6 ký tự, hết hạn sau 15 giây. |
-| `attendance_record` | Bản ghi công theo ngày: giờ vào/ra; điểm, nonce đã dùng, ảnh (chỉ khi bật chế độ QR/ảnh mở rộng); phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED. |
-| `attendance_photo` | *(Mở rộng)* Ảnh minh chứng (bytea ≤ 200 KB). |
+| `attendance_point` | Điểm chấm công (ví dụ quầy lễ tân) do HR cấu hình; mỗi máy chấm công (`user_account` loại `KIOSK`) gắn với một điểm. |
+| `employee_qr_token` | *(V22, thay `qr_token`)* QR cá nhân động của nhân viên: nonce ngẫu nhiên, hạn mặc định 15 giây, dùng một lần; đồng thời lưu **phiên quét** tại quầy (máy quét, thời điểm quét, hành động CHECK_IN/CHECK_OUT, hạn gửi ảnh) và bản ghi công đã tạo. |
+| `attendance_record` | Bản ghi công theo ngày: giờ vào/ra; điểm chấm công, máy chấm công, nonce QR cá nhân đã dùng, ảnh minh chứng; phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED. |
+| `attendance_photo` | Ảnh minh chứng do máy chấm công tại quầy chụp (bytea ≤ 200 KB), có máy chụp. |
 | `attendance_adjustment` | Yêu cầu điều chỉnh/bổ sung công, lưu `before_json` để audit. |
 
 ### D. Nghỉ phép (FR-08, FR-28)
@@ -129,7 +130,8 @@ Sơ đồ ERD đầy đủ theo thiết kế này chưa có trong repo (cần t�
 ```
 department 1─* employee *─1 job_title          employee 1─* contract 1─* salary_record
 employee (manager_id) ─ employee               employee 1─0..1 user_account 1─* payroll_grant
-employee 1─* attendance_record *─1 attendance_point;  attendance_record ─ qr_token(nonce), attendance_photo
+employee 1─* attendance_record *─1 attendance_point;  attendance_record ─ employee_qr_token(nonce), attendance_photo
+attendance_point 1─* user_account(KIOSK);  employee 1─* employee_qr_token *─0..1 user_account(KIOSK, scanned_by)
 employee 1─* leave_request 1─* leave_request_day;     employee 1─* leave_balance 1─* leave_balance_txn
 ot_schedule 1─* ot_schedule_target, 1─* ot_registration *─1 employee
 payroll_period 1─* timesheet_snapshot, 1─* payroll_line 1─* payroll_line_item, 1─* payslip, 1─* payroll_audit
@@ -195,6 +197,16 @@ Ràng buộc: `user_account_email_key` UNIQUE (email); `user_account_employee_id
 Giá trị enum: `role` ∈ {EMPLOYEE, MANAGER, HR, ADMIN}; `status` ∈ {ACTIVE, LOCKED, DISABLED}
 
 Chỉ mục: `idx_user_account_employee_id` ((employee_id))
+
+*(V22 – tài khoản thiết bị máy chấm công tại quầy)*
+
+| Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
+|---|---|:-:|---|---|
+| `attendance_point_id` | bigint |  |  | FK→ `attendance_point` · Điểm chấm công của máy quầy (chỉ dùng cho `KIOSK`) |
+
+- `role` mở rộng thành {EMPLOYEE, MANAGER, HR, ADMIN, **KIOSK**}. `KIOSK` là **loại tài khoản thiết bị**, không phải role nền tảng của người dùng (SRS Mục 2.4); dùng chung cột `role` để tận dụng đăng nhập, khóa tài khoản và thu hồi token sẵn có.
+- `chk_user_account_kiosk`: `role = 'KIOSK'` ⇔ (`employee_id IS NULL` AND `attendance_point_id IS NOT NULL`); tài khoản người dùng có `attendance_point_id IS NULL`.
+- Chỉ mục: `idx_user_account_attendance_point_id` ((attendance_point_id)).
 
 #### `password_history`
 
@@ -631,7 +643,7 @@ Chỉ mục:
 
 #### `attendance_point`
 
-Điểm chấm công (màn hình kiosk QR), có yêu cầu ảnh hay không.
+Điểm chấm công (ví dụ quầy lễ tân) do HR cấu hình. Máy chấm công tại quầy là tài khoản `user_account` loại `KIOSK` trỏ tới điểm này. *(V22)* Bỏ cột `photo_required`: ảnh minh chứng luôn bắt buộc cho check-in và check-out (SRS FR-07).
 
 | Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
 |---|---|:-:|---|---|
@@ -647,27 +659,43 @@ Ràng buộc: `attendance_point_code_key` UNIQUE (code)
 
 Chỉ mục: 
 
-#### `qr_token`
+#### `employee_qr_token`
 
-Mã QR động: nonce ngẫu nhiên 24 byte + mã ngắn 6 ký tự, hết hạn sau 15 giây.
+*(V22 – thay `qr_token`)* QR cá nhân động của nhân viên (SRS FR-07). Mỗi dòng là một mã đã cấp; khi máy quầy quét thành công, chính dòng này lưu **phiên quét** (máy quét, hành động, hạn gửi ảnh); khi ghi công xong thì đánh dấu đã dùng. Nội dung QR = tiền tố `HRFLOW-EMP:` + `nonce`, không chứa mã nhân viên.
 
 | Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
 |---|---|:-:|---|---|
-| `id` | bigint | ✓ |  | PK |
-| `point_id` | bigint | ✓ |  | FK→ `attendance_point` |
-| `nonce` | varchar(64) | ✓ |  |  |
-| `short_code` | varchar(10) | ✓ |  |  |
-| `issued_at` | timestamptz | ✓ |  |  |
-| `expires_at` | timestamptz | ✓ |  |  |
-| `issued_by` | bigint |  |  | FK→ `user_account` |
+| `id` | bigint | ✓ |  | PK; dùng làm mã phiên quét trả cho máy quầy |
+| `employee_id` | bigint | ✓ |  | FK→ `employee` · Nhân viên được cấp mã (lấy từ phiên đăng nhập) |
+| `nonce` | varchar(64) | ✓ |  | Mã ngẫu nhiên an toàn (≥ 24 byte) |
+| `issued_at` | timestamptz | ✓ | now() | Thời điểm cấp |
+| `expires_at` | timestamptz | ✓ |  | Hết hạn mã (mặc định cấp + 15 giây) |
+| `revoked_at` | timestamptz |  |  | Bị hủy do nhân viên lấy mã mới |
+| `scanned_at` | timestamptz |  |  | Thời điểm server xác thực khi máy quầy quét; là giờ check-in/check-out được ghi |
+| `scanned_by` | bigint |  |  | FK→ `user_account` (loại `KIOSK`) · Máy chấm công đã quét |
+| `punch_type` | varchar(20) |  |  | Hành động server xác định khi quét |
+| `punch_deadline` | timestamptz |  |  | Hạn gửi ảnh (mặc định `scanned_at` + 30 giây) |
+| `used_at` | timestamptz |  |  | Thời điểm ghi công xong (mã không dùng lại được) |
+| `attendance_id` | bigint |  |  | FK→ `attendance_record` · Bản ghi công đã tạo/cập nhật |
 
-Ràng buộc: `qr_token_nonce_key` UNIQUE (nonce)
+Ràng buộc: `employee_qr_token_nonce_key` UNIQUE (nonce); `chk_eqr_punch_type` CHECK (`punch_type` IN ('CHECK_IN','CHECK_OUT')); `chk_eqr_scan` CHECK ((`scanned_at` IS NULL) = (`scanned_by` IS NULL)); `chk_eqr_used` CHECK (`used_at` IS NULL OR `scanned_at` IS NOT NULL)
 
-Chỉ mục: `idx_qr_token_issued_by` ((issued_by)); `idx_qr_token_point_id` ((point_id))
+Chỉ mục: `idx_eqr_employee_active` ((employee_id) WHERE used_at IS NULL AND revoked_at IS NULL); `idx_eqr_scanned_by` ((scanned_by)); `idx_eqr_expires_at` ((expires_at))
+
+Quy tắc ở tầng service: mỗi nhân viên tối đa một mã còn hiệu lực (cấp mã mới thì đặt `revoked_at` cho mã cũ); quét chỉ nhận mã có `expires_at > now()`, `revoked_at`/`scanned_at`/`used_at` rỗng; khóa dòng `FOR UPDATE` khi quét và khi ghi công để hai máy không dùng cùng một mã. Dòng hết hạn có thể dọn định kỳ (không phải dữ liệu nghiệp vụ lâu dài; bản ghi công vẫn giữ `check_in_nonce`/`check_out_nonce`).
+
+> `qr_token` (bản ≤ 3.5: QR của điểm chấm công do HR cấp, mã ngắn 6 ký tự, hạn 15 giây) bị **xóa** ở V22.
 
 #### `attendance_record`
 
-Bản ghi công theo ngày: giờ vào/ra, điểm, nonce đã dùng, ảnh, phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED.
+Bản ghi công theo ngày: giờ vào/ra, điểm chấm công, máy chấm công, nonce QR cá nhân đã dùng, ảnh, phút làm/trễ/sớm, trạng thái VALID/NEEDS_REVIEW/CONFIRMED/ABSENT_CONFIRMED. `method = QR` nghĩa là chấm tại máy quầy bằng QR cá nhân + ảnh; `MANUAL`/`BUSINESS_TRIP`/`ABSENCE` chỉ phát sinh qua điều chỉnh công đã duyệt (FR-10). *(V22)* thêm cột:
+
+| Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
+|---|---|:-:|---|---|
+| `check_in_kiosk_id` | bigint |  |  | FK→ `user_account` (loại `KIOSK`) · Máy quầy ghi check-in |
+| `check_out_kiosk_id` | bigint |  |  | FK→ `user_account` (loại `KIOSK`) · Máy quầy ghi check-out |
+
+`check_in_nonce`/`check_out_nonce` tham chiếu `employee_qr_token.nonce` (bản ≤ 3.5 là `qr_token.nonce`).
 
 | Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
 |---|---|:-:|---|---|
@@ -704,7 +732,7 @@ Chỉ mục: `idx_attendance_date` ((work_date)); `idx_attendance_record_check_i
 
 #### `attendance_photo`
 
-Ảnh minh chứng (bytea ≤ 200 KB).
+Ảnh minh chứng do camera máy chấm công tại quầy chụp (bytea ≤ 200 KB); dữ liệu nhạy cảm, chỉ trả theo phạm vi own/team/company, mỗi lượt xem có audit. *(V22)* thêm cột `captured_by` bigint FK→ `user_account` (loại `KIOSK`) · máy đã chụp; chỉ mục `idx_attendance_photo_captured_by`.
 
 | Cột | Kiểu | NN | Mặc định | Khóa / mô tả |
 |---|---|:-:|---|---|
@@ -1401,6 +1429,7 @@ Kết quả chạy tác vụ nền / tác vụ hằng ngày (idempotent theo `jo
 
 - **Migration dữ liệu tham chiếu (`V19__reference_data.sql`, thay cho seed V14)**: phòng ban (7 phòng ban theo `company_profile.md` Mục 2), chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, tham số pháp lý/công ty (lương tối thiểu vùng, mức tham chiếu, tỷ lệ BH, giảm trừ gia cảnh...), biểu thuế. Giá trị là **dữ liệu mô phỏng** có ghi nguồn; tham số cần đối chiếu có trạng thái `NEEDS_REVIEW`.
 - **Dữ liệu demo (`V20__demo_seed.sql`)**: 40 nhân sự HNQ theo cơ cấu và bảng lương của `company_profile.md`; tài khoản Admin kỹ thuật `admin@hnqmedia.example` **không gắn hồ sơ nhân viên**; tài khoản nhân viên `nv001…nv040@hnqmedia.example` (V20) và `nv041…nv100@hnqmedia.example` (V21, tổng 100 nhân sự) (mật khẩu demo `password123`); không dùng 22 ngày công làm mặc định; `wage_region = REGION_I` chỉ là giả định dữ liệu mẫu (OPEN-01).
+- *(V22)* **Máy chấm công demo**: điểm `RECEPTION` (Quầy lễ tân) và một tài khoản thiết bị `KIOSK` (ví dụ `kiosk.letan@hnqmedia.example`) gắn với điểm này; không gắn hồ sơ nhân viên, không có grant.
 - **Grant payroll seed** (DEC-03): HR → `PREPARE` (và `VIEW` theo nhiệm vụ); Director → `APPROVE`; Finance Manager → `LOCK`. Admin **không** có grant payroll. Mỗi grant có người cấp, lý do, số quyết định và hiệu lực.
 
 ## 9. Sao lưu và khôi phục
@@ -1424,6 +1453,7 @@ Không sửa migration đã chạy. Các chênh lệch dưới đây được x�
 | `V18__guards_and_triggers.sql` | Trigger Mục 6 (`fn_block_modify_append_only`, `fn_guard_payroll_line*`, `fn_guard_payroll_period`) và trigger `updated_at`. |
 | `V19__reference_data.sql` | Phòng ban, chức danh, lịch FT/PT, ngày lễ 2026, loại nghỉ, loại phụ cấp, điểm chấm công, `payroll_parameter`, biểu thuế. |
 | `V20__demo_seed.sql` | 40 nhân sự HNQ đầu tiên (34 FT, 3 PT, 2 thử việc, 1 TTS), tài khoản Admin không gắn hồ sơ, hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, người phụ thuộc, tuyến duyệt, quỹ phép 2026, kỳ 11/2026 DRAFT, grant payroll DEC-03. |
+| `V22__kiosk_attendance.sql` *(dự kiến, chưa triển khai)* | Chấm công tại quầy (DEC-10): thêm `KIOSK` vào `chk_user_account_role`, thêm `user_account.attendance_point_id` + `chk_user_account_kiosk`; tạo `employee_qr_token`; xóa `qr_token`; bỏ `attendance_point.photo_required`; thêm `attendance_record.check_in_kiosk_id`/`check_out_kiosk_id`, `attendance_photo.captured_by`; seed điểm quầy lễ tân + tài khoản `KIOSK` demo. |
 | `V21__demo_seed_100_employees.sql` | Bổ sung NV041–NV100 để đủ 100 nhân sự (85 FT, 8 PT, 5 thử việc, 2 TTS; HR 7, Content 22, Design 16, Digital 20, Account 14, Sales 18) cùng hợp đồng, lương, lịch, phụ cấp, hồ sơ thuế/BH, tuyến duyệt, quỹ phép 2026. |
 
 **Lưu ý khi áp dụng:** V16 xóa toàn bộ dữ liệu của schema cũ. Backend hiện đã truy vấn theo schema mới (đã đối chiếu cột `INSERT/UPDATE` với V17); DB dev cũ cần xóa volume hoặc chấp nhận V16 xóa dữ liệu khi chạy Flyway.

@@ -252,7 +252,7 @@ Toàn bộ `frontend/src/`:
 **(b) Thử trọn các luồng chính từ đầu đến cuối:**
 
 1. Tạo nhân viên → tạo hợp đồng → cấp tài khoản.
-2. Chấm công vào/ra → xin điều chỉnh công → quản lý duyệt.
+2. Chấm công tại quầy: nhân viên mở QR cá nhân trên điện thoại → máy quầy (tài khoản `KIOSK`) quét → chụp ảnh → bản ghi hiện trên web → xin điều chỉnh công → quản lý duyệt.
 3. Xin nghỉ phép → quản lý duyệt → quỹ phép cập nhật.
 4. Đăng ký OT → duyệt → nhập giờ thực tế.
 5. Tạo kỳ lương → tính lương → duyệt → khóa → nhân viên xem phiếu lương.
@@ -268,7 +268,7 @@ Mở thanh công cụ trình duyệt (F12), xem tab **Console** và **Network** 
 ### 4.4. Việc 2 – Hoàn thiện phần còn thiếu
 
 1. **Tự làm mới đăng nhập (refresh token).** Backend đã có `/auth/refresh` nhưng `src/api/httpClient.js` chưa dùng. Khi gặp lỗi 401, tự xin token mới; chỉ khi thất bại mới đưa người dùng về trang đăng nhập.
-2. **Chấm công:** thêm xem ảnh chấm công (`GET /attendance/{id}/photo`) và xác thực mã QR (`/attendance/qr/verify`) nếu luồng cần.
+2. **Chấm công tại quầy (SRS FR-07, DEC-10):** màn hình QR cá nhân trên điện thoại (`GET /attendance/my-qr`, đếm ngược, tự làm mới, tự báo kết quả qua `/attendance/today`); trang máy quầy `/kiosk` toàn màn hình cho tài khoản `KIOSK` (camera quét QR → `POST /kiosk/scan` → chụp ảnh → `POST /kiosk/punch` → kết quả → quét tiếp); xem ảnh chấm công (`GET /attendance/{id}/photo`). Bỏ ô nhập mã ngắn và màn hình HR cấp QR.
 3. **Quỹ phép:** làm màn hình cho HR xem số ngày phép của cả công ty và điều chỉnh (`/leave-balances`, `/leave-balances/{id}/adjust`). Hiện chỉ có phần "của tôi".
 4. **Chức danh và lịch làm việc:** form thêm/sửa trong trang Danh mục (`CatalogPage.jsx`). **Chờ Hoa làm xong API.**
 5. **Phòng ban:** nút "Ngừng hoạt động". **Chờ Hoa làm xong API.**
@@ -350,7 +350,8 @@ Viết bộ kiểm thử để **chứng minh web chạy đúng**, và bắt l�
 - Xin nghỉ nhiều hơn số ngày phép còn lại.
 - Hai đơn nghỉ trùng ngày.
 - OT trùng ca làm việc.
-- Chấm công vào hai lần liên tiếp.
+- Chấm công vào hai lần liên tiếp (quét lại ngay sau check-in tại máy quầy).
+- QR cá nhân hết hạn hoặc dùng lại; tài khoản `KIOSK` gọi API khác (PM-21); nhân viên gọi API máy quầy (PM-22).
 - Sửa dữ liệu của kỳ lương đã khóa.
 - Dữ liệu nhập sai định dạng, thiếu trường bắt buộc.
 
@@ -406,9 +407,9 @@ Viết bộ kiểm thử để **chứng minh web chạy đúng**, và bắt l�
 ## 8. Danh sách kiểm tra cuối cùng (GiHan dùng để nghiệm thu)
 
 - [ ] Dựng lại cơ sở dữ liệu từ đầu và chạy web thành công.
-- [ ] Đăng nhập được bằng cả 6 loại tài khoản (Admin, HR, Manager, Employee, Giám đốc, Finance Manager).
+- [ ] Đăng nhập được bằng cả 6 loại tài khoản (Admin, HR, Manager, Employee, Giám đốc, Finance Manager) và tài khoản thiết bị máy chấm công tại quầy (`KIOSK`, chỉ vào được trang `/kiosk`).
 - [ ] Mỗi vai trò chỉ thấy và làm được đúng việc của mình.
-- [ ] Luồng chấm công, nghỉ phép, OT chạy trọn vẹn.
+- [ ] Luồng chấm công tại quầy (QR cá nhân trên điện thoại → máy quầy quét → chụp ảnh → hiện trên web), nghỉ phép, OT chạy trọn vẹn.
 - [ ] Tính lương, duyệt, khóa, xem phiếu lương chạy trọn vẹn; kết quả khớp tính tay.
 - [ ] Không còn lỗi mức nghiêm trọng trong `bug_log.md`.
 - [ ] Test tự động và CI báo xanh.

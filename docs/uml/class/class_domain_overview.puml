@@ -156,13 +156,14 @@ package "CHẤM CÔNG - NGHỈ PHÉP - OT" {
         -soPhutDiTre : int
         -soPhutVeSom : int
         -trangThai : TrangThaiChamCong
-        -anhSelfie : String
-        -maXacThucQR : String
+        -anhMinhChung : String
+        -maQRCaNhan : String
+        -mayChamCong : String
 
         +ghiNhanCheckIn(
             thoiGian : DateTime,
-            maQR : String,
-            anh : String
+            maQRCaNhan : String,
+            anhChupTaiQuay : String
         ) : Void
 
         +ghiNhanCheckOut(

@@ -5,15 +5,21 @@ class Employee
 class AttendancePoint {
   +code: String
   +name: String
-  +photoRequired: boolean
   +active: boolean
 }
-class QrToken {
+class KioskAccount <<UserAccount role KIOSK>> {
+  +email: String
+  +status: ACTIVE | LOCKED
+}
+class EmployeeQrToken {
   +nonce: String
-  +shortCode: String
   +issuedAt: Instant
   +expiresAt: Instant
-  +isExpired(): boolean
+  +scannedAt: Instant
+  +punchType: CHECK_IN | CHECK_OUT
+  +punchDeadline: Instant
+  +usedAt: Instant
+  +isUsable(now): boolean
 }
 class AttendanceRecord {
   +workDate: LocalDate
@@ -27,6 +33,10 @@ class AttendanceRecord {
 class AttendancePhoto {
   +mime: String
   +size: int
+}
+class KioskService {
+  +scan(kiosk, qrPayload): ScanResult
+  +punch(kiosk, scanId, photo): AttendanceRecord
 }
 class AttendanceCalc <<pure>> {
   +calculate(schedule, in, out): Result
@@ -77,8 +87,13 @@ class Approvals <<common>> {
 }
 Employee "1" -- "*" AttendanceRecord
 AttendancePoint "1" -- "*" AttendanceRecord
-AttendancePoint "1" *-- "*" QrToken
+AttendancePoint "1" -- "*" KioskAccount : gắn máy quầy
+Employee "1" -- "*" EmployeeQrToken : QR cá nhân
+KioskAccount "0..1" -- "*" EmployeeQrToken : quét
 AttendanceRecord "1" o-- "0..2" AttendancePhoto
+KioskAccount "1" -- "*" AttendancePhoto : chụp
+KioskService ..> EmployeeQrToken : xác thực, đánh dấu đã dùng
+KioskService ..> AttendanceRecord : ghi check-in/out
 AttendanceCalc ..> AttendanceRecord : tính phút công
 Employee "1" -- "*" LeaveRequest
 LeaveType "1" -- "*" LeaveRequest

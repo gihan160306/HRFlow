@@ -10,7 +10,7 @@ Mã PlantUML của các hình trong báo cáo cuối kỳ (`docs/BaoCao_CuoiKi_C
 | 4.1–4.2 | `architecture/fig4_1_*`, `fig4_2_*` | Kiến trúc tổng thể, phân lớp backend |
 | 4.3–4.6 | `erd/fig4_*.puml` | ERD (sinh tự động từ `docs/database_design.md` bằng `gen_erd.py`) |
 | 4.7–4.9 | `class/fig4_*.puml` | Sơ đồ lớp: nhân sự, chấm công–nghỉ phép–OT, lương–phiếu lương |
-| 4.10–4.14 | `sequence/fig4_*.puml` | Tuần tự: đăng nhập JWT, QR check-in, duyệt nghỉ phép, chốt công–tính lương, duyệt–khóa–phiếu lương |
+| 4.10–4.14 | `sequence/fig4_*.puml` | Tuần tự: đăng nhập JWT, chấm công tại quầy (QR cá nhân + ảnh), duyệt nghỉ phép, chốt công–tính lương, duyệt–khóa–phiếu lương |
 | 4.15–4.16 | `activity/fig4_*.puml` | Hoạt động: chấm công, quy trình lương tháng |
 | 4.17–4.19 | `state/fig4_*.puml` | Trạng thái: kỳ lương, đơn nghỉ/OT, hợp đồng |
 | 4.20 | `architecture/fig4_20_navigation.puml` | Điều hướng màn hình theo role |

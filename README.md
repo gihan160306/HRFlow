@@ -10,8 +10,8 @@ thay cho quản lý thủ công bằng Excel.
 
 | Mức | Nội dung |
 |---|---|
-| **MVP (bắt buộc)** | Hồ sơ nhân sự và onboarding · Chấm công cơ bản · Nghỉ phép (PTO) kèm duyệt 1 cấp · Engine tính lương, bảo hiểm, thuế TNCN · Phiếu lương PDF · Xác thực JWT + phân quyền RBAC |
-| **Mở rộng** | Tăng ca (OT) · Hợp đồng và cảnh báo hết hạn · Phụ cấp/khấu trừ · Cổng tự phục vụ (ESS) · Dashboard và báo cáo · Audit trail nâng cao · Thông báo/email · Chấm công QR động + ảnh minh chứng |
+| **MVP (bắt buộc)** | Hồ sơ nhân sự và onboarding · Chấm công tại quầy (máy quầy quét QR cá nhân trên điện thoại + chụp ảnh minh chứng) · Nghỉ phép (PTO) kèm duyệt 1 cấp · Engine tính lương, bảo hiểm, thuế TNCN · Phiếu lương PDF · Xác thực JWT + phân quyền RBAC |
+| **Mở rộng** | Tăng ca (OT) · Hợp đồng và cảnh báo hết hạn · Phụ cấp/khấu trừ · Cổng tự phục vụ (ESS) · Dashboard và báo cáo · Audit trail nâng cao · Thông báo/email |
 
 Vai trò: `Employee`, `Manager`, `HR`, `Admin`. Chi tiết quyền: [docs/permission_matrix.md](docs/permission_matrix.md).
 

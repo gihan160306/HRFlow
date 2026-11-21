@@ -1,42 +1,52 @@
 @startuml fig4_15_activity_attendance
 !include _style.puml
-|Nhân viên|
+|Nhân viên (điện thoại)|
 start
-:Bấm Check-in;
-:Quét mã QR động tại điểm chấm công;
+:Đăng nhập, bấm Chấm công;
 |Hệ thống|
-:Xác thực QR (nonce, hạn 15 giây, điểm hợp lệ);
+:Cấp QR cá nhân động\n(nhân viên lấy từ phiên, hạn 15 giây, dùng một lần);
+|Nhân viên (điện thoại)|
+:Hiển thị QR, đưa màn hình vào camera máy quầy;
+|Máy chấm công tại quầy|
+:Camera đọc QR, gửi lên server;
+|Hệ thống|
+:Xác thực QR (do server cấp, còn hạn,\nchưa dùng, điểm chấm công hoạt động);
 if (QR hợp lệ?) then (không)
-  :Từ chối QR_EXPIRED / QR_INVALID\n(không tạo bản ghi);
-  |Nhân viên|
-  :Quét lại QR mới;
+  :Từ chối QR_INVALID / QR_EXPIRED / QR_USED\n(không tạo bản ghi, ghi audit);
+  |Máy chấm công tại quầy|
+  :Báo lỗi, quay lại chế độ quét;
   stop
 else (có)
 endif
-|Nhân viên|
-:Mở camera, chụp ảnh minh chứng;
-:Gửi check-in (QR + ảnh);
 |Hệ thống|
-if (Điểm yêu cầu ảnh\nvà thiếu ảnh?) then (có)
-  :Từ chối PHOTO_REQUIRED;
+:Xác định hành động\n(chưa có công hôm nay → CHECK_IN;\nđã check-in đủ lâu → CHECK_OUT);
+if (Quét lại quá sớm hoặc\nđã đủ vào–ra?) then (có)
+  :Từ chối 409, không ghi công;
   stop
 else (không)
 endif
-if (Ảnh ≤ 200 KB và nonce chưa dùng?) then (không)
-  :Từ chối, không ghi công;
+:Tạo phiên quét, ghi giờ server;
+|Máy chấm công tại quầy|
+:Hiện tên nhân viên, đếm ngược;
+:Chụp ảnh minh chứng bằng camera quầy;
+:Gửi ảnh kèm phiên quét;
+|Hệ thống|
+if (Phiên còn hạn và\nảnh hợp lệ ≤ 200 KB?) then (không)
+  :Từ chối SCAN_EXPIRED / PHOTO_*\n(không ghi công);
   stop
 else (có)
 endif
-:Lấy nhân viên từ token;\nghi thời điểm server;
+:Lưu ảnh, ghi check-in/check-out\n(giờ server, điểm & máy quầy),\nđánh dấu QR đã dùng;
 :Tính phút làm việc, trễ/sớm\ntheo lịch cá nhân (AttendanceCalc);
-if (Thiếu check-out,\nlàm ngoài lịch,\ncheck-in trùng?) then (có)
+if (Thiếu check-out,\nlàm ngoài lịch?) then (có)
   :Đánh dấu NEEDS_REVIEW;
   |Manager / HR|
-  :Xác minh hoặc điều chỉnh công\n(có ghi nhật ký);
+  :Xác minh hoặc điều chỉnh công\n(đối chiếu ảnh, có ghi nhật ký);
 else (không)
+  |Hệ thống|
   :Trạng thái VALID;
 endif
-|Hệ thống|
-:Lưu bản ghi công;
+|Nhân viên (điện thoại)|
+:Thấy kết quả chấm công trên web;
 stop
 @enduml

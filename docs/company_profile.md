@@ -146,6 +146,8 @@ Tài khoản/hồ sơ có các trạng thái: **Onboarding** (đang tiếp nhậ
 | **HR** | Nhân sự được giao nghiệp vụ | Quyền cá nhân như Employee; quản lý hồ sơ và hợp đồng; rà soát chấm công, phép, OT; chuẩn bị, tính, rà soát và xuất bảng lương theo thẩm quyền |
 | **Admin** | Người quản trị kỹ thuật ngoài 100 nhân sự | Tạo/vô hiệu hóa tài khoản, quản lý vai trò và cấu hình kỹ thuật; giám sát nhật ký; không tự động được xem thông tin lương nhạy cảm |
 
+Ngoài 4 vai trò của người dùng, HRFlow có **tài khoản thiết bị `KIOSK`** dành cho máy chấm công đặt tại quầy (Mục 5.2). Đây không phải vai trò thứ năm: tài khoản này không gắn với người hay hồ sơ nhân viên, không có chức danh, không được cấp quyền payroll và chỉ dùng để quét QR, chụp ảnh minh chứng tại điểm chấm công được gắn. Admin tạo/khóa tài khoản thiết bị theo yêu cầu của HR; HR gắn tài khoản với điểm chấm công.
+
 Quy trình duyệt PTO/OT sử dụng **một cấp phê duyệt** theo tuyến tại bảng dưới đây. Người duyệt được xác định theo từng hàng trong bảng, không mặc định HR Lead duyệt mọi đơn thiếu Manager. Khi người duyệt vắng mặt hoặc có xung đột lợi ích, chỉ người dự phòng được chỉ định trước mới được thay thế. Không tự duyệt, không chuyển tiếp qua nhiều cấp. Mọi quyết định duyệt/từ chối phải lưu người thực hiện, thời gian, lý do và căn cứ thay thế (nếu có). `permission_matrix.md` quy định chi tiết quyền hệ thống; vai trò hệ thống, chức danh và ủy quyền là các dữ liệu độc lập.
 
 | Người gửi đơn | Người duyệt chính | Người thay thế khi vắng mặt/không thể xử lý |
@@ -181,12 +183,18 @@ Người duyệt thay thế thực hiện đúng một quyết định **Approve
 
 ### 5.2. Quy trình chấm công
 
-1. Nhân viên ghi nhận **check-in** khi bắt đầu ca và **check-out** khi kết thúc ca.
-2. Hệ thống lưu thời gian thực tế, đối chiếu giờ bắt đầu/kết thúc và thời gian nghỉ trưa.
-3. Hệ thống tính số giờ làm thường được xác nhận, số phút đi trễ/về sớm và trường hợp dữ liệu thiếu.
-4. Nhân viên xem công của mình; nếu có sai sót thì gửi yêu cầu giải trình/chỉnh công.
-5. Manager xác nhận dữ liệu thực tế; HR rà soát, chốt dữ liệu trước kỳ lương.
-6. Bảng công kỳ đã khóa không được sửa trực tiếp; nếu phát hiện sai phải đi theo điều chỉnh kỳ sau.
+HNQ Media đặt **máy chấm công tại quầy lễ tân** (điểm chấm công). Máy chấm công là một thiết bị cố định có camera (laptop/máy tính bảng) luôn mở màn hình chấm công của HRFlow – không phải máy quét cầm tay. Nhân viên chấm công bằng **mã QR cá nhân** hiển thị trên điện thoại của mình.
+
+1. Khi bắt đầu ca (**check-in**) hoặc kết thúc ca (**check-out**), nhân viên đăng nhập HRFlow trên điện thoại và bấm **Chấm công**; điện thoại hiển thị mã QR cá nhân. Mã này do hệ thống cấp, chỉ có hiệu lực trong thời gian ngắn và chỉ dùng được một lần.
+2. Nhân viên đưa màn hình điện thoại vào camera của máy chấm công. Máy quét mã; nếu mã hợp lệ, máy hiển thị tên nhân viên và chuyển ngay sang **chụp ảnh minh chứng** tại quầy. Mã không hợp lệ hoặc hết hạn thì máy báo lỗi và không ghi công.
+3. Sau khi chụp ảnh, hệ thống ghi nhận check-in/check-out theo giờ của hệ thống, kèm điểm chấm công và ảnh minh chứng; lượt chấm đầu tiên trong ngày là check-in, lượt sau là check-out. Dữ liệu chấm công hiển thị ngay trên web cho nhân viên, Manager và HR theo quyền.
+4. Ảnh minh chứng chỉ dùng để đối chiếu khi cần, không dùng nhận diện khuôn mặt; chỉ nhân viên đó, Manager trực tiếp và HR được xem.
+5. Không chấm được tại quầy (máy hỏng, quên/hết pin điện thoại, đi công tác) thì nhân viên gửi yêu cầu điều chỉnh công kèm giải trình/minh chứng để Manager/HR xác nhận.
+6. Hệ thống lưu thời gian thực tế, đối chiếu giờ bắt đầu/kết thúc và thời gian nghỉ trưa.
+7. Hệ thống tính số giờ làm thường được xác nhận, số phút đi trễ/về sớm và trường hợp dữ liệu thiếu.
+8. Nhân viên xem công của mình; nếu có sai sót thì gửi yêu cầu giải trình/chỉnh công.
+9. Manager xác nhận dữ liệu thực tế; HR rà soát, chốt dữ liệu trước kỳ lương.
+10. Bảng công kỳ đã khóa không được sửa trực tiếp; nếu phát hiện sai phải đi theo điều chỉnh kỳ sau.
 
 ### 5.3. Quy tắc tính công
 
@@ -464,6 +472,8 @@ Phiếu lương hiển thị: thông tin công ty, kỳ lương, mã/họ tên/c
 | Tình huống | Quy định xử lý của HNQ Media |
 |---|---|
 | Quên check-in/check-out | Đánh dấu Needs Review, yêu cầu giải trình và Manager xác nhận, HR chốt |
+| Máy chấm công tại quầy hỏng/mất mạng, quên hoặc hết pin điện thoại | Không chấm hộ, không nhập tay tại quầy; nhân viên gửi điều chỉnh công kèm giải trình/minh chứng, Manager xác nhận, HR rà soát |
+| Gửi ảnh chụp mã QR cho người khác chấm hộ | Mã chỉ dùng một lần, hết hạn sau thời gian ngắn và ảnh minh chứng được chụp tại quầy; nếu phát hiện chấm hộ thì xử lý theo nội quy lao động, không phạt tiền |
 | Đi trễ 10–30 phút | Ghi số phút thiếu và lý do; không phạt khoản tiền cố định |
 | Làm quá giờ nhưng không có lịch OT | HR/Manager xác minh có làm việc thực tế và nghĩa vụ trả công; không mặc định xóa giờ hoặc tự động tính OT |
 | Đi trễ nhưng làm bù trong ngày | Ghi nhận giờ thực tế và phút trễ; thời gian làm bù không tự chuyển thành OT. Chỉ trả OT khi có lịch/đăng ký/phê duyệt và xác nhận hợp lệ |
@@ -498,7 +508,7 @@ Phiếu lương hiển thị: thông tin công ty, kỳ lương, mã/họ tên/c
 | Nhân sự | Mã nhân viên, họ tên, phòng ban, chức danh, người quản lý, loại nhân sự, trạng thái |
 | Hợp đồng và lương | Loại hợp đồng, ngày hiệu lực, ngày kết thúc, lương cơ bản, lịch làm việc, lịch sử thay đổi |
 | Lịch làm việc | Ngày trong tuần, giờ ca, nghỉ trưa, giờ chuẩn, lịch ngày nghỉ/lễ |
-| Chấm công | Check-in/out gốc, giờ hợp lệ, phút đi trễ/về sớm, trạng thái xác nhận, lịch sử chỉnh công |
+| Chấm công | Check-in/out gốc, điểm chấm công, máy chấm công, ảnh minh chứng, giờ hợp lệ, phút đi trễ/về sớm, trạng thái xác nhận, lịch sử chỉnh công |
 | Nghỉ phép | Loại nghỉ, khoảng thời gian, đơn vị giờ/ngày, quỹ phép, trạng thái, người duyệt |
 | OT | Lịch OT công bố, đăng ký, đồng ý, phê duyệt, thời gian thực tế, loại ngày/khung giờ |
 | Phụ cấp/thưởng | Loại khoản, mức tiền, điều kiện hưởng, ngày hiệu lực, người duyệt |
@@ -531,7 +541,7 @@ Các trường trên là yêu cầu nghiệp vụ, chưa quy định cấu trúc
 ### 14.1. Chức năng bắt buộc
 
 - Quản lý hồ sơ nhân viên, phòng ban, chức danh và onboarding.
-- Chấm công cơ bản, xem bảng công và xử lý sai lệch.
+- Chấm công tại quầy bằng mã QR cá nhân trên điện thoại và ảnh minh chứng chụp tại quầy; xem bảng công và xử lý sai lệch.
 - Tạo, phê duyệt và quản lý nghỉ phép.
 - Tính lương tháng dựa trên công, lương, phụ cấp, bảo hiểm, thuế và các khoản được hỗ trợ.
 - Quản lý kỳ lương và phát hành phiếu lương PDF.
@@ -542,7 +552,7 @@ Các trường trên là yêu cầu nghiệp vụ, chưa quy định cấu trúc
 - Công bố lịch OT, đăng ký OT và duyệt OT có kiểm soát.
 - Quản lý phụ cấp, thưởng, KPI và hoa hồng Sales ở mức tự động hóa nâng cao.
 - Cổng tự phục vụ của nhân viên (ESS), thông báo và báo cáo/dashboard.
-- Audit trail nâng cao; chấm công bằng QR động/ảnh minh chứng.
+- Audit trail nâng cao.
 
 **Giới hạn hệ thống:** HRFlow không quản lý ngân sách quảng cáo, nội dung chiến dịch, luồng duyệt thiết kế, hóa đơn kế toán và thanh toán ngân hàng từ đầu đến cuối. Các hệ thống/bộ phận nghiệp vụ khác cung cấp **dữ liệu kết quả xác nhận** cho HRFlow khi cần tính lương. Chỉ tự động hóa một nghiệp vụ khi đã có đủ dữ liệu nguồn, người chịu trách nhiệm xác nhận, trạng thái xử lý và cơ chế lưu lịch sử theo Mục 13.1.
 

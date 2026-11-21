@@ -6,10 +6,10 @@ skinparam nodesep 30
 actor "Employee" as EMP
 actor "HR" as HR
 actor "Manager /\nngười duyệt" as MGR
+actor "Máy chấm công\ntại quầy (KIOSK)" as KIOSK
 rectangle "Nhân viên" as G1 {
-  usecase "Chấm công bằng QR động" as A1
-  usecase "Quét và xác thực QR" as A2
-  usecase "Chụp ảnh minh chứng" as A3
+  usecase "Chấm công tại quầy" as A1
+  usecase "Hiển thị QR cá nhân\ntrên điện thoại" as A2
   usecase "Xem bảng công của mình" as A4
   usecase "Tạo và gửi đơn nghỉ" as L1
   usecase "Kiểm tra số dư quỹ phép" as L5
@@ -17,9 +17,13 @@ rectangle "Nhân viên" as G1 {
   usecase "Hủy / điều chỉnh\nđơn đã duyệt" as L3
 }
 rectangle "HR" as G2 {
-  usecase "Cấp QR động cho\nđiểm chấm công" as A5
+  usecase "Cấu hình điểm chấm công,\ngắn máy quầy" as A5
   usecase "Xác minh / điều chỉnh công" as A6
   usecase "Chốt công" as A7
+}
+rectangle "Máy chấm công tại quầy" as G4 {
+  usecase "Quét QR cá nhân\nbằng camera" as K1
+  usecase "Chụp ảnh minh chứng\ntại quầy" as A3
 }
 rectangle "Người duyệt" as G3 {
   usecase "Duyệt hoặc từ chối đơn\n(từ chối bắt buộc lý do)" as L4
@@ -29,11 +33,14 @@ EMP --> G1
 G2 <-- HR
 G3 <-- MGR
 A1 .> A2 : <<include>>
+A1 .> K1 : <<include>>
 A1 .> A3 : <<include>>
+G4 <-- KIOSK
 L1 .> L5 : <<include>>
 L4 .> L6 : <<include>>
 L3 .> L4 : <<extend>>
 MGR --> A6 : xác minh công team
 G1 -[hidden]right-> G2
 G1 -[hidden]right-> G3
+G1 -[hidden]right-> G4
 @enduml

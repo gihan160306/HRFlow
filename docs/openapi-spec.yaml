@@ -1,17 +1,17 @@
 # HRFlow – OpenAPI 3 (hop dong API chinh thuc)
-# Hop dong API dich, dong bo voi company_profile.md, permission_matrix.md, payroll_rules.md. Backend hien tai chua trien khai day du (xem database_design.md Muc 10). Cap nhat: 2026-11-13.
+# Hop dong API dich, dong bo voi company_profile.md, permission_matrix.md, payroll_rules.md. Backend hien tai chua trien khai day du (xem database_design.md Muc 10). Cap nhat: 2026-11-21 (cham cong tai quay - DEC-10).
 openapi: 3.0.3
 info:
   title: HRFlow API – HNQ Media
-  version: 3.4.0
-  description: 'Hợp đồng API chính thức của HRFlow (chấm công cơ bản – QR động là mở rộng, nghỉ phép, OT, tính lương tự động). Bản 3.4.0: bỏ trạng thái CONFLICT_HOLD; chỉ HR cấp QR; Admin không ghi tham số payroll.
+  version: 3.5.0
+  description: 'Hợp đồng API chính thức của HRFlow (chấm công tại quầy bằng QR cá nhân + ảnh minh chứng, nghỉ phép, OT, tính lương tự động). Bản 3.4.0: bỏ trạng thái CONFLICT_HOLD; Admin không ghi tham số payroll. Bản 3.5.0 (SRS 3.4, DEC-10): bỏ POST /attendance/check-in, /check-out, /qr/verify và GET /attendance/qr (QR do HR cấp cho điểm chấm công, mã ngắn); thêm GET /attendance/my-qr (QR cá nhân của nhân viên) và nhóm Kiosk (/kiosk/me, /kiosk/scan, /kiosk/punch) chỉ dành cho tài khoản thiết bị KIOSK; thêm role KIOSK cho tài khoản thiết bị.
 
 
     **Quy ước chung** (xem docs/CONVENTIONS.md):
 
     - Base path `/api/v1`, JSON camelCase, enum UPPERCASE, ngày `YYYY-MM-DD`, thời điểm ISO-8601 UTC, tiền là số VND.
 
-    - Xác thực: `Authorization: Bearer <JWT>` (lấy từ `POST /auth/login`, hết hạn sau 60 phút).
+    - Xác thực: `Authorization: Bearer <JWT>` (lấy từ `POST /auth/login`, hết hạn sau 60 phút; riêng tài khoản thiết bị KIOSK của máy chấm công tại quầy hết hạn sau tối đa 12 giờ và chỉ gọi được nhóm `/kiosk/**` – gọi API khác → 403, người dùng gọi `/kiosk/**` → 403).
 
     - Lỗi thống nhất `ApiError {code, message, details[{field,message}], timestamp}` theo DEC-01: 401 chưa đăng nhập/token hỏng · 403 không có
     role/grant hoặc tự duyệt · 404 không tồn tại hoặc ngoài phạm vi dữ liệu · 409 sai trạng thái/kỳ đã chốt/xung đột cập nhật · 422 dữ liệu không
@@ -461,8 +461,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Tạo tài khoản cho nhân viên
-      description: '**Quyền / quy tắc:** ADMIN. Trả mật khẩu tạm một lần; mustChangePassword=true.'
+      summary: Tạo tài khoản cho nhân viên hoặc tài khoản thiết bị KIOSK
+      description: '**Quyền / quy tắc:** ADMIN. Trả mật khẩu tạm một lần; mustChangePassword=true. role = KIOSK (máy chấm công tại quầy, theo yêu cầu của HR): employeeId trống, attendancePointId bắt buộc; KIOSK không phải role nền tảng của người dùng, không nhận grant. Không đổi được tài khoản người dùng thành KIOSK hoặc ngược lại (PUT /accounts/{id}/role).'
   /api/v1/accounts/{id}/lock:
     post:
       tags:
@@ -2924,7 +2924,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Tạo điểm chấm công
-      description: '**Quyền / quy tắc:** HR (chế độ chấm công QR/ảnh – mở rộng). Admin không cấp/cấu hình QR (permission_matrix Mục 3.2).'
+      description: '**Quyền / quy tắc:** HR cấu hình điểm chấm công (ví dụ quầy lễ tân); Admin → 403. Máy chấm công tại quầy là tài khoản KIOSK gắn với điểm qua attendancePointId (POST /accounts). Ảnh minh chứng luôn bắt buộc nên không còn cờ photoRequired. Ngừng điểm (active=false) thì máy quầy gắn với điểm bị từ chối quét (409 INVALID_STATE).'
   /api/v1/attendance-points/{id}:
     put:
       tags:
@@ -2981,7 +2981,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Sửa điểm chấm công
-      description: '**Quyền / quy tắc:** HR (chế độ chấm công QR/ảnh – mở rộng). Admin không cấp/cấu hình QR (permission_matrix Mục 3.2).'
+      description: '**Quyền / quy tắc:** HR cấu hình điểm chấm công (ví dụ quầy lễ tân); Admin → 403. Máy chấm công tại quầy là tài khoản KIOSK gắn với điểm qua attendancePointId (POST /accounts). Ảnh minh chứng luôn bắt buộc nên không còn cờ photoRequired. Ngừng điểm (active=false) thì máy quầy gắn với điểm bị từ chối quét (409 INVALID_STATE).'
   /api/v1/attendance/absences:
     post:
       tags:
@@ -3225,173 +3225,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Từ chối điều chỉnh công
-  /api/v1/attendance/check-in:
-    post:
-      tags:
-      - Attendance
-      operationId: checkIn_post_attendance_check_in
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ScanRequest'
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AttendanceResponse'
-        '401':
-          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: Sai trạng thái nghiệp vụ, kỳ đã chốt/khóa (PERIOD_FROZEN/PERIOD_LOCKED) hoặc xung đột cập nhật
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: Dữ liệu không hợp lệ – details liệt kê từng trường
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-      summary: Check-in (bắt buộc QR động + ảnh minh chứng ≤200KB)
-      description: '**Quyền / quy tắc:** Employee, Manager, HR tự chấm công của mình; Admin không chấm công. Người chấm lấy từ phiên. Luồng: quét QR (POST /attendance/qr/verify) → chụp ảnh → check-in kèm qrPayload/shortCode + photoBase64. Thiếu/sai QR → 422 QR_INVALID; QR hết hạn → 422 QR_EXPIRED (cho phép thêm photo-grace-seconds, mặc định 60 giây, để chụp ảnh sau khi quét); thiếu ảnh → 422 PHOTO_REQUIRED. Đã check-in → 409.'
-  /api/v1/attendance/check-out:
-    post:
-      tags:
-      - Attendance
-      operationId: checkOut_post_attendance_check_out
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ScanRequest'
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AttendanceResponse'
-        '401':
-          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '409':
-          description: Sai trạng thái nghiệp vụ, kỳ đã chốt/khóa (PERIOD_FROZEN/PERIOD_LOCKED) hoặc xung đột cập nhật
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: Dữ liệu không hợp lệ – details liệt kê từng trường
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-      summary: Check-out (kèm QR động; ảnh bắt buộc nếu điểm chấm công đặt photo_required)
-      description: '**Quyền / quy tắc:** Chưa check-in → 409 NO_CHECK_IN.'
-  /api/v1/attendance/qr/verify:
-    post:
-      tags:
-      - Attendance
-      operationId: qr_verify_attendance
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                qrPayload:
-                  type: string
-                shortCode:
-                  type: string
-      responses:
-        '200':
-          description: QR hợp lệ – client mở camera chụp ảnh rồi gọi check-in. Chưa ghi dữ liệu chấm công.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                  pointId:
-                    type: integer
-                    format: int64
-                  pointName:
-                    type: string
-                  photoRequired:
-                    type: boolean
-                  photoMaxKb:
-                    type: integer
-                  qrExpiresAt:
-                    type: string
-                    format: date-time
-                  submitWithinSeconds:
-                    type: integer
-        '401':
-          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '403':
-          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '422':
-          description: QR_INVALID / QR_EXPIRED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-      summary: Bước 1 của check-in – xác thực mã QR vừa quét
-      description: '**Quyền / quy tắc:** Employee, Manager, HR; Admin → 403. Chỉ xác thực QR (TTL 15 giây), không tạo bản ghi công; thành công thì chuyển sang bước chụp ảnh.'
-  /api/v1/attendance/qr:
+  /api/v1/attendance/my-qr:
     get:
       tags:
       - Attendance
-      operationId: qr_get_attendance_qr
-      parameters:
-      - name: pointId
-        in: query
-        required: true
-        schema:
-          type: integer
-          format: int64
+      operationId: myQr_get_attendance_my_qr
       responses:
         '200':
-          description: OK
+          description: OK – mã QR cá nhân mới; mã cũ còn hiệu lực của nhân viên bị hủy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QrResponse'
+                $ref: '#/components/schemas/MyQrResponse'
         '401':
           description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
           content:
@@ -3399,19 +3244,139 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
+          description: Admin, tài khoản KIOSK hoặc tài khoản không gắn hồ sơ nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: INVALID_STATE – nhân viên Onboarding/Terminated không được chấm công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Lấy QR cá nhân động để chấm công tại quầy
+      description: '**Quyền / quy tắc:** Employee, Manager, HR (own); Admin và KIOSK → 403. Nhân viên lấy từ phiên, không nhận employeeId từ client. Payload = ''HRFLOW-EMP:''+nonce (không chứa mã nhân viên), hạn mặc định 15 giây (employee-qr-ttl-seconds), dùng một lần; mỗi nhân viên chỉ một mã còn hiệu lực. Điện thoại hiển thị QR và tự gọi lại trước khi hết hạn; sau khi máy quầy ghi công, điện thoại đọc kết quả qua GET /attendance/today. (FR-07, DEC-10)'
+  /api/v1/kiosk/me:
+    get:
+      tags:
+      - Kiosk
+      operationId: me_get_kiosk_me
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KioskMeResponse'
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Không phải tài khoản thiết bị KIOSK (PM-22)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: INVALID_STATE – điểm chấm công đã ngừng hoạt động
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Thông tin máy chấm công tại quầy và điểm chấm công được gắn
+      description: '**Quyền / quy tắc:** chỉ tài khoản KIOSK. Dùng để hiển thị tên điểm chấm công trên màn hình máy quầy.'
+  /api/v1/kiosk/scan:
+    post:
+      tags:
+      - Kiosk
+      operationId: scan_post_kiosk_scan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KioskScanRequest'
+        required: true
+      responses:
+        '200':
+          description: QR hợp lệ – máy quầy chuyển sang chụp ảnh. Chưa ghi dữ liệu chấm công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KioskScanResponse'
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Không phải tài khoản thiết bị KIOSK (PM-22)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: TOO_SOON_TO_CHECK_OUT (quét lại trong khoảng tối thiểu sau check-in) / ALREADY_CHECKED_OUT / INVALID_STATE (nhân viên không được chấm công, điểm ngừng hoạt động) / PERIOD_FROZEN
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '422':
-          description: Dữ liệu không hợp lệ – details liệt kê từng trường
+          description: QR_INVALID / QR_EXPIRED / QR_USED (PM-23)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Lấy mã QR động hiện hành của điểm chấm công
-      description: '**Quyền / quy tắc:** HR (màn hình kiosk; chế độ mở rộng). Admin → 403. Payload = ''HRFLOW-QR:''+nonce, TTL 15 giây, kèm shortCode 6 ký tự.'
+      summary: Bước 1 tại quầy – xác thực QR cá nhân vừa quét
+      description: '**Quyền / quy tắc:** chỉ tài khoản KIOSK đang hoạt động, gắn điểm chấm công đang hoạt động. Server tìm employee_qr_token theo nonce, kiểm tra còn hạn, chưa dùng, chưa bị phiên quét khác giữ (khóa dòng); xác định hành động CHECK_IN (chưa có bản ghi hôm nay) hoặc CHECK_OUT (đã check-in, chưa check-out, đã qua min-checkout-gap-minutes, mặc định 30). Ghi scanned_at (= giờ chấm công), scanned_by, punch_deadline (mặc định +30 giây). Không tạo bản ghi công. Lượt bị từ chối có audit.'
+  /api/v1/kiosk/punch:
+    post:
+      tags:
+      - Kiosk
+      operationId: punch_post_kiosk_punch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KioskPunchRequest'
+        required: true
+      responses:
+        '200':
+          description: OK – đã ghi check-in/check-out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KioskPunchResponse'
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Không phải tài khoản thiết bị KIOSK, hoặc phiên quét thuộc máy quầy khác
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Trạng thái bản ghi công đã thay đổi kể từ lúc quét / PERIOD_FROZEN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: SCAN_EXPIRED / QR_USED / PHOTO_REQUIRED / PHOTO_INVALID / PHOTO_TOO_LARGE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Bước 2 tại quầy – gửi ảnh minh chứng và ghi công
+      description: '**Quyền / quy tắc:** chỉ đúng tài khoản KIOSK đã quét (scanned_by). Ảnh bắt buộc, chụp từ camera máy quầy, JPEG/PNG ≤ photo-max-kb (mặc định 200 KB). Server lưu attendance_photo (captured_by = máy quầy), ghi check-in/check-out với thời điểm = scanned_at, điểm chấm công lấy từ tài khoản KIOSK, nonce và máy quầy; đánh dấu used_at; tính công theo lịch cá nhân; ghi audit. Nhân viên lấy từ mã QR do server cấp, không nhận employeeId từ client.'
   /api/v1/attendance/review:
     get:
       tags:
@@ -3643,8 +3608,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Ảnh minh chứng check-in/out
-      description: '**Quyền / quy tắc:** Theo phạm vi; truy cập được audit.'
+      summary: Ảnh minh chứng check-in/out do máy chấm công tại quầy chụp
+      description: '**Quyền / quy tắc:** own (Employee), own/team (Manager), company theo nhiệm vụ (HR); Admin và KIOSK → 403; bản ghi ngoài phạm vi → 404. Mỗi lượt xem được audit (VIEW_ATTENDANCE_PHOTO).'
   /api/v1/leave-balances:
     get:
       tags:
@@ -7562,8 +7527,6 @@ components:
         name:
           type: string
           minLength: 1
-        photoRequired:
-          type: boolean
         active:
           type: boolean
       required:
@@ -7579,10 +7542,12 @@ components:
           type: string
         name:
           type: string
-        photoRequired:
-          type: boolean
         active:
           type: boolean
+        kioskCount:
+          type: integer
+          format: int32
+          description: Số tài khoản KIOSK đang gắn với điểm
     RouteUpdateRequest:
       type: object
       properties:
@@ -9410,6 +9375,7 @@ components:
           - MANAGER
           - HR
           - ADMIN
+          - KIOSK
         employeeId:
           type: integer
           format: int64
@@ -9507,6 +9473,12 @@ components:
           type: string
         checkOutPoint:
           type: string
+        checkInKiosk:
+          type: string
+          description: Máy chấm công tại quầy đã ghi check-in
+        checkOutKiosk:
+          type: string
+          description: Máy chấm công tại quầy đã ghi check-out
         hasCheckInPhoto:
           type: boolean
         hasCheckOutPhoto:
@@ -9549,17 +9521,6 @@ components:
           type: string
           format: date-time
         note:
-          type: string
-    ScanRequest:
-      type: object
-      properties:
-        qrPayload:
-          type: string
-        shortCode:
-          type: string
-        photoBase64:
-          type: string
-        photoMime:
           type: string
     DecideRequest:
       type: object
@@ -9643,6 +9604,7 @@ components:
           - MANAGER
           - HR
           - ADMIN
+          - KIOSK
         temporaryPassword:
           type: string
         reason:
@@ -9651,6 +9613,10 @@ components:
         requestId:
           type: integer
           format: int64
+        attendancePointId:
+          type: integer
+          format: int64
+          description: Bắt buộc khi role = KIOSK (máy chấm công tại quầy, theo yêu cầu của HR); khi đó employeeId phải để trống. Không dùng cho role khác.
       required:
       - email
       - reason
@@ -9670,6 +9636,7 @@ components:
           - MANAGER
           - HR
           - ADMIN
+          - KIOSK
         status:
           type: string
           enum:
@@ -9682,6 +9649,12 @@ components:
         employeeCode:
           type: string
         employeeName:
+          type: string
+        attendancePointId:
+          type: integer
+          format: int64
+          description: Chỉ có với tài khoản KIOSK
+        attendancePointName:
           type: string
         mustChangePassword:
           type: boolean
@@ -10300,17 +10273,15 @@ components:
         blockingIssues:
           type: integer
           format: int32
-    QrResponse:
+    MyQrResponse:
       type: object
       properties:
-        pointId:
-          type: integer
-          format: int64
-        pointName:
-          type: string
         qrPayload:
           type: string
-        shortCode:
+          example: HRFLOW-EMP:3q2+7w...
+        employeeCode:
+          type: string
+        employeeName:
           type: string
         issuedAt:
           type: string
@@ -10321,8 +10292,104 @@ components:
         ttlSeconds:
           type: integer
           format: int32
-        photoRequired:
-          type: boolean
+          example: 15
+    KioskMeResponse:
+      type: object
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        email:
+          type: string
+        pointId:
+          type: integer
+          format: int64
+        pointCode:
+          type: string
+        pointName:
+          type: string
+        photoMaxKb:
+          type: integer
+          format: int32
+    KioskScanRequest:
+      type: object
+      properties:
+        qrPayload:
+          type: string
+          minLength: 1
+      required:
+      - qrPayload
+    KioskScanResponse:
+      type: object
+      properties:
+        scanId:
+          type: integer
+          format: int64
+          description: Mã phiên quét (id của employee_qr_token), dùng cho POST /kiosk/punch
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        action:
+          type: string
+          enum:
+          - CHECK_IN
+          - CHECK_OUT
+        scannedAt:
+          type: string
+          format: date-time
+          description: Thời điểm server ghi nhận, là giờ check-in/check-out
+        punchDeadline:
+          type: string
+          format: date-time
+        photoMaxKb:
+          type: integer
+          format: int32
+    KioskPunchRequest:
+      type: object
+      properties:
+        scanId:
+          type: integer
+          format: int64
+        photoBase64:
+          type: string
+          minLength: 1
+        photoMime:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+      required:
+      - scanId
+      - photoBase64
+    KioskPunchResponse:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - CHECK_IN
+          - CHECK_OUT
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        punchedAt:
+          type: string
+          format: date-time
+        pointName:
+          type: string
+        attendanceStatus:
+          type: string
+          enum:
+          - VALID
+          - NEEDS_REVIEW
+        lateMinutes:
+          type: integer
+          format: int32
+        earlyMinutes:
+          type: integer
+          format: int32
     AllowanceTypeResponse:
       type: object
       properties:
@@ -10384,7 +10451,9 @@ tags:
 - name: Employees
   description: Hồ sơ, tổ chức, hợp đồng, lương, phụ cấp, lịch, thuế/BH (FR-03..06, FR-29, FR-33)
 - name: Attendance
-  description: Chấm công cơ bản (QR động + ảnh là mở rộng), bảng công, Needs Review, điều chỉnh (FR-07, FR-10)
+  description: Chấm công tại quầy – QR cá nhân của nhân viên; bảng công, ảnh minh chứng, điểm chấm công, Needs Review, điều chỉnh (FR-07, FR-10)
+- name: Kiosk
+  description: API của máy chấm công tại quầy (tài khoản thiết bị KIOSK) – quét QR cá nhân, chụp ảnh minh chứng, ghi công (FR-07, DEC-10)
 - name: Leave
   description: Nghỉ phép và quỹ phép (FR-08, FR-28)
 - name: Overtime

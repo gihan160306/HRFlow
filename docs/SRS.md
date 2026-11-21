@@ -6,13 +6,13 @@
 |---|---|
 | Tên dự án | HRFlow – Enterprise Human Resource & Automated Payroll System |
 | Doanh nghiệp mô phỏng | HNQ Media – doanh nghiệp truyền thông và tiếp thị số |
-| Phiên bản tài liệu | 3.3 – Đồng bộ với baseline nghiệp vụ đã chốt (bỏ `CONFLICT_HOLD`; chấm công cơ bản là MVP, QR/ảnh là mở rộng) |
+| Phiên bản tài liệu | 3.4 – Đổi phương thức chấm công sang máy chấm công tại quầy (kiosk): quét QR cá nhân động trên điện thoại nhân viên → chụp ảnh minh chứng tại quầy (DEC-10) |
 | Trạng thái | ĐÃ CHỐT – đồng bộ với `company_profile.md`, `permission_matrix.md`, `payroll_rules.md`; mã FR liền mạch FR-01…FR-33; các giả định mô phỏng/ngoài MVP được ghi rõ tại Mục 11 |
-| Ngày cập nhật | 13/11/2026 |
+| Ngày cập nhật | 21/11/2026 |
 | Ngôn ngữ | Tiếng Việt; tên trạng thái, role và mã yêu cầu giữ bằng tiếng Anh khi cần |
 | Nhóm thực hiện | Hồ Thị Gia Hân; Đặng Minh Hiếu; Trần Thị Lệ Hoa; Nguyễn Hoàng Phương Ngân; Hồ Vinh Quan |
 
-> **Quy tắc đọc tài liệu:** SRS này mô tả yêu cầu và kết quả hệ thống phải đáp ứng, không thay thế tài liệu quy chế nghiệp vụ. `company_profile.md`, `payroll_rules.md` (v3.0) và `permission_matrix.md` (v1.0) là baseline nghiệp vụ đã chốt. Khi SRS hoặc tài liệu kỹ thuật có nội dung khác baseline, không tự ý chọn cách xử lý; ghi nhận mâu thuẫn và xin xác nhận trước khi thiết kế/triển khai.
+> **Quy tắc đọc tài liệu:** SRS này mô tả yêu cầu và kết quả hệ thống phải đáp ứng, không thay thế tài liệu quy chế nghiệp vụ. `company_profile.md`, `payroll_rules.md` (v3.0) và `permission_matrix.md` (v1.1) là baseline nghiệp vụ đã chốt. Khi SRS hoặc tài liệu kỹ thuật có nội dung khác baseline, không tự ý chọn cách xử lý; ghi nhận mâu thuẫn và xin xác nhận trước khi thiết kế/triển khai.
 
 ---
 
@@ -26,6 +26,7 @@
 | 3.1 | 30/10/2026 | Nhóm dự án | Chốt các DEC-01–DEC-08; tách rõ test MVP và mở rộng; quy định dữ liệu OT/Sales trong MVP; định nghĩa `CONFLICT_HOLD`; làm rõ mã lỗi, quyền grant, điều chỉnh lương, `net_salary`; phân loại vấn đề còn mở thành giả định mô phỏng hoặc tích hợp ngoài MVP |
 | 3.2 | 03/11/2026 | Nhóm dự án | Gộp chấm công QR/ảnh vào FR-07 (MVP); đánh lại toàn bộ mã FR liền mạch FR-01…FR-33; cập nhật tham chiếu, phạm vi MVP, SIM-03, DEC-09, ma trận truy vết và luồng nghiệp vụ |
 | 3.3 | 13/11/2026 | Nhóm dự án | Đồng bộ với baseline đã chốt: bỏ trạng thái `CONFLICT_HOLD` (kỳ có lương Director giữ `CALCULATED`, chặn `APPROVE` theo OPEN-05); FR-07 MVP là chấm công cơ bản, QR động + ảnh minh chứng về nhóm mở rộng; chỉ HR cấp QR; sửa DEC-02, DEC-09, BR-10, BR-21, SIM-03 |
+| 3.4 | 21/11/2026 | Nhóm dự án | Change request chấm công (DEC-10): thay luồng "điện thoại quét QR của điểm chấm công + tự chụp ảnh" bằng luồng **máy chấm công tại quầy** – nhân viên hiển thị QR cá nhân động trên điện thoại, máy quầy (camera) quét mã rồi chụp ảnh minh chứng ngay tại quầy, hệ thống ghi công. Chấm công tại quầy là phương thức chính thức của MVP; bổ sung tài khoản thiết bị `KIOSK` (không phải role nền tảng thứ năm); bỏ chức năng HR cấp QR cho điểm chấm công và mã ngắn; viết lại FR-07; sửa Mục 1.4, 2.3, 2.4, 2.6, 2.7, 4.1, 4.4, NFR-01, BR-10, Mục 8, 9.2, 10, 11, 12; thêm PM-21…PM-23 |
 
 ## Mục lục
 
@@ -110,12 +111,17 @@ SRS mô tả **điều hệ thống phải làm**; tên bảng, endpoint, packag
 | `LOCKED` | Đã được người có grant `LOCK` khóa; chỉ đọc |
 | `PAID` | Trạng thái chi trả riêng sau `LOCKED`; không mở quyền sửa lương |
 | `Needs Review` | Dữ liệu chưa xác minh, không được đưa âm thầm vào payroll |
+| Điểm chấm công | Vị trí vật lý được HR cấu hình để chấm công (ví dụ: quầy lễ tân tầng 1); mỗi máy chấm công tại quầy gắn với đúng một điểm |
+| Máy chấm công tại quầy (kiosk) | Thiết bị cố định đặt tại điểm chấm công (laptop/máy tính bảng có camera) mở màn hình chấm công của HRFlow; dùng camera để quét QR cá nhân và chụp ảnh minh chứng. Không phải máy quét cầm tay |
+| Tài khoản thiết bị `KIOSK` | Tài khoản kỹ thuật dùng riêng cho máy chấm công tại quầy; không gắn hồ sơ nhân viên, không phải role nền tảng của người dùng, chỉ được gọi chức năng chấm công tại quầy |
+| QR cá nhân động | Mã QR do server cấp cho đúng nhân viên đang đăng nhập, hiển thị trên điện thoại; chỉ chứa mã ngẫu nhiên (không chứa dữ liệu cá nhân đọc được), có thời hạn ngắn và chỉ dùng được một lần |
+| Phiên quét | Kết quả xác thực một QR cá nhân tại máy quầy; giữ trong thời gian ngắn để máy quầy chụp và gửi ảnh minh chứng |
 
 ### 1.4.1. Quy tắc mã hóa và hệ mã FR của bản 3.0
 
 - `UR-xx`, `FR-xx`, `NFR-xx`, `BR-xx`, `AC-FR-xx`, `PM-xx` (ca phân quyền từ `permission_matrix.md`), `DEC-xx` (quyết định đã chốt), `SIM/EXT/QA` (giả định mô phỏng/hạng mục ngoài MVP/kiểm thử).
 - Từ bản **3.2**, hệ mã FR được đánh lại **liền mạch FR-01 … FR-33** (không còn khoảng trống mã sau khi gộp chấm công và thu gọn các mã đã retire trước đó trong phạm vi đánh số hiện hành).
-- Chấm công = **FR-07**: chấm công cơ bản là MVP; QR động + ảnh minh chứng là chế độ mở rộng trong cùng mã (từ bản 3.3). Cơ cấu tổ chức giữ **FR-04**.
+- Chấm công = **FR-07**: từ bản 3.4, phương thức chính thức của MVP là **chấm công tại quầy** (QR cá nhân động trên điện thoại + ảnh minh chứng chụp tại quầy). Cơ cấu tổ chức giữ **FR-04**.
 - **FR-08** = Quản lý yêu cầu nghỉ phép (PTO) — trước đây là FR-09 ở bản ≤ 3.1.
 - Tổng hợp Gross/Net/Payable = **FR-27** (trước đây FR-30 / FR-19 tùy phiên bản).
 - Khi thêm yêu cầu mới, dùng mã tiếp theo sau FR-33; cập nhật SRS và ma trận truy vết cùng lúc. Bảng ánh xạ mã các phiên bản nằm ở Phụ lục 12.4.
@@ -125,7 +131,7 @@ SRS mô tả **điều hệ thống phải làm**; tên bảng, endpoint, packag
 
 1. `company_profile.md` – hồ sơ công ty và quy chế vận hành HNQ Media.
 2. `payroll_rules.md` (v3.0) – quy tắc tính lương.
-3. `permission_matrix.md` (v1.0) – ma trận quyền nghiệp vụ.
+3. `permission_matrix.md` (v1.1) – ma trận quyền nghiệp vụ.
 4. SRS các phiên bản trước và mẫu SRS tham khảo bố cục.
 
 Thứ tự ưu tiên khi có khác biệt: (1) pháp luật bắt buộc và thỏa thuận hợp pháp có lợi hơn cho người lao động; (2) hợp đồng/quyết định lương và quy chế đã được HNQ phê duyệt; (3) `company_profile.md`; (4) `payroll_rules.md` và `permission_matrix.md` theo phạm vi từng tài liệu; (5) SRS và tài liệu kỹ thuật. Nếu chưa đủ căn cứ pháp lý hoặc xử lý xung đột lợi ích, hệ thống yêu cầu người có thẩm quyền xác minh; không tự lấy giá trị mặc định.
@@ -181,7 +187,7 @@ Tuyến quản lý xác định phạm vi team và tuyến duyệt PTO/OT; **kh�
 |---|---|---|
 | Tài khoản và truy cập | Đăng nhập/đăng xuất, quản trị tài khoản (FR-31), role/grant (FR-02, FR-32) | Phiên hợp lệ, quyền đúng phạm vi |
 | Hồ sơ nhân sự | Hồ sơ, cơ cấu, hợp đồng, onboarding/offboarding, hồ sơ thuế/BH (FR-03–FR-06, FR-33) | Hồ sơ có lịch sử hiệu lực |
-| Lịch và chấm công | Lịch/lễ/giờ chuẩn (FR-29), chấm công cơ bản (QR động + ảnh minh chứng là mở rộng), xác minh, chốt công (FR-07, 11, 33) | Bản ghi công đã xác nhận, snapshot nguồn |
+| Lịch và chấm công | Lịch/lễ/giờ chuẩn (FR-29), chấm công tại quầy bằng QR cá nhân động + ảnh minh chứng (FR-07), xác minh/điều chỉnh (FR-10), chốt công (FR-30) | Bản ghi công có điểm chấm công, ảnh minh chứng, đã xác nhận; snapshot nguồn |
 | PTO | Tạo, duyệt, hủy/điều chỉnh, quỹ phép (FR-08, FR-28) | Trạng thái đơn, số dư, approval log |
 | OT | Lịch, đăng ký, duyệt, xác nhận thực tế, OT ngoài lịch (FR-09) | Dữ liệu OT đủ căn cứ |
 | Thu nhập và Sales | Phụ cấp, thưởng, khấu trừ, KPI/hoa hồng (FR-11, FR-12) | Dòng thu nhập có nguồn xác nhận |
@@ -199,6 +205,8 @@ HRFlow chỉ có **4 role nền tảng**: `Employee`, `Manager`, `HR`, `Admin`. 
 | `Manager` | Lead, Sales Manager, Operations Manager, Finance Manager, Director | Quyền cá nhân và dữ liệu vận hành team trực tiếp; duyệt PTO/OT đúng tuyến | Không mặc nhiên xem lương team; không tự có quyền payroll |
 | `HR` | HR Executive/HR Lead | Hồ sơ, hợp đồng, công, PTO/OT; chuẩn bị/tính/rà soát lương theo grant | Không mặc nhiên `APPROVE`/`LOCK` |
 | `Admin` | Quản trị kỹ thuật ngoài 100 nhân sự | Tài khoản, role nền tảng, cấu hình kỹ thuật, giám sát audit | Không mặc nhiên xem lương, duyệt, khóa |
+
+**Tài khoản thiết bị `KIOSK` (từ bản 3.4):** ngoài 4 role nền tảng của người dùng, hệ thống có loại tài khoản thiết bị `KIOSK` cho máy chấm công tại quầy. Đây **không phải role thứ năm**: không gắn với người hay hồ sơ nhân viên, không có chức danh, không nhận grant, không xem được dữ liệu nhân sự/công/lương; chỉ được gọi các chức năng chấm công tại quầy (FR-07) cho điểm chấm công được gắn. Admin tạo/khóa tài khoản thiết bị theo yêu cầu hợp lệ của HR (DEC-04); HR gắn tài khoản với điểm chấm công.
 
 ### 2.4.1. Quyền payroll dạng grant
 
@@ -223,7 +231,7 @@ Người lập/tính bảng lương không tự duyệt. Admin không mặc nhi�
 
 ## 2.6. Ràng buộc thiết kế và triển khai
 
-1. Giữ đúng bốn role và tách role khỏi chức danh/tuyến duyệt/grant.
+1. Giữ đúng bốn role của người dùng và tách role khỏi chức danh/tuyến duyệt/grant; tài khoản thiết bị `KIOSK` (Mục 2.4) không phải role của người dùng và chỉ dùng cho chấm công tại quầy.
 2. Dữ liệu cá nhân, lương, thuế, bảo hiểm, ngân hàng chỉ trả trong phạm vi cần thiết.
 3. Dữ liệu lịch sử (hồ sơ, lương, hợp đồng, công, quyền, phê duyệt) không bị xóa khi nghỉ việc.
 4. Kỳ `APPROVED`/`LOCKED` không tính lại; `LOCKED` không update/delete trực tiếp.
@@ -239,7 +247,8 @@ Người lập/tính bảng lương không tự duyệt. Admin không mặc nhi�
 - Tài khoản do Admin khởi tạo theo yêu cầu hợp lệ của HR; không có đăng ký công khai.
 - HR nhập hồ sơ và dữ liệu nguồn có căn cứ; Manager/Sales Manager/Finance Manager xác nhận phần thuộc trách nhiệm.
 - Dữ liệu Sales nhập từ bảng đối soát đã xác nhận, không yêu cầu CRM.
-- Email và lưu trữ PDF chỉ hoạt động khi có cấu hình; nếu chưa có, demo phải thể hiện rõ là giả lập/in-app. MVP dùng chấm công cơ bản (FR-07); QR động + ảnh minh chứng là chức năng mở rộng. Khi demo chế độ QR/ảnh mà chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ ràng (in-app/giả lập) và ghi rõ trong tài liệu demo, không tuyên bố đã tích hợp phần cứng.
+- Email và lưu trữ PDF chỉ hoạt động khi có cấu hình; nếu chưa có, demo phải thể hiện rõ là giả lập/in-app.
+- Chấm công tại quầy (FR-07) cần: một máy tại quầy có camera và trình duyệt hiện đại, mở màn hình chấm công qua HTTPS hoặc `localhost` (trình duyệt chỉ cho phép truy cập camera trong ngữ cảnh an toàn); điện thoại nhân viên chỉ cần trình duyệt để đăng nhập và hiển thị QR, không cần camera. Điện thoại và máy quầy phải kết nối được tới server. Môi trường demo có thể chạy server ngay trên máy quầy; nếu chưa kiểm thử end-to-end với camera thật thì phải ghi rõ phần mô phỏng (SIM-03).
 - Tham số thuế, bảo hiểm, lương tối thiểu, giới hạn OT là bộ mô phỏng, ghi nguồn/trạng thái xác minh; phải xác minh văn bản pháp lý trước khi vận hành thật.
 
 ---
@@ -351,61 +360,94 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 
 **AC-FR-06:** sau thời điểm vô hiệu hóa không đăng nhập/gọi API được (PM-18); dữ liệu lịch sử vẫn truy xuất được; nhân viên nghỉ việc vẫn có dòng quyết toán nếu còn khoản phải trả.
 
-## 3.8. FR-07 – Chấm công (cơ bản; QR động + ảnh minh chứng là mở rộng)
+## 3.8. FR-07 – Chấm công tại quầy bằng QR cá nhân động và ảnh minh chứng
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Mã | FR-07 (chấm công cơ bản; chế độ QR/ảnh của bản ≤ 3.1 giữ trong cùng mã) |
-| Tác nhân | Employee, Manager, HR tự chấm công của mình; Manager xác minh team; HR cấu hình/cấp QR (khi bật chế độ mở rộng), kiểm tra/chốt. Admin không chấm công và không cấp QR |
-| Ưu tiên | MVP: check-in bằng **quét QR động → chụp ảnh minh chứng → hệ thống cập nhật dữ liệu chấm công**; check-out theo cấu hình điểm chấm công (quyết định của nhóm ngày 17/11/2026) |
+| Mã | FR-07 (chấm công; từ bản 3.4 thay luồng "điện thoại quét QR của điểm chấm công" bằng luồng "máy quầy quét QR cá nhân" – DEC-10) |
+| Tác nhân | **Employee, Manager, HR**: tự chấm công của mình bằng QR cá nhân trên điện thoại. **Máy chấm công tại quầy** (tài khoản thiết bị `KIOSK`): quét QR, chụp ảnh, gửi dữ liệu. **HR**: cấu hình điểm chấm công, yêu cầu tạo và gắn máy quầy với điểm, rà soát/chốt công. **Admin**: tạo/khóa tài khoản thiết bị theo yêu cầu HR. Admin không chấm công, không xem ảnh minh chứng |
+| Ưu tiên | **MVP** – phương thức chấm công chính thức (DEC-10, chốt 21/11/2026) |
+| Tiền điều kiện | Nhân viên có tài khoản đang hoạt động và hồ sơ ở trạng thái được chấm công (không `Onboarding`/`Terminated`); có lịch làm việc hiệu lực. Máy quầy đã đăng nhập bằng tài khoản `KIOSK` đang hoạt động, gắn với điểm chấm công đang hoạt động; camera được cấp quyền. Kỳ công của ngày chưa chốt |
 
-**Mô tả:** MVP cung cấp **chấm công cơ bản**: nhân viên check-in khi bắt đầu ca và check-out khi kết thúc ca trên ứng dụng; hệ thống lưu thời điểm server và tính thời lượng công theo lịch cá nhân. **Luồng check-in chính thức (chốt 17/11/2026):** nhân viên bấm Check-in → ứng dụng quét QR động → nếu quét thành công (`POST /attendance/qr/verify`, chưa ghi công) thì chuyển sang camera chụp ảnh minh chứng → gửi `POST /attendance/check-in` kèm QR và ảnh → hệ thống ghi nhận và cập nhật dữ liệu chấm công. Check-in không có QR hợp lệ hoặc thiếu ảnh bị từ chối (422 `QR_INVALID`/`QR_EXPIRED`/`PHOTO_REQUIRED`). Sau khi quét thành công, nhân viên có thêm một khoảng ngắn (mặc định 60 giây, cấu hình `photo-grace-seconds`) để chụp và gửi ảnh. Check-out kèm QR; ảnh bắt buộc nếu điểm chấm công đặt `photo_required`.
+**Mô tả:** Tại mỗi điểm chấm công (ví dụ quầy lễ tân) đặt một máy chấm công cố định có camera – không phải máy quét cầm tay. Khi muốn check-in/check-out, nhân viên đăng nhập HRFlow trên điện thoại và bấm **Chấm công**; điện thoại hiển thị **QR cá nhân động** do server cấp. Nhân viên đưa màn hình điện thoại vào camera của máy quầy. Quét thành công thì máy quầy chuyển ngay sang **chụp ảnh minh chứng** tại chỗ, sau đó hệ thống ghi nhận check-in/check-out và dữ liệu chấm công hiển thị trên web. Hệ thống tự xác định lượt quét là check-in hay check-out theo dữ liệu trong ngày.
 
-**Luồng chính (MVP – chấm công cơ bản):**
-1. Nhân viên mở chức năng chấm công → bấm check-in khi bắt đầu ca.
-2. Hệ thống lấy nhân viên từ phiên (không tin `employee_id` từ client), lịch hiệu lực, lưu thời điểm server.
-3. Check-out cuối ca theo cùng quy trình.
-4. Hệ thống tính phút làm việc, trễ/sớm theo lịch cá nhân, loại khoảng nghỉ và chồng lặp.
-5. Nhân viên xem công của mình; Manager xem team; HR xử lý bản ghi `Needs Review` và chốt công (FR-30).
+**Luồng chính:**
+1. Nhân viên đăng nhập trên điện thoại → màn hình Chấm công → bấm **Chấm công**.
+2. Hệ thống lấy nhân viên từ phiên (không tin `employee_id` từ client), kiểm tra trạng thái làm việc, cấp **QR cá nhân động** (định hướng `GET /attendance/my-qr`). Điện thoại hiển thị QR cỡ lớn, họ tên, đồng hồ đếm ngược và tự lấy mã mới trước khi mã cũ hết hạn.
+3. Máy quầy luôn ở chế độ quét (camera bật). Nhân viên đưa màn hình điện thoại vào camera.
+4. Máy quầy đọc được QR → gửi lên server (định hướng `POST /kiosk/scan`). Server kiểm tra: mã do server cấp, còn hạn, chưa dùng, chưa bị phiên quét khác giữ; nhân viên được chấm công; điểm chấm công của máy quầy đang hoạt động; kỳ công chưa chốt. Server xác định hành động:
+   - chưa có bản ghi công hôm nay → **CHECK_IN**;
+   - đã check-in, chưa check-out và đã qua khoảng tối thiểu từ lúc check-in → **CHECK_OUT**.
 
-**Luồng mở rộng – QR động + ảnh minh chứng (khi bật):**
-1. HR cấu hình và cấp QR động (nonce, thời hạn ngắn) tại điểm chấm công hoặc theo ca (`permission_matrix.md` Mục 3.2: chỉ HR cấp QR).
-2. Nhân viên quét QR động còn hiệu lực khi check-in/check-out.
-3. Backend xác thực QR (nonce, hạn dùng, điểm/ca hợp lệ); không chỉ kiểm tra phía trình duyệt.
-4. QR hợp lệ → (nếu bật) yêu cầu chụp ảnh minh chứng; hệ thống lưu ảnh theo giới hạn dung lượng và quyền truy cập.
-5. Hệ thống lưu thêm kết quả xác thực QR và tham chiếu ảnh.
+   Hợp lệ → server tạo **phiên quét** (ghi lại thời điểm server lúc quét thành công), trả họ tên, mã nhân viên, hành động; **chưa ghi công**. Không hợp lệ → máy quầy báo lỗi rõ ràng, quay lại chế độ quét, không chuyển sang chụp ảnh.
+5. Máy quầy chuyển sang màn hình chụp ảnh: hiển thị "Xin chào <họ tên> – Check-in/Check-out", đếm ngược ngắn (mặc định 3 giây) rồi chụp một khung hình từ camera của máy quầy. Không cho tải ảnh từ tệp có sẵn.
+6. Máy quầy gửi ảnh kèm phiên quét (định hướng `POST /kiosk/punch`). Server kiểm tra phiên quét còn hạn và chưa dùng, ảnh hợp lệ; lưu ảnh; ghi check-in hoặc check-out với **thời điểm server tại bước 4**, điểm chấm công lấy từ tài khoản `KIOSK`, tham chiếu mã QR, ảnh và thiết bị; đánh dấu mã QR đã dùng; tính công theo lịch cá nhân; ghi audit.
+7. Máy quầy hiển thị kết quả (họ tên, hành động, giờ ghi nhận) trong vài giây rồi tự quay lại chế độ quét cho người tiếp theo.
+8. Điện thoại nhân viên tự cập nhật trạng thái chấm công hôm nay và hiển thị kết quả. Bản ghi xuất hiện trên bảng công của nhân viên (own), Manager (team) và HR (company), kèm ảnh minh chứng theo quyền.
+9. Hệ thống tính phút làm việc, trễ/sớm theo lịch cá nhân, loại khoảng nghỉ và chồng lặp; HR xử lý bản ghi `Needs Review` (FR-10) và chốt công (FR-30).
 
-**Quy tắc QR và ảnh (áp dụng cho check-in/check-out):**
-- QR động có nonce và thời hạn ngắn (mặc định 10–15 giây, cấu hình); **không dùng mã tĩnh dài hạn**.
-- QR hết hạn/không hợp lệ → không tạo bản ghi chấm công, giao diện báo lỗi rõ ràng, không tiếp tục chụp ảnh.
-- Ảnh minh chứng: giới hạn dung lượng cấu hình (mục tiêu ≤ 200 KB), chỉ lưu dữ liệu cần thiết, kiểm soát người xem theo quyền; thuộc dữ liệu nhạy cảm (NFR-01).
-- Lưu thời điểm, người thực hiện, kết quả xác thực QR, tham chiếu ảnh.
-- Không khẳng định sinh trắc học/nhận diện khuôn mặt; QR + ảnh chỉ là bằng chứng hỗ trợ xác minh.
-- Nếu môi trường demo chưa có camera/lưu trữ ảnh thật: phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng.
+**Quy tắc QR cá nhân động:**
+- Do server sinh ngẫu nhiên cho đúng nhân viên đang đăng nhập; nội dung chỉ gồm tiền tố nhận dạng và mã ngẫu nhiên, **không chứa** mã nhân viên, họ tên hay dữ liệu cá nhân đọc được.
+- Thời hạn ngắn (mặc định 15 giây, cấu hình); **chỉ dùng một lần**; mỗi nhân viên chỉ có một mã còn hiệu lực – cấp mã mới thì mã cũ mất hiệu lực.
+- **Không dùng mã tĩnh** (mã nhân viên, thẻ in sẵn, ảnh chụp mã cũ). Ảnh chụp màn hình QR gửi cho người khác chỉ dùng được trong thời hạn ngắn và chỉ một lần; lớp chặn thứ hai là ảnh minh chứng chụp tại quầy.
+- Xác thực hoàn toàn ở server; không chỉ kiểm tra phía trình duyệt.
+
+**Quy tắc phiên quét và ảnh minh chứng:**
+- Phiên quét có hạn ngắn (mặc định 30 giây, cấu hình) để máy quầy chụp và gửi ảnh; quá hạn thì nhân viên quét lại bằng mã mới.
+- Ảnh minh chứng **bắt buộc cho cả check-in và check-out**, do camera của máy quầy chụp tại thời điểm chấm công; dung lượng mục tiêu ≤ 200 KB (cấu hình), chỉ lưu dữ liệu cần thiết.
+- Ảnh là dữ liệu nhạy cảm (NFR-01): nhân viên xem ảnh của mình, Manager xem của team, HR xem theo nhiệm vụ; Admin và tài khoản `KIOSK` không xem lại được ảnh đã lưu; mỗi lượt xem ảnh có audit.
+- **Không nhận diện khuôn mặt/sinh trắc học**; QR + ảnh chỉ là bằng chứng hỗ trợ Manager/HR đối chiếu khi cần.
+
+**Quy tắc máy quầy và tài khoản thiết bị `KIOSK`:**
+- Mỗi tài khoản `KIOSK` gắn đúng một điểm chấm công; điểm chấm công ghi vào bản ghi công lấy từ tài khoản này, không lấy từ dữ liệu client gửi.
+- Tài khoản `KIOSK` chỉ gọi được chức năng chấm công tại quầy; gọi chức năng khác → `403`. Người dùng thường gọi chức năng tại quầy → `403`.
+- Khóa tài khoản `KIOSK` hoặc ngừng điểm chấm công → máy quầy mất hiệu lực ngay (thu hồi phiên theo NFR-01).
+- Phiên đăng nhập của máy quầy được phép dài hơn phiên người dùng (mặc định tối đa 12 giờ, cấu hình) để không bị đăng xuất giữa ca.
+
+**Chống quét nhầm/trùng:** mỗi nhân viên có tối đa một bản ghi công mỗi ngày. Quét lại trong khoảng tối thiểu sau check-in (mặc định 30 phút, cấu hình) không tạo check-out – máy quầy báo "đã check-in lúc …". Đã có đủ check-in và check-out thì lượt quét tiếp theo bị từ chối.
 
 **Quy tắc tính công:**
 - Ghi phút trễ/sớm từ phút đầu; không dung sai 15 phút tự động; **không phạt tiền**.
-- Thiếu check-in/out (hoặc QR/ảnh không hợp lệ khi bật chế độ mở rộng) → `Needs Review`, không tự 0 công.
+- Thiếu check-in/out → `Needs Review`, không tự 0 công.
 - Làm bù trong ngày không tự thành OT; đến sớm/về muộn không tự là OT.
 - Ngày lễ hưởng lương không giảm lương tháng, không cộng trùng công.
-- **Đi công tác/làm việc bên ngoài:** có lịch và minh chứng được Manager duyệt; giờ đủ điều kiện được tính như công thường.
+- **Đi công tác/làm việc bên ngoài:** không chấm tại quầy; dùng điều chỉnh công loại công tác có lịch và minh chứng được Manager duyệt (FR-10); giờ đủ điều kiện được tính như công thường.
 - Lịch đổi giữa kỳ: dùng lịch hiệu lực tại ngày đó, không áp ngược.
 
-**Ngoại lệ:** check-in trùng, check-out không có check-in, thời gian bất hợp lý (và QR hết hạn/giả mạo khi bật chế độ mở rộng) → từ chối hoặc `Needs Review`; không xóa bản ghi gốc.
+**Trường hợp không chấm được tại quầy:** máy quầy hỏng/mất mạng, quên điện thoại, điện thoại hết pin → nhân viên gửi điều chỉnh công kèm giải trình/minh chứng (FR-10); Manager xác nhận, HR rà soát. Không có cơ chế nhập tay giờ công tại máy quầy.
 
-**AC-FR-07 (MVP):**
-- A không tạo/chỉnh công cho B bằng `employee_id` khác (PM-15).
-- Bảng công hiển thị giờ gốc, thời lượng, phút trễ/sớm, trạng thái.
+**Ngoại lệ và mã lỗi (định hướng, chốt trong OpenAPI):**
+
+| Tình huống | Kết quả |
+|---|---|
+| QR không do server cấp / sai định dạng | `422 QR_INVALID`; không tạo phiên quét |
+| QR hết hạn | `422 QR_EXPIRED`; nhân viên dùng mã mới |
+| QR đã dùng hoặc đang bị phiên quét khác giữ | `422 QR_USED` |
+| Phiên quét hết hạn trước khi gửi ảnh | `422 SCAN_EXPIRED`; quét lại |
+| Thiếu ảnh / ảnh sai định dạng / vượt dung lượng | `422 PHOTO_REQUIRED` / `PHOTO_INVALID` / `PHOTO_TOO_LARGE`; không ghi công |
+| Quét lại quá sớm sau check-in | `409 TOO_SOON_TO_CHECK_OUT`; không ghi check-out |
+| Đã đủ check-in và check-out trong ngày | `409 ALREADY_CHECKED_OUT` |
+| Nhân viên không ở trạng thái được chấm công; điểm chấm công ngừng hoạt động | `409 INVALID_STATE` |
+| Kỳ công của ngày đã chốt | `409`; không ghi công, đi theo điều chỉnh kỳ sau |
+| Tài khoản `KIOSK` gọi chức năng khác; người dùng gọi chức năng tại quầy | `403` |
+
+Mọi lượt quét bị từ chối được ghi audit (thiết bị, thời điểm, lý do) để HR truy vết; không xóa bản ghi gốc.
+
+**AC-FR-07:**
+- A không tạo/chỉnh công cho B bằng `employee_id` khác (PM-15); nhân viên của bản ghi công lấy từ QR cá nhân do server cấp, không lấy từ dữ liệu máy quầy gửi.
+- QR hết hạn/không hợp lệ/đã dùng bị từ chối, không tạo bản ghi công và máy quầy không chuyển sang chụp ảnh (PM-23).
+- Dùng lại cùng một mã lần thứ hai (kể cả từ ảnh chụp màn hình) bị từ chối `QR_USED`.
+- Thiếu ảnh minh chứng không ghi công; ảnh do máy quầy chụp, lưu kèm bản ghi công.
+- Bản ghi công lưu thời điểm server, điểm chấm công, thiết bị, tham chiếu mã QR và ảnh.
+- Quét lại ngay sau check-in không tạo check-out.
+- Chỉ tài khoản `KIOSK` gọi được chức năng tại quầy (PM-22); tài khoản `KIOSK` không gọi được chức năng khác (PM-21); khóa tài khoản `KIOSK` thì máy quầy mất hiệu lực ngay.
+- Ảnh minh chứng không truy cập được ngoài phạm vi own/team/company; Admin không xem được.
+- Bảng công hiển thị giờ gốc, điểm chấm công, thời lượng, phút trễ/sớm, trạng thái, có ảnh minh chứng theo quyền.
 - Thiếu dữ liệu không thành 0 công (B04); trễ 10 phút không phạt, chỉ chênh công đã đối soát (B05).
 - Điều chỉnh có người, lý do, thời điểm, trước/sau.
+- Nếu demo chưa kiểm thử end-to-end với camera thật, tài liệu demo ghi rõ phần mô phỏng (SIM-03).
 
-**AC-FR-07 (mở rộng – QR/ảnh):**
-- QR hết hạn/không hợp lệ bị từ chối, không tạo bản ghi công.
-- Chỉ HR cấp được QR; Admin gọi chức năng cấp QR bị từ chối (`403`).
-- Ảnh minh chứng không truy cập được bởi người không có quyền.
-- Demo chưa tích hợp camera/lưu trữ phải ghi rõ trạng thái mô phỏng.
-
-> **Lưu ý mã (bản 3.3):** Mã FR-07 giữ nguyên. Từ bản 3.3, MVP chỉ yêu cầu chấm công cơ bản; QR động + ảnh minh chứng trở lại nhóm mở rộng để thống nhất với `company_profile.md` Mục 14. Hệ mã FR liền mạch của bản 3.2 không thay đổi. Xem Phụ lục 12.4.
+> **Lưu ý mã (bản 3.4):** Mã FR-07 giữ nguyên. Bản 3.4 thay luồng "nhân viên dùng điện thoại quét QR động do HR cấp tại điểm chấm công rồi tự chụp ảnh" (bản 3.2–3.3) bằng luồng "máy chấm công tại quầy quét QR cá nhân động trên điện thoại rồi chụp ảnh tại quầy" (DEC-10). Chức năng HR cấp QR cho điểm chấm công và mã ngắn nhập tay bị bỏ. Hệ mã FR liền mạch của bản 3.2 không thay đổi. Xem Phụ lục 12.4.
 
 ## 3.9. FR-08 – Quản lý yêu cầu nghỉ phép (PTO)
 
@@ -488,12 +530,13 @@ Mỗi FR có mã, mô tả, tác nhân, ưu tiên, tiền điều kiện, luồn
 | Tác nhân | Manager (team, được giao); HR |
 | Ưu tiên | MVP |
 
-1. Danh sách bản ghi `Needs Review` kèm lý do: thiếu check-in/out, QR hết hạn/không hợp lệ hoặc thiếu ảnh minh chứng (khi bật chế độ mở rộng), giờ bất thường, trùng thời gian, sai lệch.
-2. Nhân viên gửi giải trình/minh chứng; Manager xác nhận dữ liệu thực tế; HR rà soát và chốt (chốt công theo FR-30).
-3. Dữ liệu gốc và lịch sử thay đổi được bảo toàn.
-4. Chỉ dữ liệu đã xác nhận được chuyển sang payroll.
-5. Dữ liệu chưa rõ không tự thành 0 công, nghỉ không lương hoặc OT.
-6. Công kỳ đã khóa không sửa trực tiếp; sai sót đi theo điều chỉnh kỳ sau (FR-24).
+1. Danh sách bản ghi `Needs Review` kèm lý do: thiếu check-in/out, giờ bất thường, trùng thời gian, sai lệch. Lượt quét bị từ chối tại quầy (QR hết hạn/đã dùng/không hợp lệ, thiếu ảnh) không tạo bản ghi công nhưng có audit để HR đối chiếu khi nhân viên giải trình.
+2. Điều chỉnh công là đường bổ sung chính thức khi không chấm được tại quầy (máy quầy hỏng/mất mạng, quên/hết pin điện thoại, đi công tác): nhân viên (hoặc HR thay nhân viên) gửi giờ đề xuất, loại (thủ công/công tác/vắng), lý do và minh chứng; Manager trực tiếp hoặc HR duyệt; không ai tự duyệt điều chỉnh của mình.
+3. Nhân viên gửi giải trình/minh chứng; Manager xác nhận dữ liệu thực tế (có thể đối chiếu ảnh minh chứng chụp tại quầy); HR rà soát và chốt (chốt công theo FR-30).
+4. Dữ liệu gốc và lịch sử thay đổi được bảo toàn.
+5. Chỉ dữ liệu đã xác nhận được chuyển sang payroll.
+6. Dữ liệu chưa rõ không tự thành 0 công, nghỉ không lương hoặc OT.
+7. Công kỳ đã khóa không sửa trực tiếp; sai sót đi theo điều chỉnh kỳ sau (FR-24).
 
 **AC-FR-10:** bản ghi chưa xác minh được đánh dấu và không đi vào payroll; mọi điều chỉnh có audit và lý do.
 
@@ -896,8 +939,9 @@ Payable = Net_entitlement − Advance_recovery + Reimbursements
 3. Vô hiệu hóa tài khoản theo ngày hiệu lực nghỉ việc do HR ghi nhận (FR-06); không xóa tài khoản/lịch sử.
 4. Admin xem định danh tối thiểu để quản trị; không xem lương, hợp đồng nhạy cảm, ngân hàng, thuế.
 5. Admin không tự cấp cho mình grant payroll hay thao tác duyệt/khóa.
+6. **Tài khoản thiết bị `KIOSK`** (máy chấm công tại quầy – FR-07): Admin tạo/khóa/đặt lại mật khẩu theo yêu cầu của HR; tài khoản không gắn hồ sơ nhân viên, không có role nền tảng của người dùng, không nhận grant; HR gắn tài khoản với đúng một điểm chấm công. Không đổi được tài khoản người dùng thành `KIOSK` hoặc ngược lại.
 
-**AC-FR-31:** tạo/khóa/mở/đổi role có audit; Admin không đọc được dữ liệu lương (PM-19); tài khoản bị khóa không truy cập được (PM-18); Admin không tự cấp grant payroll.
+**AC-FR-31:** tạo/khóa/mở/đổi role có audit; Admin không đọc được dữ liệu lương (PM-19); tài khoản bị khóa không truy cập được (PM-18); Admin không tự cấp grant payroll; tài khoản `KIOSK` chỉ dùng được chức năng tại quầy (PM-21) và khóa thì mất hiệu lực ngay.
 
 ## 3.33. FR-32 – Grant, ủy quyền và cấu hình tuyến duyệt
 
@@ -945,7 +989,7 @@ Màn hình dự kiến:
 2. Trang chủ/dashboard theo role.
 3. Hồ sơ nhân sự (danh sách, chi tiết); hồ sơ thuế/bảo hiểm.
 4. Phòng ban/chức danh, hợp đồng, lịch làm việc và lịch lễ.
-5. Chấm công cơ bản (màn hình QR/ảnh khi bật chế độ mở rộng), bảng công, danh sách `Needs Review`, chốt công.
+5. Chấm công: màn hình **QR cá nhân** trên điện thoại (hiển thị mã, đếm ngược, kết quả); màn hình **máy chấm công tại quầy** toàn màn hình (camera quét QR → chào nhân viên → chụp ảnh → kết quả → quay lại quét), chỉ mở được bằng tài khoản `KIOSK`; bảng công có ảnh minh chứng theo quyền; cấu hình điểm chấm công; điều chỉnh công; danh sách `Needs Review`; chốt công.
 6. PTO (danh sách, tạo, chi tiết, hộp thư duyệt, hủy/điều chỉnh); số dư phép.
 7. Lịch OT, đăng ký OT, xác nhận giờ thực tế, OT ngoài lịch.
 8. Phụ cấp/thưởng/khấu trừ/tạm ứng; dữ liệu Sales đã xác nhận.
@@ -983,7 +1027,7 @@ Dữ liệu cần lịch sử có thời điểm hiệu lực hoặc phiên bả
 |---|---|---|
 | Email | Thông báo, gửi phiếu lương | Chỉ coi là tích hợp thật khi cấu hình SMTP/provider và kiểm thử thành công |
 | PDF renderer | Sinh phiếu lương | PDF khớp snapshot kỳ khóa |
-| QR/camera | Chế độ chấm công mở rộng (FR-07) | Mở rộng; nếu demo chưa có camera/lưu trữ thật thì mô phỏng rõ và ghi rõ trong tài liệu demo |
+| Camera máy chấm công tại quầy | Quét QR cá nhân và chụp ảnh minh chứng (FR-07) | Dùng camera qua trình duyệt (HTTPS hoặc `localhost`); giải mã QR thực hiện ở trình duyệt máy quầy, xác thực mã ở server; nếu demo chưa kiểm thử end-to-end với camera thật thì ghi rõ phần mô phỏng (SIM-03) |
 | Bảng đối soát Sales | Nhận doanh thu/KPI đã xác nhận | Có thể nhập thủ công; không bắt buộc CRM |
 | Git/CI | Kiểm thử tự động, kiểm soát thay đổi | Theo cấu hình repository |
 
@@ -1013,8 +1057,8 @@ Các ngưỡng là mục tiêu kiểm thử của đồ án, không phải SLA t
 1. Mật khẩu băm bằng BCrypt hoặc tương đương; không lưu dạng rõ; không log.
 2. **Chính sách mật khẩu:** độ dài tối thiểu 10 ký tự, có chữ và số; không trùng 3 mật khẩu gần nhất; buộc đổi mật khẩu khởi tạo lần đầu; (các ngưỡng là cấu hình).
 3. **Khóa tạm** tài khoản sau 5 lần đăng nhập sai liên tiếp trong khoảng cấu hình; mở theo thời gian hoặc do Admin.
-4. **Token/phiên:** access token hạn ngắn (mặc định ≤ 60 phút), cơ chế làm mới/thu hồi khi đăng xuất, khóa tài khoản hoặc đổi mật khẩu; token kiểm tra hạn và trạng thái tài khoản mỗi request.
-5. **Dữ liệu nhạy cảm** (định danh, mã số thuế, tài khoản ngân hàng, ảnh minh chứng): mã hóa hoặc bảo vệ ở lớp lưu trữ theo thiết kế; che một phần khi hiển thị nếu không cần đủ; chỉ trả trong phạm vi quyền. Tuân thủ nguyên tắc tối thiểu hóa dữ liệu; nếu dùng ngoài đồ án phải rà soát quy định bảo vệ dữ liệu cá nhân hiện hành.
+4. **Token/phiên:** access token hạn ngắn (mặc định ≤ 60 phút), cơ chế làm mới/thu hồi khi đăng xuất, khóa tài khoản hoặc đổi mật khẩu; token kiểm tra hạn và trạng thái tài khoản mỗi request. Ngoại lệ duy nhất: tài khoản thiết bị `KIOSK` được cấp phiên dài hơn (mặc định ≤ 12 giờ, cấu hình) nhưng chỉ dùng được chức năng chấm công tại quầy và vẫn bị thu hồi ngay khi khóa tài khoản.
+5. **Dữ liệu nhạy cảm** (định danh, mã số thuế, tài khoản ngân hàng, ảnh minh chứng chấm công): mã hóa hoặc bảo vệ ở lớp lưu trữ theo thiết kế; che một phần khi hiển thị nếu không cần đủ; chỉ trả trong phạm vi quyền. Tuân thủ nguyên tắc tối thiểu hóa dữ liệu; nếu dùng ngoài đồ án phải rà soát quy định bảo vệ dữ liệu cá nhân hiện hành.
 6. HTTPS/TLS khi truy cập qua mạng; không tuyên bố phiên bản TLS khi chưa cấu hình và xác minh.
 7. Thông báo lỗi không lộ mật khẩu, token, stack trace, dữ liệu ngoài phạm vi.
 8. Không log thông tin xác thực hoặc dữ liệu nhạy cảm không cần thiết.
@@ -1027,7 +1071,7 @@ Các ngưỡng là mục tiêu kiểm thử của đồ án, không phải SLA t
 3. Employee chỉ xem dữ liệu cá nhân; Manager dữ liệu vận hành team; payroll theo grant `VIEW` và phạm vi.
 4. `APPROVE`/`LOCK` độc lập, không suy từ role/chức danh.
 5. Từ chối tự duyệt PTO/OT/payroll/adjustment và sửa kỳ khóa.
-6. Test plan bao phủ PM-01 đến PM-20 (Phụ lục 12.2, ánh xạ FR ở Mục 10.3).
+6. Test plan bao phủ PM-01 đến PM-23 (Phụ lục 12.2, ánh xạ FR ở Mục 10.3).
 
 ## 6.3. NFR-03 – Toàn vẹn và chính xác dữ liệu
 1. Dữ liệu đầu vào payroll có nguồn, trạng thái xác nhận, mã nguồn duy nhất khi phù hợp.
@@ -1098,7 +1142,7 @@ Các BR là ràng buộc bắt buộc cho thiết kế và code. Công thức, h
 | BR-07 | Đầu vào có căn cứ | Công, PTO, OT, phụ cấp, thưởng, Sales, BH, thuế, khấu trừ có nguồn/trạng thái xác nhận |
 | BR-08 | Thiếu dữ liệu | Không thay bằng 0, lương mẫu hoặc tham số mới nhất; báo lỗi, `Needs Review` |
 | BR-09 | Lịch làm việc | Lịch cá nhân hiệu lực; không mặc định 22/26 công; phút chính xác; `H_std` toàn tháng |
-| BR-10 | Chấm công | MVP: check-in bằng QR động + ảnh minh chứng, check-out kèm QR (FR-07); trễ/sớm ghi từ phút đầu; không dung sai tự động; không phạt tiền; thiếu công (hoặc QR/ảnh không hợp lệ khi bật) = `Needs Review` |
+| BR-10 | Chấm công | MVP: check-in và check-out tại máy chấm công đặt ở quầy – máy quầy quét QR cá nhân động (hạn ngắn, dùng một lần) trên điện thoại nhân viên rồi chụp ảnh minh chứng tại chỗ; thiếu QR hợp lệ hoặc thiếu ảnh thì không ghi công (FR-07); không chấm được tại quầy thì đi điều chỉnh công có minh chứng (FR-10); trễ/sớm ghi từ phút đầu; không dung sai tự động; không phạt tiền; thiếu check-in/out = `Needs Review` |
 | BR-11 | PTO một cấp | Tuyến chính/dự phòng theo Company Profile; không tự duyệt; không tự chuyển người nếu thiếu dự phòng hợp lệ |
 | BR-12 | OT theo lịch và thực tế | Đăng ký trên lịch công bố; trả theo giờ thực tế xác nhận; giờ vượt/OT ngoài lịch phải xác minh, không tự xóa cũng không tự trả |
 | BR-13 | OT chồng lặp | Không trả trùng một phút; chia đoạn theo loại ngày, giờ đêm, thay đổi lương/lịch |
@@ -1154,7 +1198,7 @@ Nếu ngày 05 trùng ngày nghỉ, thanh toán vào ngày làm việc liền tr
 
 MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm thử nêu bên dưới.
 
-**Chức năng MVP:** FR-01–FR-08, FR-10, FR-11 (khoản bắt buộc: phụ cấp, khấu trừ có căn cứ), FR-13, FR-14, FR-16 (tính cho cư trú lũy tiến; các nhánh khác `NEEDS_REVIEW`), FR-17, FR-18, FR-22, FR-23, FR-24, FR-26–FR-33. (FR-07 trong MVP = chấm công cơ bản; QR động + ảnh minh chứng là mở rộng.)
+**Chức năng MVP:** FR-01–FR-08, FR-10, FR-11 (khoản bắt buộc: phụ cấp, khấu trừ có căn cứ), FR-13, FR-14, FR-16 (tính cho cư trú lũy tiến; các nhánh khác `NEEDS_REVIEW`), FR-17, FR-18, FR-22, FR-23, FR-24, FR-26–FR-33. (FR-07 trong MVP = chấm công tại quầy bằng QR cá nhân động + ảnh minh chứng.)
 
 **Ca kiểm thử nghiệp vụ bắt buộc cho MVP (không áp dụng các ca được ghi rõ là mở rộng):**
 
@@ -1162,9 +1206,9 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 |---|---|
 | Ví dụ payroll | P01, P02, P03, P04, P07, P08 |
 | Ca biên | B01, B02, B03, B04, B05, B06, B13, B14, B15, B16, B17, B18, B19, B20, B22, B24 |
-| Phân quyền | PM-01 đến PM-12, PM-15 đến PM-20 |
+| Phân quyền | PM-01 đến PM-12, PM-15 đến PM-23 |
 | An toàn | NFR-01, NFR-02, NFR-04, NFR-09 (mục 1–6, 8) |
-| Chấm công cơ bản | Check-in/out theo phiên; thiếu dữ liệu = `Needs Review`; không dung sai 15 phút; không phạt tiền |
+| Chấm công tại quầy | Check-in/out qua máy quầy: QR cá nhân hợp lệ → chụp ảnh → ghi công; QR hết hạn/đã dùng/không hợp lệ hoặc thiếu ảnh bị từ chối; quét lại ngay sau check-in không tạo check-out; nhân viên lấy từ QR do server cấp; thiếu dữ liệu = `Needs Review`; không dung sai 15 phút; không phạt tiền |
 
 **Ngoài MVP (Mở rộng, có test riêng khi làm):** FR-09, FR-12, FR-15, FR-19–FR-21, FR-25; P05 (Sales), P06 (OT + miễn thuế OT); B07–B12 (OT, Sales); B21 (chi qua năm, không cư trú, short-term); B23 (500 nhân viên, PERF-02b); PM-13, PM-14.
 
@@ -1181,7 +1225,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 
 **Thứ tự làm đề xuất:** OT và Sales cùng làm trước vì P05/P06 phụ thuộc cả hai.
 
-> **Ghi chú bản 3.3:** QR động và ảnh minh chứng trở lại nhóm mở rộng (theo `company_profile.md` Mục 14.2); MVP của FR-07 là chấm công cơ bản. Hệ mã FR liền mạch FR-01…FR-33 của bản 3.2 giữ nguyên.
+> **Ghi chú bản 3.4:** chấm công tại quầy (QR cá nhân động + ảnh minh chứng chụp tại quầy) là phương thức chính thức của MVP theo DEC-10 (`company_profile.md` Mục 5.2 và 14.1). Hệ mã FR liền mạch FR-01…FR-33 của bản 3.2 giữ nguyên.
 
 ## 8.3. Ngoài phạm vi
 - CRM đầy đủ, pipeline bán hàng, chăm sóc khách hàng.
@@ -1204,8 +1248,8 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 6. Nghỉ việc: HR ghi ngày hiệu lực; tài khoản vô hiệu hóa đúng thời điểm; dữ liệu giữ; khoản còn phải trả quyết toán.
 
 ## 9.2. Chấm công và PTO
-1. Nhân viên chấm công (check-in/out) theo lịch cá nhân (FR-07); khi bật chế độ mở rộng thì kèm QR động + ảnh minh chứng.
-2. Hệ thống lưu thời điểm server (và kết quả xác thực QR, tham chiếu ảnh khi bật), tính thời lượng, đánh `Needs Review` khi thiếu/sai lệch.
+1. Nhân viên mở QR cá nhân trên điện thoại và đưa vào máy chấm công tại quầy; máy quầy quét mã, chụp ảnh minh chứng và gửi lên server (FR-07).
+2. Hệ thống xác thực QR, lưu thời điểm server, điểm chấm công, tham chiếu ảnh; tự xác định check-in/check-out; tính thời lượng theo lịch cá nhân, đánh `Needs Review` khi thiếu/sai lệch. Không chấm được tại quầy → điều chỉnh công có minh chứng (FR-10).
 3. Nhân viên tạo PTO; hệ thống kiểm tra số dư, xác định người duyệt theo tuyến.
 4. Người duyệt đúng tuyến duyệt/từ chối; từ chối cần lý do; approval log.
 5. Duyệt → trừ quỹ phép; hủy/điều chỉnh đơn đã duyệt có tuyến riêng.
@@ -1250,7 +1294,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 | UR-03 | Offboarding và bảo toàn lịch sử | FR-06, FR-31 | BR-19, BR-20 | AC-FR-06, AC-FR-25, B20 |
 | UR-04 | Nhân viên gửi PTO | FR-08, FR-28 | BR-11, BR-26 | AC-FR-08/28, PM-04, PM-16, PM-17 |
 | UR-05 | Duyệt/từ chối PTO/OT đúng tuyến | FR-08, FR-09, FR-32 | BR-11, BR-21 | AC-FR-08/09/32, PM-03/04/16/17 |
-| UR-06 | Ghi nhận công (cơ bản; QR/ảnh là mở rộng), xử lý sai lệch, chốt công | FR-07, FR-10, FR-29, FR-30 | BR-09, BR-10, BR-23 | AC-FR-07/10/29/30, B04, B05 |
+| UR-06 | Ghi nhận công tại quầy (QR cá nhân + ảnh minh chứng), xử lý sai lệch, chốt công | FR-07, FR-10, FR-29, FR-30 | BR-09, BR-10, BR-23 | AC-FR-07/10/29/30, B04, B05, PM-21–PM-23 |
 | UR-07 | Đăng ký OT theo lịch công bố | FR-09, FR-15 | BR-12, BR-13 | AC-FR-09/15, B07–B10 |
 | UR-08 | Tính lương tháng tự động | FR-13, FR-14, FR-17, FR-27, FR-29, FR-30 | BR-05–BR-09, BR-18, BR-23, BR-24 | AC-FR-13/14/17/27, P01–P04, P08, B01–B03 |
 | UR-09 | Tính BH, thuế theo tham số | FR-16, FR-23, FR-33 | BR-17, BR-27 | AC-FR-16/23/33, P07, B13–B15, B21 |
@@ -1284,7 +1328,7 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 |---|---|---|---|
 | FR-01, 02, 34, 35 | Đăng nhập; quản trị tài khoản; cấp/thu hồi grant; cấu hình tuyến duyệt | Account, role, grant, approver_route, audit | 401/403/404, khóa tạm, grant hết hạn/thu hồi |
 | FR-03–06, 36 | Hồ sơ; cơ cấu; hợp đồng; onboarding/offboarding; hồ sơ thuế/BH | Employee, department, title, reporting_line, contract, tax/insurance profile, history | Mã trùng, hiệu lực, tài khoản nghỉ việc, thiếu hồ sơ thuế/BH |
-| FR-07, 11, 32, 33 | Chấm công cơ bản (QR/ảnh mở rộng); xác minh; lịch/lễ; chốt công | Attendance, schedule, holiday, adjustment, work_snapshot, QR token, proof image ref | Thiếu công, trùng giờ, sai người, QR hết hạn/không hợp lệ, ảnh ngoài quyền, `H_std`, mở chốt |
+| FR-07, 10, 29, 30 | Chấm công tại quầy (hiện QR cá nhân; quét và chụp tại máy quầy); xác minh/điều chỉnh; lịch/lễ; chốt công | Attendance, attendance point, kiosk device account, employee QR token, kiosk scan, proof photo, schedule, holiday, adjustment, work_snapshot | Thiếu công, trùng giờ, sai người, QR hết hạn/đã dùng/không hợp lệ, phiên quét hết hạn, thiếu ảnh, quét lại quá sớm, KIOSK gọi API khác (403), người dùng gọi API kiosk (403), ảnh ngoài quyền, `H_std`, mở chốt |
 | FR-08, 31 | PTO; hủy/điều chỉnh; quỹ phép | PTO request, leave_balance, approval_log | Tuyến, tự duyệt, từ chối thiếu lý do, thiếu dự phòng, số dư |
 | FR-09, 16 | Lịch OT; đăng ký/duyệt; xác nhận; OT ngoài lịch; tính OT | OT schedule, registration, approval, actual segment, verification | Thực tế ≠ đăng ký, qua nửa đêm, loại ngày, giới hạn |
 | FR-11, 13 | Khoản thu nhập; thưởng dự án; đối soát Sales | Allowance/bonus/deduction/advance/reimbursement, sales_reconciliation | Chưa duyệt, trùng nguồn, chưa thu/nghiệm thu, hoàn tiền |
@@ -1317,6 +1361,9 @@ MVP đạt khi hoàn thành các chức năng sau **và** qua các ca kiểm th�
 | PM-18 | Tài khoản terminated đăng nhập | FR-01, FR-06, FR-31 | AC-FR-01, AC-FR-06 |
 | PM-19 | Admin xem báo cáo lương | FR-21, FR-31 | AC-FR-18, AC-FR-25 |
 | PM-20 | Grant hết hạn/thu hồi | FR-02, FR-32 | AC-FR-02, AC-FR-26 |
+| PM-21 | Tài khoản `KIOSK` gọi API ngoài chấm công tại quầy | FR-02, FR-07 | AC-FR-07 |
+| PM-22 | Người dùng gọi API máy chấm công tại quầy | FR-02, FR-07 | AC-FR-07 |
+| PM-23 | QR cá nhân hết hạn/đã dùng/không hợp lệ tại máy quầy | FR-07 | AC-FR-07 |
 
 ---
 
@@ -1336,12 +1383,13 @@ Các quyết định dưới đây là quyết định đã chốt cho baseline 
 | DEC-06 | Hệ mã FR (bản 3.0): retire mã cũ; bổ sung FR quỹ phép/lịch/chốt công/tài khoản/grant/hồ sơ thuế–BH; bản 3.2 đánh lại liền mạch thành FR-01…FR-33 | Mục 1.4.1, 12.4 | ĐÃ CHỐT |
 | DEC-07 | MVP theo đúng danh sách chức năng và ca kiểm thử tại Mục 8.1; P05/P06, B07–B12, PM-13/PM-14 là mở rộng, không chặn nghiệm thu MVP | Mục 8 | ĐÃ CHỐT |
 | DEC-08 | Nếu database/API cần trường `net_salary`, trường này mang nghĩa `Payable`; `Net_entitlement`, `Advance_recovery` và `Reimbursements` phải lưu/tính riêng để đối soát, tránh thu hồi tạm ứng hoặc cộng hoàn chi hai lần | FR-27 | ĐÃ CHỐT |
-| DEC-09 | Chấm công cơ bản và chế độ QR/ảnh cùng thuộc FR-07; MVP chỉ yêu cầu chấm công cơ bản, QR/ảnh là mở rộng (sửa ở bản 3.3 theo `company_profile.md` Mục 14); đánh lại mã FR liền mạch FR-01…FR-33 (PTO = FR-08 trở đi); nếu demo QR/ảnh chưa có camera/lưu trữ thật thì mô phỏng rõ | FR-07…FR-33, Mục 8, SIM-03, UR-06, ma trận truy vết | ĐÃ CHỐT |
+| DEC-09 | Mọi phương thức chấm công thuộc một mã FR-07; đánh lại mã FR liền mạch FR-01…FR-33 (PTO = FR-08 trở đi). Phần "QR/ảnh là mở rộng" của bản 3.3 được thay bằng DEC-10 | FR-07…FR-33, Mục 8, UR-06, ma trận truy vết | ĐÃ CHỐT (phần phương thức chấm công thay bằng DEC-10) |
+| DEC-10 | Change request ngày 21/11/2026: phương thức chấm công chính thức của MVP là **máy chấm công tại quầy** – nhân viên hiển thị QR cá nhân động (server cấp, hạn ngắn, dùng một lần) trên điện thoại; máy quầy cố định có camera quét mã, chụp ảnh minh chứng ngay tại quầy rồi gửi; hệ thống tự xác định check-in/check-out và ghi công. Máy quầy dùng tài khoản thiết bị `KIOSK` (không phải role nền tảng thứ năm), gắn một điểm chấm công, chỉ gọi được chức năng tại quầy. Bỏ chức năng HR cấp QR cho điểm chấm công, mã ngắn nhập tay và việc nhân viên tự chụp ảnh trên điện thoại. Lý do: ảnh do thiết bị của công ty chụp tại chỗ nên chống chấm công hộ tốt hơn; điện thoại không cần camera (tránh giới hạn HTTPS của trình duyệt) | FR-07, FR-10, BR-10, NFR-01, Mục 2.4, 8.1, 9.2, 10, SIM-03, PM-21–PM-23, `company_profile.md` 5.2/14, `permission_matrix.md` 2/3.2/4, `database_design.md`, OpenAPI, UML chấm công | ĐÃ CHỐT |
 
 ## 11.2. Giả định và phụ thuộc
 1. HNQ Media là doanh nghiệp mô phỏng; các bộ thuế/BH/lương tối thiểu và giới hạn OT dùng trong demo là **tham số mô phỏng**, có nguồn, ngày hiệu lực, phiên bản và trạng thái xác minh. Không trình bày kết quả này như tư vấn pháp lý hoặc bảng lương tuân thủ pháp luật hiện hành nếu chưa được đối chiếu văn bản gốc.
 2. Địa bàn làm việc và hồ sơ thuế/BH của 100 nhân sự mẫu phải được seed/xác nhận trước khi chạy demo. Hồ sơ thiếu được gắn `NEEDS_REVIEW`, không tự suy theo chức danh hoặc loại nhân viên.
-3. Phương thức chấm công chính thức (QR động + ảnh minh chứng – FR-07) thuộc MVP. Nếu môi trường demo chưa có camera/lưu trữ ảnh thật thì phải mô phỏng rõ (in-app/giả lập) và ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử end-to-end. Email thật vẫn là tích hợp tùy chọn.
+3. Phương thức chấm công chính thức (máy chấm công tại quầy quét QR cá nhân động + chụp ảnh minh chứng – FR-07, DEC-10) thuộc MVP. Máy quầy là laptop/máy tính bảng có camera chạy trình duyệt, không cần phần cứng chuyên dụng. Nếu chưa kiểm thử end-to-end với camera thật thì ghi rõ trong tài liệu demo; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử. Email thật vẫn là tích hợp tùy chọn.
 4. MVP chỉ cần dữ liệu OT/Sales đã xác nhận hoặc xác nhận không phát sinh; luồng đăng ký/duyệt OT và tự động hóa KPI/hoa hồng là mở rộng.
 
 ## 11.3. Giả định mô phỏng và hạng mục ngoài MVP
@@ -1352,7 +1400,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 |---|---|---|---|
 | SIM-01 | Tham số thuế/BH/lương tối thiểu/OT chưa được xác minh pháp lý đầy đủ | Dùng bộ tham số mô phỏng có nguồn, hiệu lực, phiên bản, người xác nhận và cờ xác minh; chưa xác minh thì không tuyên bố tuân thủ pháp luật | Seed và kiểm thử bộ tham số; ghi rõ đây là dữ liệu mô phỏng |
 | SIM-02 | Địa bàn làm việc ảnh hưởng tham số vùng | Lưu địa bàn riêng trong hồ sơ; không suy từ tên công ty/thành phố | Seed địa bàn cho từng nhân viên mẫu |
-| SIM-03 | Camera/lưu trữ ảnh thật và email thật | Chế độ QR + ảnh là mở rộng (FR-07); phần cứng camera/lưu trữ thật và email SMTP có thể mô phỏng nếu chưa tích hợp end-to-end | Ghi rõ trong demo/báo cáo phần nào là mô phỏng; không tuyên bố đã tích hợp phần cứng khi chưa kiểm thử |
+| SIM-03 | Camera máy quầy, lưu trữ ảnh và email thật | Chấm công tại quầy là MVP (FR-07); máy quầy demo là laptop có webcam chạy trình duyệt (server chạy trên chính máy đó qua `localhost`, hoặc HTTPS nếu tách máy); ảnh lưu trong CSDL theo giới hạn dung lượng; email SMTP có thể mô phỏng nếu chưa tích hợp end-to-end | Kiểm thử quét QR từ màn hình điện thoại bằng webcam (ánh sáng, độ sáng màn hình), điện thoại cùng mạng truy cập server; ghi rõ trong demo/báo cáo phần nào là mô phỏng |
 | EXT-01 | Tự động hóa OT và Sales/KPI/hoa hồng | Ngoài MVP; MVP nhận dữ liệu đã xác nhận hoặc xác nhận không phát sinh | Kiểm thử dữ liệu đầu vào, nguồn, kỳ hiệu lực và `NEEDS_REVIEW` |
 | SIM-04 | Phân loại thuế/BH cho từng loại phụ cấp/thưởng/hoàn chi và căn cứ tham gia từng quỹ | Mỗi khoản có mã phân loại; chưa phân loại hoặc hồ sơ thiếu thì `NEEDS_REVIEW`; không suy theo `employee_type` | Seed dữ liệu đã phân loại cho bộ demo |
 | QA-01 | Đo performance/availability trong môi trường demo | Dùng ngưỡng NFR làm tiêu chí kiểm thử, ghi môi trường và kết quả thực đo | Chạy test và lưu bằng chứng |
@@ -1364,7 +1412,7 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 ## 12.1. Checklist xác minh baseline khi bắt đầu thiết kế
 
 - [ ] Thông tin công ty, quy mô, phòng ban thống nhất với `company_profile.md`.
-- [ ] Chỉ có 4 role; chức danh lưu riêng, không là role thứ năm.
+- [ ] Chỉ có 4 role của người dùng; chức danh lưu riêng, không là role thứ năm; tài khoản thiết bị `KIOSK` tách khỏi role người dùng.
 - [ ] Tuyến PTO/OT chính và dự phòng khớp bảng Company Profile và permission_matrix.
 - [ ] `VIEW`/`PREPARE`/`APPROVE`/`LOCK` độc lập; không cấp theo role.
 - [ ] Director `APPROVE`; Finance Manager `LOCK` sau phê duyệt; đối soát ≠ approve/lock.
@@ -1379,9 +1427,10 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 - [ ] Audit/approval log append-only và có test.
 - [ ] Tham số pháp lý chưa xác minh được gắn trạng thái, không hard-code.
 - [ ] Mỗi FR có AC; ma trận truy vết đủ UR, PM; không mã FR trùng hoặc dùng lại mã retire.
-- [x] DEC-01 đến DEC-08 đã được chốt trong baseline SRS 3.1; DEC-09 (gộp chấm công + đánh lại mã FR liền mạch) đã chốt ở bản 3.2; DEC-02 và DEC-09 được sửa ở bản 3.3 để khớp baseline nghiệp vụ.
+- [x] DEC-01 đến DEC-08 đã được chốt trong baseline SRS 3.1; DEC-09 (gộp chấm công + đánh lại mã FR liền mạch) đã chốt ở bản 3.2; DEC-02 và DEC-09 được sửa ở bản 3.3 để khớp baseline nghiệp vụ; DEC-10 (chấm công tại quầy) chốt ở bản 3.4.
 - [x] Phạm vi MVP và bộ P/B/PM bắt buộc được xác định tại Mục 8.1; các ca ngoài MVP không chặn nghiệm thu MVP.
-- [x] Chấm công FR-07 thuộc MVP với luồng quét QR động → chụp ảnh minh chứng → check-in (chốt 17/11/2026); hệ mã FR liền mạch FR-01…FR-33.
+- [x] Chấm công FR-07 thuộc MVP với luồng máy chấm công tại quầy: nhân viên hiển thị QR cá nhân động → máy quầy quét → chụp ảnh minh chứng tại quầy → ghi công (DEC-10, chốt 21/11/2026; thay luồng chốt ngày 17/11/2026); hệ mã FR liền mạch FR-01…FR-33.
+- [ ] Tài khoản thiết bị `KIOSK` chỉ gọi được chức năng tại quầy, không phải role thứ năm, gắn một điểm chấm công.
 
 ## 12.2. Ca kiểm thử phân quyền bắt buộc (từ permission_matrix.md)
 
@@ -1407,6 +1456,9 @@ Các mục dưới đây **không phải quyết định chặn đóng băng SRS
 | PM-18 | Tài khoản terminated đăng nhập | `401`/`403`; lịch sử còn |
 | PM-19 | Admin mở dashboard/report lương | Không có dữ liệu lương nếu chưa có `VIEW` |
 | PM-20 | Grant hết hiệu lực/thu hồi | Từ chối theo thời điểm hiệu lực |
+| PM-21 | Tài khoản thiết bị `KIOSK` gọi API ngoài chức năng chấm công tại quầy (hồ sơ, bảng công, lương…) | `403`; không trả dữ liệu |
+| PM-22 | Người dùng (Employee/Manager/HR/Admin) gọi API của máy chấm công tại quầy | `403`; không ghi công |
+| PM-23 | Máy quầy gửi QR cá nhân hết hạn, đã dùng hoặc không do server cấp | `422`; không tạo phiên quét, không ghi công, có audit |
 
 ## 12.3. Quy định cập nhật tài liệu
 
@@ -1424,7 +1476,7 @@ Từ bản **3.2**, mã FR được đánh **liền mạch FR-01 … FR-33**. B�
 | Mã bản ≤ 3.1 | Mã bản 3.2 | Nội dung |
 |---|---|---|
 | FR-01 … FR-06 | FR-01 … FR-06 | Không đổi |
-| FR-07 (chấm công cơ bản) + FR-08 (QR/ảnh) | **FR-07** | Gộp thành một mã chấm công: cơ bản là MVP, QR động + ảnh minh chứng là mở rộng (từ bản 3.3) |
+| FR-07 (chấm công cơ bản) + FR-08 (QR/ảnh) | **FR-07** | Gộp thành một mã chấm công; từ bản 3.4 là chấm công tại quầy bằng QR cá nhân động + ảnh minh chứng (DEC-10) |
 | FR-09 PTO | **FR-08** | Quản lý yêu cầu nghỉ phép |
 | FR-10 OT | **FR-09** | Lịch OT, đăng ký, xác nhận giờ thực tế |
 | FR-11 Xác minh công | **FR-10** | Xác minh và điều chỉnh dữ liệu chấm công |

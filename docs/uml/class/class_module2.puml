@@ -30,9 +30,10 @@ class Timecard {
     - earlyLeaveMinutes : int
     - status : AttendanceStatus
     - workedMinutes : int
-    - selfiePhotoUrl : String <<mở rộng>>
-    - qrValidationCode : String <<mở rộng>>
-    + recordCheckIn(time: LocalDateTime, qrCode: String, photoUrl: String) : void
+    - kioskPhotoId : Long
+    - employeeQrNonce : String
+    - kioskAccountId : Long
+    + recordCheckIn(time: LocalDateTime, qrNonce: String, kioskAccountId: Long, photoId: Long) : void
     + recordCheckOut(time: LocalDateTime) : void
     + calculateDiscrepancy(standardStartTime: LocalTime, standardEndTime: LocalTime) : void
 }

@@ -9,7 +9,7 @@ actor "HR" as HR
 actor "Admin" as ADM
 rectangle "Employee" as G1 {
   usecase "Đăng nhập, đổi mật khẩu" as U1
-  usecase "Chấm công QR + ảnh" as U2
+  usecase "Chấm công tại quầy\n(QR cá nhân + ảnh)" as U2
   usecase "Gửi đơn nghỉ phép" as U3
   usecase "Đăng ký OT" as U4
   usecase "Xem phiếu lương\ncủa mình" as U5

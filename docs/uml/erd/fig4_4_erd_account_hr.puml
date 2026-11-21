@@ -9,6 +9,7 @@ entity user_account {
   * id : bigint <<PK>>
   --
   employee_id : bigint <<FK>>
+  attendance_point_id : bigint <<FK>>
   --
   email : varchar(255)
   role : varchar(30)
