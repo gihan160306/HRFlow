@@ -54,6 +54,11 @@ export function PayrollDetailPage() {
   const [paidOpen, setPaidOpen] = useState(false);
   const [paid, setPaid] = useState({ paymentRef: '', paidDate: todayIso() });
   const [lineDetail, setLineDetail] = useState(null);
+  const EMPTY_CONFLICT = { decisionRef: '', authorityConfirmedBy: '', authorityConfirmedAt: todayIso(), note: '' };
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflict, setConflict] = useState(EMPTY_CONFLICT);
+  const conflictValid = conflict.decisionRef.trim() && conflict.authorityConfirmedBy.trim() && conflict.note.trim()
+    && conflict.authorityConfirmedAt && conflict.authorityConfirmedAt <= todayIso();
 
   const refresh = () => {
     period.reload();
@@ -93,8 +98,11 @@ export function PayrollDetailPage() {
         return setConfirm({ title: 'Khóa kỳ lương', message: 'Kỳ lương bị khóa chỉ đọc; sai sót sau đó phải xử lý bằng điều chỉnh (adjustment). Phiếu lương sẽ được sinh tự động.', label: 'Khóa kỳ', fn: () => payrollApi.lock(id) });
       case 'MARK_PAID':
         return setPaidOpen(true);
+      case 'CONFLICT_RESOLUTION':
+        setConflict(EMPTY_CONFLICT);
+        return setConflictOpen(true);
       default:
-        return undefined; // CONFLICT_RESOLUTION: xử lý bằng quyết định ngoài hệ thống, chưa có biểu mẫu
+        return undefined;
     }
   };
 
@@ -155,11 +163,29 @@ export function PayrollDetailPage() {
             Bạn không có thao tác nào khả dụng ở trạng thái này (tùy trạng thái kỳ và grant payroll của tài khoản).
           </p>
         )}
-        {actions.includes('CONFLICT_RESOLUTION') && (
-          <p className="text-xs text-slate-500">
-            Nếu kỳ có phần lương của chính người phê duyệt, cần quyết định xử lý xung đột lợi ích do cấp có thẩm quyền xác nhận;
-            ghi nhận quyết định qua API <code>POST /payroll/periods/{'{id}'}/conflict-resolution</code>.
-          </p>
+        {(p.conflictDecisionRef || actions.includes('CONFLICT_RESOLUTION')) && (
+          <div className={`text-sm rounded-xl border px-4 py-3 flex flex-wrap items-center justify-between gap-3 ${p.conflictDecisionRef ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
+              {p.conflictDecisionRef ? (
+                <p>
+                  <b>Đã có quyết định xử lý xung đột lợi ích:</b> {p.conflictDecisionRef}
+                  {p.conflictResolvedByName && ` • ghi nhận bởi ${p.conflictResolvedByName}`}
+                  {p.conflictResolvedAt && ` • ${formatDateTime(p.conflictResolvedAt)}`}
+                </p>
+              ) : (
+                <p>
+                  <b>Xung đột lợi ích:</b> kỳ lương gồm cả lương của Giám đốc (người phê duyệt). Hệ thống chặn phê duyệt cho tới khi
+                  ghi nhận quyết định xử lý do cấp có thẩm quyền HNQ xác nhận. Giám đốc không được tự ghi nhận.
+                </p>
+              )}
+            </div>
+            {actions.includes('CONFLICT_RESOLUTION') && (
+              <Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => onAction('CONFLICT_RESOLUTION')}>
+                {p.conflictDecisionRef ? 'Cập nhật quyết định' : 'Ghi nhận quyết định xử lý'}
+              </Button>
+            )}
+          </div>
         )}
       </section>
 
@@ -275,6 +301,38 @@ export function PayrollDetailPage() {
         <div className="space-y-4">
           <InputField label="Mã tham chiếu chi trả" value={paid.paymentRef} onChange={(e) => setPaid({ ...paid, paymentRef: e.target.value })} required />
           <InputField label="Ngày chi trả" type="date" value={paid.paidDate} onChange={(e) => setPaid({ ...paid, paidDate: e.target.value })} />
+        </div>
+      </Modal>
+
+      <Modal isOpen={conflictOpen} title="Ghi nhận quyết định xử lý xung đột lợi ích" onClose={() => setConflictOpen(false)}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setConflictOpen(false)}>Hủy</Button>
+            <Button disabled={!conflictValid} onClick={async () => {
+              setConflictOpen(false);
+              await run('CONFLICT_RESOLUTION', () => payrollApi.resolveConflict(id, {
+                decisionRef: conflict.decisionRef.trim(),
+                authorityConfirmedBy: conflict.authorityConfirmedBy.trim(),
+                authorityConfirmedAt: conflict.authorityConfirmedAt,
+                note: conflict.note.trim(),
+              }));
+            }}>Ghi nhận</Button>
+          </>
+        }>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Nhập căn cứ do cấp có thẩm quyền HNQ (ví dụ Hội đồng thành viên) đã xác nhận. Hệ thống chỉ lưu và kiểm tra đủ thông tin,
+            không tự quyết định biện pháp xử lý. Thao tác được ghi nhật ký.
+          </p>
+          <InputField label="Số / căn cứ quyết định" placeholder="VD: NQ-HDTV-2026-11" value={conflict.decisionRef}
+            onChange={(e) => setConflict({ ...conflict, decisionRef: e.target.value })} required />
+          <InputField label="Người / cơ quan xác nhận" placeholder="VD: Chủ tịch Hội đồng thành viên" value={conflict.authorityConfirmedBy}
+            onChange={(e) => setConflict({ ...conflict, authorityConfirmedBy: e.target.value })} required />
+          <InputField label="Ngày xác nhận" type="date" max={todayIso()} value={conflict.authorityConfirmedAt}
+            onChange={(e) => setConflict({ ...conflict, authorityConfirmedAt: e.target.value })} required
+            error={conflict.authorityConfirmedAt > todayIso() ? 'Ngày xác nhận không được ở tương lai' : undefined} />
+          <InputField label="Nội dung xử lý" placeholder="VD: Dòng lương Giám đốc do HĐTV phê duyệt riêng" value={conflict.note}
+            onChange={(e) => setConflict({ ...conflict, note: e.target.value })} required />
         </div>
       </Modal>
 

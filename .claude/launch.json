@@ -4,21 +4,64 @@
     {
       "name": "frontend-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "frontend-dev-3002",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "3002", "--strictPort"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3002",
+        "--strictPort"
+      ],
       "port": 3002
     },
     {
       "name": "frontend-dev-test-backend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "3001", "--strictPort"],
-      "env": { "VITE_PROXY_TARGET": "http://localhost:18080" },
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3001",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_PROXY_TARGET": "http://localhost:18080"
+      },
       "port": 3001
+    },
+    {
+      "name": "frontend-dev-docker-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3004",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_PROXY_TARGET": "http://localhost:8001"
+      },
+      "port": 3004
     }
   ]
 }
