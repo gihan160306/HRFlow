@@ -323,11 +323,27 @@ export function AccountsPage() {
         ]}
         onClose={() => setGrantOpen(false)}
         onSubmit={async (v) => {
-          await adminApi.createGrant({
-            accountId: Number(v.accountId), permission: v.permission, decisionRef: v.decisionRef.trim(), reason: v.reason.trim(),
-            validFrom: v.validFrom ? new Date(v.validFrom).toISOString() : undefined,
-            validTo: v.validTo ? new Date(v.validTo).toISOString() : undefined,
-          });
+          // BUG-10: Kiểm tra thời hạn tại form để báo lỗi dễ hiểu trước khi gọi API.
+          // Backend vẫn chịu trách nhiệm kiểm tra lần cuối.
+          const validFrom = v.validFrom ? new Date(v.validFrom) : new Date();
+          const validTo = v.validTo ? new Date(v.validTo) : null;
+          if (validTo && validTo.getTime() <= validFrom.getTime()) {
+            throw new Error('Ngày hết hiệu lực phải sau ngày bắt đầu hiệu lực.');
+          }
+
+          try {
+            await adminApi.createGrant({
+              accountId: Number(v.accountId), permission: v.permission, decisionRef: v.decisionRef.trim(), reason: v.reason.trim(),
+              validFrom: v.validFrom ? validFrom.toISOString() : undefined,
+              validTo: validTo ? validTo.toISOString() : undefined,
+            });
+          } catch (error) {
+            // Trường hợp backend trả lỗi quy tắc thời hạn, không hiển thị tên trường kỹ thuật.
+            if (/validTo\s+phải\s+sau\s+validFrom/i.test(error?.message || '')) {
+              throw new Error('Ngày hết hiệu lực phải sau ngày bắt đầu hiệu lực.');
+            }
+            throw error;
+          }
           grants.reload();
         }}
       />
