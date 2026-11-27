@@ -2,6 +2,8 @@ package com.hrflow.auth;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +58,11 @@ public class AuthService {
         Map<String, Object> a = rows.get(0);
         long id = ((Number) a.get("id")).longValue();
         Timestamp lockedUntil = (Timestamp) a.get("locked_until");
-        if (lockedUntil != null && lockedUntil.toInstant().isAfter(java.time.Instant.now())) {
-            throw unauthorized("ACCOUNT_TEMP_LOCKED", "Tài khoản bị khóa tạm thời do đăng nhập sai nhiều lần");
+        if (lockedUntil != null && lockedUntil.toInstant().isAfter(Instant.now())) {
+            long remainingSeconds = Duration.between(Instant.now(), lockedUntil.toInstant()).getSeconds();
+            long remainingMinutes = Math.max(1, (remainingSeconds + 59) / 60);
+            throw unauthorized("ACCOUNT_TEMP_LOCKED",
+                    "Tài khoản đang bị khóa tạm thời. Vui lòng thử lại sau khoảng " + remainingMinutes + " phút.");
         }
         if (!encoder.matches(password, (String) a.get("password_hash"))) {
             int failed = ((Number) a.get("failed_attempts")).intValue() + 1;
@@ -65,7 +70,9 @@ public class AuthService {
                 jdbc.update("UPDATE user_account SET failed_attempts = 0, locked_until = now() + (? * interval '1 minute') WHERE id = ?",
                         LOCK_MINUTES, id);
                 audit.record("LOGIN_LOCKED", "user_account", id, "DENIED", "Sai mật khẩu " + MAX_FAILED + " lần", null, null);
-                throw unauthorized("ACCOUNT_TEMP_LOCKED", "Tài khoản bị khóa tạm thời do đăng nhập sai nhiều lần");
+                throw unauthorized("ACCOUNT_TEMP_LOCKED",
+                        "Bạn đã nhập sai mật khẩu " + MAX_FAILED + " lần. Tài khoản bị khóa tạm thời trong "
+                                + LOCK_MINUTES + " phút.");
             }
             jdbc.update("UPDATE user_account SET failed_attempts = ? WHERE id = ?", failed, id);
             throw unauthorized("INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng");
