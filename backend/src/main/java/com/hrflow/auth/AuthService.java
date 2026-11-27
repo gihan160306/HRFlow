@@ -77,9 +77,11 @@ public class AuthService {
         java.sql.Date disableAt = (java.sql.Date) a.get("disable_at");
         java.sql.Date termination = (java.sql.Date) a.get("termination_date");
         LocalDate today = Vn.today();
-        boolean terminated = "TERMINATED".equals(a.get("emp_status")) && termination != null
-                && termination.toLocalDate().isBefore(today);
-        if ((disableAt != null && disableAt.toLocalDate().isBefore(today)) || terminated) {
+        // BUG-13: ngày nghỉ việc tương lai chưa làm mất quyền đăng nhập;
+        // đúng ngày hiệu lực hoặc sau đó mới chặn.
+        boolean terminated = "TERMINATED".equals(a.get("emp_status"))
+                && (termination == null || !termination.toLocalDate().isAfter(today));
+        if ((disableAt != null && !disableAt.toLocalDate().isAfter(today)) || terminated) {
             throw unauthorized("ACCOUNT_UNAVAILABLE", "Tài khoản đã hết hiệu lực do nhân viên nghỉ việc");
         }
         jdbc.update("UPDATE user_account SET failed_attempts = 0, locked_until = NULL, last_login_at = now() WHERE id = ?", id);

@@ -1,6 +1,7 @@
 package com.hrflow.security;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -45,15 +46,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 long userId = Long.parseLong(claims.getSubject());
                 int tv = claims.get("tv", Integer.class);
                 List<Map<String, Object>> rows = jdbc.queryForList("""
-                        SELECT id, email, role, status, employee_id, token_version, disable_at, locked_until
-                        FROM user_account WHERE id = ?
+                        SELECT a.id, a.email, a.role, a.status, a.employee_id, a.token_version,
+                               a.disable_at, a.locked_until, e.status AS emp_status, e.termination_date
+                        FROM user_account a LEFT JOIN employee e ON e.id = a.employee_id
+                        WHERE a.id = ?
                         """, userId);
                 if (!rows.isEmpty()) {
                     Map<String, Object> r = rows.get(0);
+                    LocalDate today = Vn.today();
+                    java.sql.Date disableAt = (java.sql.Date) r.get("disable_at");
+                    java.sql.Date termination = (java.sql.Date) r.get("termination_date");
+                    boolean terminated = "TERMINATED".equals(r.get("emp_status"))
+                            && (termination == null || !termination.toLocalDate().isAfter(today));
                     boolean active = "ACTIVE".equals(r.get("status"))
                             && ((Number) r.get("token_version")).intValue() == tv
-                            && (r.get("disable_at") == null
-                                || !((java.sql.Date) r.get("disable_at")).toLocalDate().isBefore(Vn.today()));
+                            && (disableAt == null || disableAt.toLocalDate().isAfter(today))
+                            && !terminated;
                     if (active) {
                         Number emp = (Number) r.get("employee_id");
                         AuthUser user = new AuthUser(userId, emp == null ? null : emp.longValue(),
