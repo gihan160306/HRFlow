@@ -43,6 +43,13 @@ export function AccountsPage() {
   const [tab, setTab] = useState(isAdmin ? 'accounts' : 'requests');
   const [notice, setNotice] = useState(null); // { title, text } — mật khẩu tạm chỉ hiển thị một lần
 
+  // BUG-01: Bộ lọc và phân trang danh sách tài khoản (chỉ phía giao diện).
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountRole, setAccountRole] = useState('');
+  const [accountStatus, setAccountStatus] = useState('');
+  const [accountPage, setAccountPage] = useState(1);
+  const ACCOUNT_PAGE_SIZE = 10;
+
   const accounts = useAsync(() => adminApi.accounts(), [], { enabled: isAdmin });
   const requests = useAsync(() => adminApi.accountRequests(), []);
   const grants = useAsync(() => adminApi.grants(), [], { enabled: isAdmin });
@@ -63,6 +70,19 @@ export function AccountsPage() {
     { key: 'requests', label: 'Đề nghị cấp tài khoản', count: requests.data?.filter((r) => r.status === 'PENDING').length },
     ...(isAdmin ? [{ key: 'grants', label: 'Quyền payroll', count: grants.data?.filter((g) => g.active).length }] : []),
   ];
+
+  const filteredAccounts = (accounts.data || []).filter((account) => {
+    const matchesEmail = String(account.email || '').toLocaleLowerCase().includes(accountEmail.trim().toLocaleLowerCase());
+    const matchesRole = !accountRole || account.role === accountRole;
+    const matchesStatus = !accountStatus || account.status === accountStatus;
+    return matchesEmail && matchesRole && matchesStatus;
+  });
+  const accountPageCount = Math.max(1, Math.ceil(filteredAccounts.length / ACCOUNT_PAGE_SIZE));
+  const currentAccountPage = Math.min(accountPage, accountPageCount);
+  const visibleAccounts = filteredAccounts.slice(
+    (currentAccountPage - 1) * ACCOUNT_PAGE_SIZE,
+    currentAccountPage * ACCOUNT_PAGE_SIZE,
+  );
 
   const askReason = (title, confirmLabel, run, variant = 'primary') => setPrompt({ title, confirmLabel, run, variant });
 
@@ -155,7 +175,89 @@ export function AccountsPage() {
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
       <div className={box}>
-        {tab === 'accounts' && <DataTable columns={accountColumns} {...accounts} rows={accounts.data} onRetry={accounts.reload} emptyTitle="Chưa có tài khoản" />}
+        {tab === 'accounts' && (
+          <>
+            <div className="p-4 border-b border-slate-200 space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Tìm theo email
+                  <input
+                    type="search"
+                    value={accountEmail}
+                    onChange={(event) => { setAccountEmail(event.target.value); setAccountPage(1); }}
+                    placeholder="Nhập email tài khoản..."
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Vai trò
+                  <select
+                    value={accountRole}
+                    onChange={(event) => { setAccountRole(event.target.value); setAccountPage(1); }}
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Tất cả vai trò</option>
+                    {ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Trạng thái
+                  <select
+                    value={accountStatus}
+                    onChange={(event) => { setAccountStatus(event.target.value); setAccountPage(1); }}
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    {Object.entries(ACCOUNT_STATUS).map(([value, info]) => <option key={value} value={value}>{info.label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+                <span>{accounts.loading ? 'Đang tải tài khoản...' : `Hiển thị ${filteredAccounts.length} / ${(accounts.data || []).length} tài khoản`}</span>
+                <button
+                  type="button"
+                  onClick={() => { setAccountEmail(''); setAccountRole(''); setAccountStatus(''); setAccountPage(1); }}
+                  className="font-medium text-blue-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            </div>
+            <DataTable
+              columns={accountColumns}
+              {...accounts}
+              rows={visibleAccounts}
+              onRetry={accounts.reload}
+              emptyTitle={accounts.data?.length ? 'Không có tài khoản phù hợp bộ lọc' : 'Chưa có tài khoản'}
+            />
+            {!accounts.loading && !accounts.error && filteredAccounts.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+                <span>
+                  Hiển thị {(currentAccountPage - 1) * ACCOUNT_PAGE_SIZE + 1}–{Math.min(currentAccountPage * ACCOUNT_PAGE_SIZE, filteredAccounts.length)} trong {filteredAccounts.length} tài khoản
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentAccountPage <= 1}
+                    onClick={() => setAccountPage((page) => Math.max(1, page - 1))}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50"
+                  >
+                    Trước
+                  </button>
+                  <span aria-live="polite">Trang {currentAccountPage} / {accountPageCount}</span>
+                  <button
+                    type="button"
+                    disabled={currentAccountPage >= accountPageCount}
+                    onClick={() => setAccountPage((page) => Math.min(accountPageCount, page + 1))}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50"
+                  >
+                    Tiếp
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         {tab === 'requests' && <DataTable columns={requestColumns} {...requests} rows={requests.data} onRetry={requests.reload} emptyTitle="Chưa có đề nghị nào" />}
         {tab === 'grants' && <DataTable columns={grantColumns} {...grants} rows={grants.data} onRetry={grants.reload} emptyTitle="Chưa có quyền payroll nào được cấp" />}
       </div>
