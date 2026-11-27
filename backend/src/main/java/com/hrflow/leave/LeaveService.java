@@ -184,10 +184,25 @@ public class LeaveService {
                 """, route.primaryId(), route.backupId(), id);
         approvalLog.log("LEAVE_REQUEST", id, "SUBMIT", "DRAFT", "PENDING", null, false);
         String name = (String) r.get("employeeName");
-        notifications.toEmployee(route.primaryId(), "LEAVE_PENDING", "Đơn nghỉ chờ duyệt",
-                name + " gửi đơn nghỉ " + start + (start.equals(end) ? "" : " → " + end), "/leave-requests/inbox", "leave-submit:" + id);
+        notifyAssignedApprover(route, "Đơn nghỉ chờ duyệt",
+                name + " gửi đơn nghỉ " + start + (start.equals(end) ? "" : " → " + end), "leave-submit:" + id);
         if (route.primaryId() == null) {
             audit.success("LEAVE_NO_APPROVER", "leave_request", id, "Không có người duyệt hợp lệ theo approval_route; đơn giữ PENDING", null, null);
+        }
+    }
+
+    /** BUG-11: Gửi thông báo cho người duyệt đang phụ trách tại thời điểm phát sinh đơn.
+     * Nếu người duyệt chính vắng mặt hoặc đã nghỉ việc, thông báo chuyển tới người dự phòng.
+     * Giữ nguyên tuyến duyệt lưu trên đơn để không thay đổi quy tắc phê duyệt.
+     */
+    private void notifyAssignedApprover(Approvals.Route route, String title, String message, String dedupeKey) {
+        Long recipient = route.primaryId();
+        if (approvals.unavailable(recipient) && route.backupId() != null) {
+            recipient = route.backupId();
+        }
+        if (recipient != null) {
+            notifications.toEmployee(recipient, "LEAVE_PENDING", title, message,
+                    "/leave-requests/inbox", dedupeKey);
         }
     }
 
@@ -225,8 +240,8 @@ public class LeaveService {
                 p.get("start_time"), p.get("end_time"), p.get("duration_minutes"), p.get("duration_days"), reason,
                 route.primaryId(), route.backupId());
         approvalLog.log("LEAVE_REQUEST", cid, "CANCEL_REQUEST", null, "PENDING", reason, false);
-        notifications.toEmployee(route.primaryId(), "LEAVE_PENDING", "Yêu cầu hủy đơn nghỉ",
-                "Có yêu cầu hủy đơn nghỉ đã duyệt chờ xử lý", "/leave-requests/inbox", "leave-cancel:" + cid);
+        notifyAssignedApprover(route, "Yêu cầu hủy đơn nghỉ",
+                "Có yêu cầu hủy đơn nghỉ đã duyệt chờ xử lý", "leave-cancel:" + cid);
         return get(cid);
     }
 
