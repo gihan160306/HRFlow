@@ -57,6 +57,23 @@ export function EmployeeFormPage() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    // BUG-12: Kiểm tra tại giao diện; Backend cũng xác thực để chặn request trực tiếp.
+    if (form.dateOfBirth) {
+      const today = new Date();
+      const toLocalISODate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const cutoff = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+      if (form.dateOfBirth > toLocalISODate(today)) {
+        return setError('Ngày sinh không được ở trong tương lai.');
+      }
+      if (form.dateOfBirth > toLocalISODate(cutoff)) {
+        return setError('Nhân viên phải đủ 18 tuổi.');
+      }
+    }
     if (isEdit && !form.reason.trim()) return setError('Cần nhập lý do cập nhật hồ sơ (ghi vào nhật ký kiểm toán).');
     if (!isEdit && !form.wageRegion) return setError('Phải chọn vùng lương tối thiểu theo nơi làm việc.');
     setSaving(true);

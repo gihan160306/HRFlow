@@ -225,6 +225,7 @@ public class EmployeeService {
     @Transactional
     public Map<String, Object> create(CreateCmd c) {
         AuthUser hr = Principals.requireRole("HR");
+        validateDateOfBirth(c.dateOfBirth());
         if (!TYPES.contains(c.employeeType())) {
             throw BusinessException.unprocessable("VALIDATION_ERROR", "Loại nhân sự không hợp lệ");
         }
@@ -270,6 +271,7 @@ public class EmployeeService {
     @Transactional
     public Map<String, Object> update(long id, UpdateCmd c) {
         Principals.requireRole("HR");
+        validateDateOfBirth(c.dateOfBirth());
         Map<String, Object> before = Sql.one(jdbc, "Không tìm thấy nhân viên", """
                 SELECT full_name, gender, date_of_birth, phone, personal_email, address, national_id, bank_name,
                        bank_account_no, employee_type, work_location, wage_region, version FROM employee WHERE id = ?
@@ -392,6 +394,21 @@ public class EmployeeService {
     }
 
     // ---------------- helpers ----------------
+
+    /** BUG-12: Chặn ngày sinh không hợp lệ ở Backend cho cả tạo mới và cập nhật hồ sơ. */
+    private static void validateDateOfBirth(LocalDate dateOfBirth) {
+        // Giữ nguyên tính tùy chọn của ngày sinh trong biểu mẫu hiện tại.
+        if (dateOfBirth == null) {
+            return;
+        }
+        LocalDate today = Vn.today();
+        if (dateOfBirth.isAfter(today)) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Ngày sinh không được ở trong tương lai");
+        }
+        if (dateOfBirth.isAfter(today.minusYears(18))) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Nhân viên phải đủ 18 tuổi");
+        }
+    }
 
     void requireExists(String table, Long id, String label) {
         Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE id = ?", Integer.class, id);
