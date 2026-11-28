@@ -241,6 +241,9 @@ public class AttendanceService {
         if (!METHODS.contains(c.method())) {
             throw BusinessException.unprocessable("VALIDATION_ERROR", "Phương thức công không hợp lệ");
         }
+        if (c.evidence() == null || c.evidence().isBlank()) {
+            throw BusinessException.unprocessable("EVIDENCE_REQUIRED", "Điều chỉnh công phải có minh chứng");
+        }
         if (c.workDate().isAfter(Vn.today())) {
             throw BusinessException.unprocessable("VALIDATION_ERROR", "Không điều chỉnh công cho ngày trong tương lai");
         }
@@ -254,7 +257,7 @@ public class AttendanceService {
         }
         guard.assertOpen(c.workDate());
         Long attendanceId = jdbc.query("SELECT id FROM attendance_record WHERE employee_id = ? AND work_date = ?",
-                rs -> rs.next() ? rs.getLong(1) : null, target);
+                rs -> rs.next() ? rs.getLong(1) : null, target, c.workDate());
         Long id = jdbc.queryForObject("""
                 INSERT INTO attendance_adjustment(attendance_id, employee_id, work_date, proposed_check_in, proposed_check_out,
                        method, reason, evidence, status, requested_by)
@@ -300,6 +303,9 @@ public class AttendanceService {
         }
         if (!"PENDING".equals(x.get("status"))) {
             throw BusinessException.conflict("INVALID_STATE", "Yêu cầu đã được xử lý");
+        }
+        if (!approve && (note == null || note.isBlank())) {
+            throw BusinessException.unprocessable("REASON_REQUIRED", "Từ chối điều chỉnh công phải ghi lý do");
         }
         LocalDate date = ((java.sql.Date) x.get("work_date")).toLocalDate();
         guard.assertOpen(date);

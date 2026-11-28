@@ -66,7 +66,7 @@ export function AttendancePage() {
         proposedCheckIn: toInstant(adjForm.workDate, adjForm.inTime),
         proposedCheckOut: toInstant(adjForm.workDate, adjForm.outTime),
         reason: adjForm.reason.trim(),
-        evidence: adjForm.evidence.trim() || undefined,
+        evidence: adjForm.evidence.trim(),
       });
       setAdjOpen(false);
       refresh();
@@ -181,7 +181,7 @@ export function AttendancePage() {
             <InputField label="Giờ ra" type="time" value={adjForm.outTime} onChange={(e) => setAdjForm({ ...adjForm, outTime: e.target.value })} required />
           </div>
           <InputField label="Lý do" value={adjForm.reason} onChange={(e) => setAdjForm({ ...adjForm, reason: e.target.value })} required />
-          <InputField label="Minh chứng (mô tả/tham chiếu)" value={adjForm.evidence} onChange={(e) => setAdjForm({ ...adjForm, evidence: e.target.value })} />
+          <InputField label="Minh chứng (mô tả/tham chiếu)" value={adjForm.evidence} onChange={(e) => setAdjForm({ ...adjForm, evidence: e.target.value })} required />
           <div className="flex justify-end gap-3">
             <Button variant="outline" type="button" onClick={() => setAdjOpen(false)}>Hủy</Button>
             <Button type="submit" isLoading={adjBusy}>Gửi đề nghị</Button>

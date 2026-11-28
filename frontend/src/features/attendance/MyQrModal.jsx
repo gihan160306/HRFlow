@@ -28,6 +28,7 @@ export function MyQrModal({ isOpen, onClose, record, onDone }) {
     fetching.current = true;
     try {
       const res = await attendanceApi.myQr();
+      setNow(Date.now());
       setQr({ ...res, expiresMs: new Date(res.expiresAt).getTime() });
       setError('');
     } catch (err) {
