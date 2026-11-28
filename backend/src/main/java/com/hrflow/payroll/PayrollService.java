@@ -839,8 +839,13 @@ public class PayrollService {
     @Transactional
     public Map<String, Object> createParameter(ParamCmd c) {
         Principals.requireRole("HR");
-        if (!Set.of("COMPANY", "LEGAL").contains(c.category()) || !Set.of("VERIFIED_SIM", "NEEDS_REVIEW").contains(c.status())) {
+        String code = c.code().trim();
+        String region = c.region() == null || c.region().isBlank() ? null : c.region().trim();
+        if (code.isEmpty() || !Set.of("COMPANY", "LEGAL").contains(c.category()) || !Set.of("VERIFIED_SIM", "NEEDS_REVIEW").contains(c.status())) {
             throw BusinessException.unprocessable("VALIDATION_ERROR", "Nhóm/trạng thái tham số không hợp lệ");
+        }
+        if (region != null && !Set.of("REGION_I", "REGION_II", "REGION_III", "REGION_IV").contains(region)) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Vùng áp dụng không hợp lệ");
         }
         if ("VERIFIED_SIM".equals(c.status()) && (c.confirmedBy() == null || c.confirmedBy().isBlank())) {
             throw BusinessException.unprocessable("CONFIRMER_REQUIRED", "Tham số đã xác nhận phải có người xác nhận");
@@ -852,18 +857,38 @@ public class PayrollService {
         if (frozen != null && frozen > 0) {
             throw BusinessException.conflict("PERIOD_FROZEN", "Ngày hiệu lực thuộc/trước kỳ đã chốt công hoặc khóa; thay đổi tham số phải áp dụng cho kỳ sau");
         }
-        Integer version = jdbc.queryForObject("SELECT COALESCE(MAX(param_version), 0) + 1 FROM payroll_parameter WHERE code = ? AND COALESCE(region, '-') = COALESCE(?, '-')",
-                Integer.class, c.code(), c.region());
-        jdbc.update("""
-                UPDATE payroll_parameter SET effective_to = ? - 1 WHERE code = ? AND COALESCE(region, '-') = COALESCE(?, '-')
+        String scopeKey = code + "|" + (region == null ? "-" : region);
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext('payroll_parameter'), hashtext(?))", rs -> null, scopeKey);
+        Integer overlapping = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM payroll_parameter
+                WHERE code = ? AND COALESCE(region, '-') = COALESCE(?, '-')
+                  AND NOT (effective_to IS NULL AND effective_from < ?)
+                  AND COALESCE(effective_to, DATE '9999-12-31') >= ?
+                """, Integer.class, code, region, c.effectiveFrom(), c.effectiveFrom());
+        if (overlapping != null && overlapping > 0) {
+            throw BusinessException.conflict("OVERLAPPING_PERIOD", "Khoảng thời gian hiệu lực của tham số bị chồng lấn với phiên bản đã tồn tại");
+        }
+        List<Long> openPredecessors = jdbc.queryForList("""
+                SELECT id FROM payroll_parameter
+                WHERE code = ? AND COALESCE(region, '-') = COALESCE(?, '-')
                   AND effective_to IS NULL AND effective_from < ?
-                """, c.effectiveFrom(), c.code(), c.region(), c.effectiveFrom());
+                ORDER BY effective_from DESC, param_version DESC
+                """, Long.class, code, region, c.effectiveFrom());
+        if (openPredecessors.size() > 1) {
+            throw BusinessException.conflict("OVERLAPPING_PERIOD", "Tham số đang có nhiều phiên bản mở hiệu lực cùng phạm vi; cần xử lý dữ liệu trước khi tạo phiên bản mới");
+        }
+        Integer version = jdbc.queryForObject("SELECT COALESCE(MAX(param_version), 0) + 1 FROM payroll_parameter WHERE code = ? AND COALESCE(region, '-') = COALESCE(?, '-')",
+                Integer.class, code, region);
+        if (openPredecessors.size() == 1) {
+            jdbc.update("UPDATE payroll_parameter SET effective_to = ? - 1 WHERE id = ?", c.effectiveFrom(), openPredecessors.get(0));
+        }
+        String confirmedBy = c.confirmedBy() == null || c.confirmedBy().isBlank() ? null : c.confirmedBy().trim();
         Long id = jdbc.queryForObject("""
                 INSERT INTO payroll_parameter(code, name, category, value, unit, region, effective_from, source_ref, status, confirmed_by, confirmed_at, param_version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-                """, Long.class, c.code(), c.name(), c.category(), c.value(), c.unit(), c.region(), c.effectiveFrom(), c.sourceRef(), c.status(),
-                c.confirmedBy(), "VERIFIED_SIM".equals(c.status()) ? Vn.today() : null, version);
-        audit.success("CREATE_PARAMETER", "payroll_parameter", id, c.sourceRef(), null, Map.of("code", c.code(), "value", c.value(), "from", c.effectiveFrom().toString(), "monthStart", monthStart.toString()));
+                """, Long.class, code, c.name().trim(), c.category(), c.value(), c.unit().trim(), region, c.effectiveFrom(), c.sourceRef().trim(), c.status(),
+                confirmedBy, "VERIFIED_SIM".equals(c.status()) ? Vn.today() : null, version);
+        audit.success("CREATE_PARAMETER", "payroll_parameter", id, c.sourceRef().trim(), null, Map.of("code", code, "value", c.value(), "from", c.effectiveFrom().toString(), "monthStart", monthStart.toString()));
         return Sql.one(jdbc, "Không tìm thấy tham số", "SELECT id, code, name, category, value, unit, region, effective_from, effective_to, source_ref, status, confirmed_by, confirmed_at, param_version AS version FROM payroll_parameter WHERE id = ?", id);
     }
 
