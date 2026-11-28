@@ -527,6 +527,27 @@ public class OvertimeService {
         return o;
     }
 
+    record UnscheduledSegment(LocalDate date, Instant start, Instant end) {
+    }
+
+    static List<UnscheduledSegment> splitUnscheduledInterval(Instant startAt, Instant endAt) {
+        if (startAt == null || endAt == null || !endAt.isAfter(startAt)
+                || startAt.getEpochSecond() % 60 != 0 || startAt.getNano() != 0
+                || endAt.getEpochSecond() % 60 != 0 || endAt.getNano() != 0) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Khoảng OT phải có giờ bắt đầu/kết thúc hợp lệ theo phút");
+        }
+        List<UnscheduledSegment> segments = new ArrayList<>();
+        Instant cursor = startAt;
+        while (cursor.isBefore(endAt)) {
+            LocalDate date = Vn.dateOf(cursor);
+            Instant nextMidnight = date.plusDays(1).atStartOfDay(Vn.ZONE).toInstant();
+            Instant stop = endAt.isBefore(nextMidnight) ? endAt : nextMidnight;
+            segments.add(new UnscheduledSegment(date, cursor, stop));
+            cursor = stop;
+        }
+        return segments;
+    }
+
     @Transactional
     public Map<String, Object> createUnscheduled(Long employeeId, Instant startAt, Instant endAt, String description, String evidence) {
         AuthUser u = Principals.current();
@@ -535,21 +556,25 @@ public class OvertimeService {
         if (emp != mine && !u.is("HR") && !(u.is("MANAGER") && employees.isTeamMember(mine, emp))) {
             throw BusinessException.forbidden("OUT_OF_TEAM", "Chỉ ghi nhận OT ngoài lịch cho mình hoặc nhân viên thuộc phạm vi quản lý");
         }
-        if (!endAt.isAfter(startAt) || !Vn.dateOf(startAt).equals(Vn.dateOf(endAt.minusSeconds(1)))) {
-            throw BusinessException.unprocessable("VALIDATION_ERROR", "Khoảng OT phải hợp lệ và nằm trong một ngày");
+        List<Long> ids = new ArrayList<>();
+        for (UnscheduledSegment segment : splitUnscheduledInterval(startAt, endAt)) {
+            if (segment.date().isAfter(Vn.today())) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Không ghi nhận OT cho ngày trong tương lai");
+            }
+            guard.assertOpen(segment.date());
+            int minutes = (int) Duration.between(segment.start(), segment.end()).toMinutes();
+            // Kiểm tra sau từng lần INSERT để giới hạn tháng/năm tính cả các đoạn của cùng yêu cầu.
+            checkLimits(emp, segment.date(), minutes, null, null);
+            Long id = jdbc.queryForObject("""
+                    INSERT INTO ot_unscheduled(employee_id, work_date, start_at, end_at, minutes, description, evidence, status, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?) RETURNING id
+                    """, Long.class, emp, segment.date(), Timestamp.from(segment.start()),
+                    Timestamp.from(segment.end()), minutes, description, evidence, u.userId());
+            ids.add(id);
         }
-        LocalDate date = Vn.dateOf(startAt);
-        if (date.isAfter(Vn.today())) {
-            throw BusinessException.unprocessable("VALIDATION_ERROR", "Không ghi nhận OT cho ngày trong tương lai");
-        }
-        guard.assertOpen(date);
-        int minutes = (int) Duration.between(startAt, endAt).toMinutes();
-        checkLimits(emp, date, minutes, null, null);
-        Long id = jdbc.queryForObject("""
-                INSERT INTO ot_unscheduled(employee_id, work_date, start_at, end_at, minutes, description, evidence, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?) RETURNING id
-                """, Long.class, emp, date, Timestamp.from(startAt), Timestamp.from(endAt), minutes, description, evidence, u.userId());
-        return unsView(id);
+        Map<String, Object> result = unsView(ids.get(0));
+        result.put("createdSegmentIds", ids);
+        return result;
     }
 
     public List<Map<String, Object>> unscheduled() {
