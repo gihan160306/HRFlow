@@ -22,6 +22,8 @@ export const payrollApi = {
   approveAdjustment: (id, note) => httpClient.post(`/payroll/adjustments/${id}/approve`, { note }),
   rejectAdjustment: (id, note) => httpClient.post(`/payroll/adjustments/${id}/reject`, { note }),
   exportCsv: (id) => httpClient.download(`/payroll/periods/${id}/export`, undefined, `bang-luong-${id}.csv`),
+  createTaxBracketVersion: (data) => httpClient.post('/tax-brackets', data),
+  updateTaxBracketVersion: (data) => httpClient.put('/tax-brackets', data),
 };
 
 export default payrollApi;

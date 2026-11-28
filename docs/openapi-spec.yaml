@@ -6867,6 +6867,102 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       summary: Biểu thuế lũy tiến theo hiệu lực
       description: '**Quyền / quy tắc:** Như /parameters.'
+    post:
+      tags:
+      - Payroll
+      operationId: createTaxBracketVersion_post_tax_brackets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxBracketVersionRequest'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaxBracketResponse'
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Chỉ tài khoản có role HR được tạo phiên bản biểu thuế
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Ngày hiệu lực ảnh hưởng kỳ đã chốt/duyệt/khóa (PERIOD_FROZEN), chồng lấn phiên bản (OVERLAPPING_PERIOD) hoặc xung đột giao dịch (VERSION_CONFLICT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Dữ liệu không hợp lệ (VALIDATION_ERROR) hoặc mã biểu thuế chưa hỗ trợ (UNSUPPORTED_TAX_SET)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Tạo phiên bản biểu thuế lũy tiến mới
+      description: '**Quyền / quy tắc:** Chỉ HR. Hiện chỉ hỗ trợ setCode=PIT_RESIDENT_2026; tự đóng phiên bản tiền nhiệm đang mở thành effectiveFrom - 1; không hồi tố kỳ đã chốt/duyệt/khóa theo pay_date; ghi audit log.'
+    put:
+      tags:
+      - Payroll
+      operationId: updateTaxBracketVersion_put_tax_brackets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxBracketVersionRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaxBracketResponse'
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Chỉ tài khoản có role HR được sửa phiên bản biểu thuế
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Không tìm thấy phiên bản biểu thuế tương ứng (setCode, effectiveFrom)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Phiên bản đang được sử dụng bởi kỳ lương đã chốt công/phê duyệt/khóa (PERIOD_FROZEN) hoặc xung đột giao dịch (VERSION_CONFLICT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Dữ liệu không hợp lệ (VALIDATION_ERROR) hoặc mã biểu thuế chưa hỗ trợ (UNSUPPORTED_TAX_SET)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Cập nhật phiên bản biểu thuế lũy tiến chưa bị khóa
+      description: '**Quyền / quy tắc:** Chỉ HR. Giữ nguyên định danh (setCode, effectiveFrom, effectiveTo); chặn 409 PERIOD_FROZEN nếu phiên bản đang được sử dụng bởi kỳ đã chốt công/phê duyệt/khóa theo pay_date; ghi audit log.'
   /api/v1/audit-logs:
     get:
       tags:
@@ -9816,6 +9912,52 @@ components:
       required:
       - reason
       - role
+    TaxBracketItemRequest:
+      type: object
+      properties:
+        lowerBound:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 999999999999999
+        upperBound:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 1
+          maximum: 999999999999999
+        rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Thuế suất dạng thập phân (0 đến 1, tối đa 4 chữ số thập phân; phải tăng dần giữa các bậc)
+      required:
+      - lowerBound
+      - rate
+    TaxBracketVersionRequest:
+      type: object
+      properties:
+        setCode:
+          type: string
+          enum:
+          - PIT_RESIDENT_2026
+          default: PIT_RESIDENT_2026
+        effectiveFrom:
+          type: string
+          format: date
+        sourceRef:
+          type: string
+          minLength: 1
+          maxLength: 500
+        brackets:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TaxBracketItemRequest'
+      required:
+      - brackets
+      - effectiveFrom
+      - sourceRef
     TaxBracketResponse:
       type: object
       properties:

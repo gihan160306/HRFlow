@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 /** Đường dẫn khớp docs/openapi-spec.yaml (không còn /payroll/calculate nhận JSON từ client). */
@@ -52,6 +54,13 @@ public class PayrollController {
                                    @NotNull BigDecimal value, @NotBlank String unit, String region,
                                    @NotNull LocalDate effectiveFrom, @NotBlank String sourceRef,
                                    @NotBlank String status, String confirmedBy) {
+    }
+
+    public record TaxBracketItemRequest(@NotNull BigDecimal lowerBound, BigDecimal upperBound, @NotNull BigDecimal rate) {
+    }
+
+    public record TaxBracketVersionRequest(String setCode, @NotNull LocalDate effectiveFrom, @NotBlank String sourceRef,
+                                           @NotEmpty List<@NotNull @Valid TaxBracketItemRequest> brackets) {
     }
 
     private final PayrollService service;
@@ -188,6 +197,21 @@ public class PayrollController {
     public Map<String, Object> createParameter(@Valid @RequestBody ParameterRequest r) {
         return service.createParameter(new PayrollService.ParamCmd(r.code(), r.name(), r.category(), r.value(), r.unit(), r.region(),
                 r.effectiveFrom(), r.sourceRef(), r.status(), r.confirmedBy()));
+    }
+
+    @PostMapping("/api/v1/tax-brackets")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<Map<String, Object>> createTaxBracketVersion(@Valid @RequestBody TaxBracketVersionRequest r) {
+        return service.createTaxBracketVersion(new PayrollService.TaxBracketVersionCmd(
+                r.setCode(), r.effectiveFrom(), r.sourceRef(),
+                r.brackets().stream().map(b -> b == null ? null : new PayrollService.TaxBracketItemCmd(b.lowerBound(), b.upperBound(), b.rate())).toList()));
+    }
+
+    @PutMapping("/api/v1/tax-brackets")
+    public List<Map<String, Object>> updateTaxBracketVersion(@Valid @RequestBody TaxBracketVersionRequest r) {
+        return service.updateTaxBracketVersion(new PayrollService.TaxBracketVersionCmd(
+                r.setCode(), r.effectiveFrom(), r.sourceRef(),
+                r.brackets().stream().map(b -> b == null ? null : new PayrollService.TaxBracketItemCmd(b.lowerBound(), b.upperBound(), b.rate())).toList()));
     }
 
     @GetMapping("/api/v1/payslips/me")

@@ -892,6 +892,180 @@ public class PayrollService {
         return Sql.one(jdbc, "Không tìm thấy tham số", "SELECT id, code, name, category, value, unit, region, effective_from, effective_to, source_ref, status, confirmed_by, confirmed_at, param_version AS version FROM payroll_parameter WHERE id = ?", id);
     }
 
+    // ---------------- phiên bản biểu thuế lũy tiến (PSET-02) ----------------
+
+    private static final String SUPPORTED_TAX_SET_CODE = "PIT_RESIDENT_2026";
+    private static final BigDecimal MAX_TAX_BOUND = new BigDecimal("999999999999999");
+    private static final int MAX_TAX_RATE_SCALE = 4;
+    private static final String TAX_BRACKET_SELECT = "SELECT id, set_code, effective_from, effective_to, seq, lower_bound, upper_bound, rate, source_ref FROM tax_bracket";
+
+    public record TaxBracketItemCmd(BigDecimal lowerBound, BigDecimal upperBound, BigDecimal rate) {
+    }
+
+    public record TaxBracketVersionCmd(String setCode, LocalDate effectiveFrom, String sourceRef, List<TaxBracketItemCmd> brackets) {
+    }
+
+    private String normalizeTaxSetCode(String raw) {
+        String code = raw == null || raw.isBlank() ? SUPPORTED_TAX_SET_CODE : raw.trim();
+        if (!SUPPORTED_TAX_SET_CODE.equals(code)) {
+            throw BusinessException.unprocessable("UNSUPPORTED_TAX_SET",
+                    "Hệ thống hiện chỉ hỗ trợ bộ biểu thuế lũy tiến " + SUPPORTED_TAX_SET_CODE);
+        }
+        return code;
+    }
+
+    private void validateTaxBrackets(LocalDate effectiveFrom, String sourceRef, List<TaxBracketItemCmd> brackets) {
+        if (effectiveFrom == null) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Ngày hiệu lực biểu thuế là bắt buộc");
+        }
+        if (sourceRef == null || sourceRef.isBlank()) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Căn cứ/nguồn biểu thuế là bắt buộc");
+        }
+        if (sourceRef.trim().length() > 500) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Căn cứ/nguồn biểu thuế không vượt quá 500 ký tự");
+        }
+        if (brackets == null || brackets.isEmpty()) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Biểu thuế phải có ít nhất một bậc");
+        }
+        BigDecimal expectedLower = BigDecimal.ZERO;
+        BigDecimal prevRate = null;
+        for (int i = 0; i < brackets.size(); i++) {
+            TaxBracketItemCmd b = brackets.get(i);
+            boolean isLast = i == brackets.size() - 1;
+            if (b == null || b.lowerBound() == null || b.rate() == null) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Bậc " + (i + 1) + " thiếu cận dưới hoặc thuế suất");
+            }
+            if (b.lowerBound().stripTrailingZeros().scale() > 0 || (b.upperBound() != null && b.upperBound().stripTrailingZeros().scale() > 0)) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Ngưỡng thu nhập bậc " + (i + 1) + " phải là số nguyên VND");
+            }
+            if (b.lowerBound().compareTo(MAX_TAX_BOUND) > 0 || (b.upperBound() != null && b.upperBound().compareTo(MAX_TAX_BOUND) > 0)) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Ngưỡng thu nhập bậc " + (i + 1) + " vượt giới hạn lưu trữ (tối đa 15 chữ số)");
+            }
+            if (b.rate().compareTo(BigDecimal.ZERO) < 0 || b.rate().compareTo(BigDecimal.ONE) > 0) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Thuế suất bậc " + (i + 1) + " phải nằm trong khoảng 0 đến 1");
+            }
+            if (b.rate().stripTrailingZeros().scale() > MAX_TAX_RATE_SCALE) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR", "Thuế suất bậc " + (i + 1) + " tối đa 4 chữ số thập phân (ví dụ 0.0525 là 5.25%)");
+            }
+            if (prevRate != null && b.rate().compareTo(prevRate) <= 0) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR",
+                        "Thuế suất bậc " + (i + 1) + " phải lớn hơn thuế suất bậc " + i + " (biểu thuế lũy tiến)");
+            }
+            if (b.lowerBound().compareTo(expectedLower) != 0) {
+                throw BusinessException.unprocessable("VALIDATION_ERROR",
+                        i == 0 ? "Bậc 1 phải bắt đầu từ 0" : "Cận dưới bậc " + (i + 1) + " phải khớp cận trên bậc " + i + " (không hở/không chồng lấn)");
+            }
+            if (isLast) {
+                if (b.upperBound() != null) {
+                    throw BusinessException.unprocessable("VALIDATION_ERROR", "Bậc thuế cuối cùng không được có giới hạn trên");
+                }
+            } else {
+                if (b.upperBound() == null || b.upperBound().compareTo(b.lowerBound()) <= 0) {
+                    throw BusinessException.unprocessable("VALIDATION_ERROR", "Cận trên bậc " + (i + 1) + " phải lớn hơn cận dưới");
+                }
+                expectedLower = b.upperBound();
+            }
+            prevRate = b.rate();
+        }
+    }
+
+    private boolean hasFrozenPeriodInRange(LocalDate from, LocalDate to) {
+        List<Map<String, Object>> periods = to == null
+                ? jdbc.queryForList("SELECT status, timesheet_closed FROM payroll_period WHERE pay_date >= ? FOR SHARE", from)
+                : jdbc.queryForList("SELECT status, timesheet_closed FROM payroll_period WHERE pay_date >= ? AND pay_date <= ? FOR SHARE", from, to);
+        return periods.stream().anyMatch(p -> Boolean.TRUE.equals(p.get("timesheet_closed"))
+                || "APPROVED".equals(p.get("status")) || "LOCKED".equals(p.get("status")));
+    }
+
+    public List<Map<String, Object>> createTaxBracketVersion(TaxBracketVersionCmd c) {
+        return adjustmentTransaction(() -> createTaxBracketVersionInTransaction(c));
+    }
+
+    private List<Map<String, Object>> createTaxBracketVersionInTransaction(TaxBracketVersionCmd c) {
+        Principals.requireRole("HR");
+        String setCode = normalizeTaxSetCode(c.setCode());
+        validateTaxBrackets(c.effectiveFrom(), c.sourceRef(), c.brackets());
+        String sourceRef = c.sourceRef().trim();
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext('tax_bracket'), hashtext(?))", rs -> null, setCode);
+        if (hasFrozenPeriodInRange(c.effectiveFrom(), null)) {
+            throw BusinessException.conflict("PERIOD_FROZEN",
+                    "Ngày hiệu lực thuộc hoặc trước kỳ lương đã chốt công/phê duyệt/khóa (theo ngày chi trả); biểu thuế mới phải áp dụng cho kỳ sau");
+        }
+        Integer overlapping = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT effective_from) FROM tax_bracket
+                WHERE set_code = ?
+                  AND NOT (effective_to IS NULL AND effective_from < ?)
+                  AND COALESCE(effective_to, DATE '9999-12-31') >= ?
+                """, Integer.class, setCode, c.effectiveFrom(), c.effectiveFrom());
+        if (overlapping != null && overlapping > 0) {
+            throw BusinessException.conflict("OVERLAPPING_PERIOD",
+                    "Khoảng thời gian hiệu lực của biểu thuế bị chồng lấn với phiên bản đã tồn tại");
+        }
+        List<LocalDate> openPredecessors = jdbc.query("""
+                SELECT DISTINCT effective_from FROM tax_bracket
+                WHERE set_code = ? AND effective_to IS NULL AND effective_from < ?
+                ORDER BY effective_from DESC
+                """, (rs, i) -> rs.getDate(1).toLocalDate(), setCode, c.effectiveFrom());
+        if (openPredecessors.size() > 1) {
+            throw BusinessException.conflict("OVERLAPPING_PERIOD",
+                    "Biểu thuế đang có nhiều phiên bản mở hiệu lực; cần xử lý dữ liệu trước khi tạo phiên bản mới");
+        }
+        if (openPredecessors.size() == 1) {
+            jdbc.update("UPDATE tax_bracket SET effective_to = ? - 1 WHERE set_code = ? AND effective_from = ? AND effective_to IS NULL",
+                    c.effectiveFrom(), setCode, openPredecessors.get(0));
+        }
+        Long firstId = insertTaxBrackets(setCode, c.effectiveFrom(), null, sourceRef, c.brackets());
+        audit.success("CREATE_TAX_BRACKET_VERSION", "tax_bracket", firstId, sourceRef, null,
+                Map.of("setCode", setCode, "effectiveFrom", c.effectiveFrom().toString(), "brackets", c.brackets().size()));
+        return Sql.list(jdbc, TAX_BRACKET_SELECT + " WHERE set_code = ? AND effective_from = ? ORDER BY seq", setCode, c.effectiveFrom());
+    }
+
+    public List<Map<String, Object>> updateTaxBracketVersion(TaxBracketVersionCmd c) {
+        return adjustmentTransaction(() -> updateTaxBracketVersionInTransaction(c));
+    }
+
+    private List<Map<String, Object>> updateTaxBracketVersionInTransaction(TaxBracketVersionCmd c) {
+        Principals.requireRole("HR");
+        String setCode = normalizeTaxSetCode(c.setCode());
+        validateTaxBrackets(c.effectiveFrom(), c.sourceRef(), c.brackets());
+        String sourceRef = c.sourceRef().trim();
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext('tax_bracket'), hashtext(?))", rs -> null, setCode);
+        List<Map<String, Object>> existing = jdbc.queryForList(
+                "SELECT id, effective_to FROM tax_bracket WHERE set_code = ? AND effective_from = ? ORDER BY seq",
+                setCode, c.effectiveFrom());
+        if (existing.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy phiên bản biểu thuế " + setCode + " hiệu lực từ " + c.effectiveFrom());
+        }
+        LocalDate effectiveTo = existing.get(0).get("effective_to") == null
+                ? null : ((java.sql.Date) existing.get(0).get("effective_to")).toLocalDate();
+        if (hasFrozenPeriodInRange(c.effectiveFrom(), effectiveTo)) {
+            throw BusinessException.conflict("PERIOD_FROZEN",
+                    "Không được sửa phiên bản biểu thuế đang được kỳ lương đã chốt công/phê duyệt/khóa sử dụng; hãy tạo phiên bản mới");
+        }
+        jdbc.update("DELETE FROM tax_bracket WHERE set_code = ? AND effective_from = ?", setCode, c.effectiveFrom());
+        Long firstId = insertTaxBrackets(setCode, c.effectiveFrom(), effectiveTo, sourceRef, c.brackets());
+        audit.success("UPDATE_TAX_BRACKET_VERSION", "tax_bracket", firstId, sourceRef,
+                Map.of("brackets", existing.size()),
+                Map.of("setCode", setCode, "effectiveFrom", c.effectiveFrom().toString(), "brackets", c.brackets().size()));
+        return Sql.list(jdbc, TAX_BRACKET_SELECT + " WHERE set_code = ? AND effective_from = ? ORDER BY seq", setCode, c.effectiveFrom());
+    }
+
+    private Long insertTaxBrackets(String setCode, LocalDate effectiveFrom, LocalDate effectiveTo,
+                                   String sourceRef, List<TaxBracketItemCmd> brackets) {
+        Long firstId = null;
+        for (int i = 0; i < brackets.size(); i++) {
+            TaxBracketItemCmd b = brackets.get(i);
+            Long id = jdbc.queryForObject("""
+                    INSERT INTO tax_bracket(set_code, effective_from, effective_to, seq, lower_bound, upper_bound, rate, source_ref)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+                    """, Long.class, setCode, effectiveFrom, effectiveTo, i + 1, b.lowerBound(), b.upperBound(), b.rate(), sourceRef);
+            if (firstId == null) {
+                firstId = id;
+            }
+        }
+        return firstId;
+    }
+
     // ---------------- adjustment sau khóa ----------------
 
     private static final String ADJ_SELECT = """
