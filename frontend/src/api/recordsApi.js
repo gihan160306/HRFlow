@@ -35,8 +35,12 @@ export const configApi = {
 };
 
 export const reportApi = {
-  headcount: () => httpClient.get('/reports/headcount'),
+  headcount: (params) => httpClient.get('/reports/headcount', params),
+  exportHeadcount: (params) => httpClient.download('/reports/headcount/export', params, 'bao-cao-nhan-su.csv'),
   otHours: (year) => httpClient.get('/reports/ot-hours', year ? { year } : undefined),
+  exportOtHours: (year) => httpClient.download('/reports/ot-hours/export', year ? { year } : undefined, `bao-cao-gio-ot-${year || new Date().getFullYear()}.csv`),
+  payrollFund: (params) => httpClient.get('/reports/payroll-fund', params),
+  exportPayrollFund: (params) => httpClient.download('/reports/payroll-fund/export', params, 'bao-cao-quy-luong.csv'),
 };
 
 export const notificationApi = {

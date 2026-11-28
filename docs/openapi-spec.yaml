@@ -7304,6 +7304,18 @@ paths:
       tags:
       - Dashboard, Notifications, Audit
       operationId: headcount_get_reports_headcount
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ALL
+          - ACTIVE
+          - ONBOARDING
+          - ON_LEAVE
+          - TERMINATED
       responses:
         '200':
           description: OK
@@ -7326,13 +7338,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Báo cáo nhân sự theo phòng ban
-      description: '**Quyền / quy tắc:** HR, MANAGER, ADMIN.'
+        '422':
+          description: Trạng thái lọc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Báo cáo nhân sự theo phòng ban và trạng thái
+      description: '**Quyền / quy tắc:** HR, ADMIN (toàn công ty), MANAGER (chỉ team trực tiếp theo manager_id).'
   /api/v1/reports/headcount/export:
     get:
       tags:
       - Dashboard, Notifications, Audit
       operationId: headcountCsv_get_reports_headcount_export
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ALL
+          - ACTIVE
+          - ONBOARDING
+          - ON_LEAVE
+          - TERMINATED
       responses:
         '200':
           description: OK
@@ -7353,7 +7383,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Xuất báo cáo nhân sự CSV
+        '422':
+          description: Trạng thái lọc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Xuất báo cáo nhân sự CSV (UTF-8 BOM) kèm audit
   /api/v1/reports/ot-hours:
     get:
       tags:
@@ -7362,7 +7398,7 @@ paths:
       parameters:
       - name: year
         in: query
-        required: true
+        required: false
         schema:
           type: integer
           format: int32
@@ -7395,12 +7431,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
       summary: Báo cáo giờ OT theo tháng
-      description: '**Quyền / quy tắc:** HR, MANAGER.'
+      description: '**Quyền / quy tắc:** HR (toàn công ty), MANAGER (chỉ team trực tiếp). Gộp OT theo lịch đã xác nhận và OT ngoài lịch đã tách theo ngày.'
+  /api/v1/reports/ot-hours/export:
+    get:
+      tags:
+      - Dashboard, Notifications, Audit
+      operationId: otHoursCsv_get_reports_ot_hours_export
+      parameters:
+      - name: year
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: byte
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Không đủ role/grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Năm báo cáo không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Xuất báo cáo giờ OT CSV (UTF-8 BOM) kèm audit
   /api/v1/reports/payroll-fund:
     get:
       tags:
       - Dashboard, Notifications, Audit
       operationId: payrollFund_get_reports_payroll_fund
+      parameters:
+      - name: year
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - CALCULATED
+          - APPROVED
+          - LOCKED
+      - name: periodId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
       responses:
         '200':
           description: OK
@@ -7418,13 +7516,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Không đủ role/grant, hoặc tự phê duyệt (SELF_APPROVAL)
+          description: Thiếu grant VIEW còn hiệu lực (hoặc ngoài phạm vi kỳ)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-      summary: Báo cáo quỹ lương theo kỳ
-      description: '**Quyền / quy tắc:** Grant VIEW.'
+        '422':
+          description: Bộ lọc năm/trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Báo cáo quỹ lương theo kỳ (Gross, BH, PIT, Net, Thực chi)
+      description: '**Quyền / quy tắc:** Grant VIEW còn hiệu lực (ADMIN không mặc nhiên có quyền); chỉ lấy kỳ CALCULATED/APPROVED/LOCKED có kết quả.'
+  /api/v1/reports/payroll-fund/export:
+    get:
+      tags:
+      - Dashboard, Notifications, Audit
+      operationId: payrollFundCsv_get_reports_payroll_fund_export
+      parameters:
+      - name: year
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - CALCULATED
+          - APPROVED
+          - LOCKED
+      - name: periodId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: byte
+        '401':
+          description: Chưa đăng nhập, token hết hạn hoặc đã bị thu hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Thiếu grant VIEW còn hiệu lực (hoặc ngoài phạm vi kỳ)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Bộ lọc năm/trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      summary: Xuất báo cáo quỹ lương CSV (UTF-8 BOM) kèm audit
 components:
   schemas:
     LeaveRequestBody:

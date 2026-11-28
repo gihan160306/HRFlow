@@ -1,5 +1,7 @@
 package com.hrflow.common;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -7,9 +9,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +51,31 @@ public class MiscController {
 
     private static final Set<String> PAYROLL_ENTITIES = Set.of("payroll_period", "payroll_line", "payroll_adjustment", "payslip",
             "payroll_grant", "salary_record", "payroll_parameter");
+    private static final Set<String> EMP_STATUSES = Set.of("ACTIVE", "ONBOARDING", "ON_LEAVE", "TERMINATED");
+    private static final Set<String> PERIOD_STATUSES = Set.of("DRAFT", "CALCULATED", "APPROVED", "LOCKED");
+    private static final byte[] UTF8_BOM = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+
+    private static final Map<String, String> EMP_TYPE_LABELS = Map.of(
+            "FULL_TIME", "Toàn thời gian",
+            "PART_TIME", "Bán thời gian",
+            "PROBATION", "Thử việc",
+            "INTERN", "Thực tập sinh"
+    );
+    private static final Map<String, String> EMP_STATUS_LABELS = Map.of(
+            "ACTIVE", "Đang làm việc",
+            "ONBOARDING", "Đang tiếp nhận",
+            "ON_LEAVE", "Đang nghỉ",
+            "TERMINATED", "Đã nghỉ việc"
+    );
+    private static final Map<String, String> PERIOD_STATUS_LABELS = Map.of(
+            "CALCULATED", "Tạm tính (Đã tính)",
+            "APPROVED", "Đã duyệt",
+            "LOCKED", "Đã khóa"
+    );
+    private static final Map<String, String> PAYMENT_STATUS_LABELS = Map.of(
+            "PAID", "Đã chi trả",
+            "UNPAID", "Chưa chi trả"
+    );
 
     private final JdbcTemplate jdbc;
     private final PayrollAccess access;
@@ -210,23 +242,315 @@ public class MiscController {
     }
 
     @GetMapping("/api/v1/reports/headcount")
-    public List<Map<String, Object>> headcount() {
-        Principals.requireRole("HR", "ADMIN");
-        return Sql.list(jdbc, """
-                SELECT d.name AS department, e.employee_type, COUNT(*) AS headcount FROM employee e JOIN department d ON d.id = e.department_id
-                WHERE e.status <> 'TERMINATED' GROUP BY d.name, e.employee_type ORDER BY d.name, e.employee_type
-                """);
+    public List<Map<String, Object>> headcount(@RequestParam(required = false) String status) {
+        AuthUser u = Principals.requireRole("HR", "MANAGER", "ADMIN");
+        return headcountRows(u, normalizeEmployeeStatus(status));
+    }
+
+    @GetMapping("/api/v1/reports/headcount/export")
+    public ResponseEntity<byte[]> headcountExport(@RequestParam(required = false) String status) {
+        AuthUser u = Principals.requireRole("HR", "MANAGER", "ADMIN");
+        String normStatus = normalizeEmployeeStatus(status);
+        List<Map<String, Object>> rows = headcountRows(u, normStatus);
+        StringBuilder sb = new StringBuilder("Phòng ban,Loại nhân sự,Trạng thái,Số lượng\n");
+        for (Map<String, Object> r : rows) {
+            String empType = String.valueOf(r.get("employeeType"));
+            String empStatus = String.valueOf(r.get("status"));
+            sb.append(csvText(r.get("department"))).append(',')
+                    .append(csvText(EMP_TYPE_LABELS.getOrDefault(empType, empType))).append(',')
+                    .append(csvText(EMP_STATUS_LABELS.getOrDefault(empStatus, empStatus))).append(',')
+                    .append(csvNumber(r.get("headcount"))).append('\n');
+        }
+        byte[] bytes = utf8BomCsv(sb.toString());
+        String scope = isCompanyHeadcountScope(u) ? "COMPANY" : "TEAM";
+        audit.success("EXPORT_REPORT_HEADCOUNT", "report", null, null, null,
+                Map.of("scope", scope, "status", normStatus == null ? "DEFAULT_ACTIVE" : normStatus, "rows", rows.size()));
+        return csvResponse("bao-cao-nhan-su.csv", bytes);
     }
 
     @GetMapping("/api/v1/reports/ot-hours")
     public List<Map<String, Object>> otHours(@RequestParam(required = false) Integer year) {
         AuthUser u = Principals.requireRole("HR", "MANAGER");
-        int y = year == null ? LocalDate.now().getYear() : year;
-        String scope = u.is("HR") ? "" : " AND e.manager_id = " + u.employeeId();
+        int y = validateReportYear(year, LocalDate.now().getYear());
+        return otHoursRows(u, y);
+    }
+
+    @GetMapping("/api/v1/reports/ot-hours/export")
+    public ResponseEntity<byte[]> otHoursExport(@RequestParam(required = false) Integer year) {
+        AuthUser u = Principals.requireRole("HR", "MANAGER");
+        int y = validateReportYear(year, LocalDate.now().getYear());
+        List<Map<String, Object>> rows = otHoursRows(u, y);
+        StringBuilder sb = new StringBuilder("Năm,Tháng,Giờ OT đã xác nhận\n");
+        for (Map<String, Object> r : rows) {
+            sb.append(y).append(',')
+                    .append(csvNumber(r.get("month"))).append(',')
+                    .append(csvNumber(r.get("hours"))).append('\n');
+        }
+        byte[] bytes = utf8BomCsv(sb.toString());
+        String scope = u.is("HR") ? "COMPANY" : "TEAM";
+        audit.success("EXPORT_REPORT_OT", "report", null, null, null,
+                Map.of("scope", scope, "year", y, "rows", rows.size()));
+        return csvResponse("bao-cao-gio-ot-" + y + ".csv", bytes);
+    }
+
+    @GetMapping("/api/v1/reports/payroll-fund")
+    public List<Map<String, Object>> payrollFund(@RequestParam(required = false) Integer year,
+                                                 @RequestParam(required = false) String status,
+                                                 @RequestParam(required = false) Long periodId) {
+        AuthUser u = Principals.current();
+        Integer validYear = year == null ? null : validateReportYear(year, year);
+        String validStatus = normalizePeriodStatus(status);
+        ViewGrantScope grantScope = resolveViewGrantScope(u, periodId);
+        return payrollFundRows(grantScope, validYear, validStatus, periodId);
+    }
+
+    @GetMapping("/api/v1/reports/payroll-fund/export")
+    public ResponseEntity<byte[]> payrollFundExport(@RequestParam(required = false) Integer year,
+                                                    @RequestParam(required = false) String status,
+                                                    @RequestParam(required = false) Long periodId) {
+        AuthUser u = Principals.current();
+        Integer validYear = year == null ? null : validateReportYear(year, year);
+        String validStatus = normalizePeriodStatus(status);
+        ViewGrantScope grantScope = resolveViewGrantScope(u, periodId);
+        List<Map<String, Object>> rows = payrollFundRows(grantScope, validYear, validStatus, periodId);
+        StringBuilder sb = new StringBuilder("Kỳ lương,Trạng thái kỳ,Chi trả,Số nhân sự,Tổng Gross (VND),Tổng BH NLĐ (VND),Tổng thuế TNCN (VND),Tổng Net sau nghĩa vụ (VND),Tổng Thực chi Payable (VND)\n");
+        for (Map<String, Object> r : rows) {
+            String periodLabel = String.format("%02d/%d", ((Number) r.get("month")).intValue(), ((Number) r.get("year")).intValue());
+            String st = String.valueOf(r.get("status"));
+            String pst = String.valueOf(r.get("paymentStatus"));
+            sb.append(csvText(periodLabel)).append(',')
+                    .append(csvText(PERIOD_STATUS_LABELS.getOrDefault(st, st))).append(',')
+                    .append(csvText(PAYMENT_STATUS_LABELS.getOrDefault(pst, pst))).append(',')
+                    .append(csvNumber(r.get("employeeCount"))).append(',')
+                    .append(csvNumber(r.get("totalGross"))).append(',')
+                    .append(csvNumber(r.get("totalInsurance"))).append(',')
+                    .append(csvNumber(r.get("totalPit"))).append(',')
+                    .append(csvNumber(r.get("totalNet"))).append(',')
+                    .append(csvNumber(r.get("totalPayable"))).append('\n');
+        }
+        byte[] bytes = utf8BomCsv(sb.toString());
+        Map<String, Object> auditMeta = new LinkedHashMap<>();
+        auditMeta.put("scope", grantScope.global() ? "ALL_PERIODS" : "SCOPED_PERIODS");
+        auditMeta.put("year", validYear);
+        auditMeta.put("status", validStatus);
+        auditMeta.put("rows", rows.size());
+        audit.success("EXPORT_REPORT_PAYROLL_FUND", "payroll_period", periodId, null, null, auditMeta);
+        return csvResponse("bao-cao-quy-luong.csv", bytes);
+    }
+
+    private boolean isCompanyHeadcountScope(AuthUser u) {
+        return u.is("HR", "ADMIN");
+    }
+
+    private String normalizeEmployeeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        String s = status.trim().toUpperCase();
+        if (!"ALL".equals(s) && !EMP_STATUSES.contains(s)) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Trạng thái nhân sự không hợp lệ");
+        }
+        return s;
+    }
+
+    private int validateReportYear(Integer year, int defaultYear) {
+        int y = year == null ? defaultYear : year;
+        if (y < 2000 || y > 2100) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Năm báo cáo phải nằm trong khoảng 2000–2100");
+        }
+        return y;
+    }
+
+    private String normalizePeriodStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        String s = status.trim().toUpperCase();
+        if (!PERIOD_STATUSES.contains(s)) {
+            throw BusinessException.unprocessable("VALIDATION_ERROR", "Trạng thái kỳ lương không hợp lệ");
+        }
+        return s;
+    }
+
+    private List<Map<String, Object>> headcountRows(AuthUser u, String status) {
+        List<Object> args = new ArrayList<>();
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        if (status == null) {
+            where.append(" AND e.status <> 'TERMINATED'");
+        } else if (!"ALL".equals(status)) {
+            where.append(" AND e.status = ?");
+            args.add(status);
+        }
+        if (!isCompanyHeadcountScope(u)) {
+            where.append(" AND e.manager_id = ?");
+            args.add(Principals.employeeId());
+        }
         return Sql.list(jdbc, """
-                SELECT EXTRACT(MONTH FROM s.work_date)::int AS month,
-                       ROUND(SUM(CASE WHEN r.actual_status = 'CONFIRMED' THEN LEAST(COALESCE(r.actual_minutes, 0), COALESCE(r.approved_minutes, 0)) + r.extra_minutes_confirmed ELSE 0 END) / 60.0, 2) AS hours
-                FROM ot_registration r JOIN ot_schedule s ON s.id = r.schedule_id JOIN employee e ON e.id = r.employee_id
-                WHERE r.status = 'APPROVED' AND EXTRACT(YEAR FROM s.work_date) = ?""" + scope + " GROUP BY 1 ORDER BY 1", y);
+                SELECT d.name AS department, e.employee_type, e.status, COUNT(*) AS headcount
+                FROM employee e JOIN department d ON d.id = e.department_id""" + where + " "
+                + "GROUP BY d.name, e.employee_type, e.status ORDER BY d.name, e.employee_type, e.status", args.toArray());
+    }
+
+    private List<Map<String, Object>> otHoursRows(AuthUser u, int year) {
+        List<Object> args = new ArrayList<>();
+        String scopeSql = "";
+        Long managerId = null;
+        if (!u.is("HR")) {
+            scopeSql = " AND e.manager_id = ?";
+            managerId = Principals.employeeId();
+        }
+        args.add(year);
+        if (managerId != null) {
+            args.add(managerId);
+        }
+        args.add(year);
+        if (managerId != null) {
+            args.add(managerId);
+        }
+        // Kết hợp OT theo lịch đã xác nhận và OT ngoài lịch đã xác nhận (đã tách đoạn qua nửa đêm theo ngày trong BUG-14).
+        return Sql.list(jdbc, """
+                WITH ot_entries AS (
+                    SELECT EXTRACT(MONTH FROM s.work_date)::int AS month,
+                           (LEAST(COALESCE(r.actual_minutes, 0), COALESCE(r.approved_minutes, 0)) + r.extra_minutes_confirmed) AS mins
+                    FROM ot_registration r
+                    JOIN ot_schedule s ON s.id = r.schedule_id
+                    JOIN employee e ON e.id = r.employee_id
+                    WHERE r.status = 'APPROVED' AND r.actual_status = 'CONFIRMED'
+                      AND EXTRACT(YEAR FROM s.work_date) = ?""" + scopeSql + "\n" + """
+                    UNION ALL
+                    SELECT EXTRACT(MONTH FROM o.work_date)::int AS month,
+                           o.minutes AS mins
+                    FROM ot_unscheduled o
+                    JOIN employee e ON e.id = o.employee_id
+                    WHERE o.status = 'CONFIRMED'
+                      AND EXTRACT(YEAR FROM o.work_date) = ?""" + scopeSql + "\n" + """
+                )
+                SELECT month, ROUND(SUM(mins) / 60.0, 2) AS hours
+                FROM ot_entries
+                GROUP BY month
+                ORDER BY month
+                """, args.toArray());
+    }
+
+    private record ViewGrantScope(boolean global, List<Long> periodIds) {
+    }
+
+    private ViewGrantScope resolveViewGrantScope(AuthUser u, Long requestedPeriodId) {
+        if (requestedPeriodId != null) {
+            access.require("VIEW", requestedPeriodId);
+        }
+        if (access.has("VIEW", null)) {
+            return new ViewGrantScope(true, List.of());
+        }
+        List<Long> periodIds = jdbc.queryForList("""
+                SELECT DISTINCT g.period_id FROM payroll_grant g JOIN user_account a ON a.id = g.account_id
+                WHERE g.account_id = ? AND g.permission = 'VIEW' AND a.status = 'ACTIVE' AND a.role <> 'ADMIN'
+                  AND g.revoked_at IS NULL AND g.valid_from <= now()
+                  AND (g.valid_to IS NULL OR g.valid_to > now()) AND g.period_id IS NOT NULL
+                ORDER BY g.period_id
+                """, Long.class, u.userId());
+        if (periodIds.isEmpty()) {
+            audit.denied("PAYROLL_ACCESS", "payroll_grant", requestedPeriodId, "Thiếu grant VIEW");
+            throw new AccessDeniedException("Thiếu quyền payroll VIEW");
+        }
+        return new ViewGrantScope(false, periodIds);
+    }
+
+    private List<Map<String, Object>> payrollFundRows(ViewGrantScope scope, Integer year, String status, Long periodId) {
+        List<Object> args = new ArrayList<>();
+        StringBuilder where = new StringBuilder("""
+                 WHERE p.status IN ('CALCULATED', 'APPROVED', 'LOCKED')
+                   AND p.calc_version > 0
+                """);
+        if (!scope.global()) {
+            String placeholders = scope.periodIds().stream().map(x -> "?").collect(Collectors.joining(", "));
+            where.append(" AND p.id IN (").append(placeholders).append(")");
+            args.addAll(scope.periodIds());
+        }
+        if (periodId != null) {
+            where.append(" AND p.id = ?");
+            args.add(periodId);
+        }
+        if (year != null) {
+            where.append(" AND p.period_year = ?");
+            args.add(year);
+        }
+        if (status != null) {
+            where.append(" AND p.status = ?");
+            args.add(status);
+        }
+        return Sql.list(jdbc, """
+                SELECT p.id AS period_id,
+                       p.period_year AS year,
+                       p.period_month AS month,
+                       p.pay_date,
+                       p.status,
+                       p.payment_status,
+                       p.calc_version,
+                       COUNT(l.id) AS employee_count,
+                       SUM(l.gross) AS total_gross,
+                       SUM(l.insurance_total) AS total_insurance,
+                       SUM(l.pit) AS total_pit,
+                       SUM(l.net_entitlement) AS total_net,
+                       SUM(l.payable) AS total_payable,
+                       SUM(l.advance_recovery) AS total_advance_recovery,
+                       SUM(l.reimbursements) AS total_reimbursements
+                FROM payroll_period p
+                JOIN payroll_line l ON l.period_id = p.id AND l.calc_version = p.calc_version""" + "\n" + where + "\n" + """
+                GROUP BY p.id, p.period_year, p.period_month, p.pay_date, p.status, p.payment_status, p.calc_version
+                HAVING COUNT(l.id) > 0
+                ORDER BY p.period_year DESC, p.period_month DESC
+                """, args.toArray());
+    }
+
+    static String csvText(Object value) {
+        if (value == null) {
+            return "";
+        }
+        String s = String.valueOf(value);
+        if (!s.isEmpty()) {
+            char first = s.charAt(0);
+            String trimmed = s.stripLeading();
+            char lead = trimmed.isEmpty() ? first : trimmed.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@' || first == '\t' || first == '\r'
+                    || lead == '=' || lead == '+' || lead == '-' || lead == '@') {
+                s = "'" + s;
+            }
+        }
+        return quoteCsvIfNeeded(s);
+    }
+
+    static String csvNumber(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof BigDecimal bd) {
+            return bd.stripTrailingZeros().scale() <= 0
+                    ? bd.setScale(0, java.math.RoundingMode.UNNECESSARY).toPlainString()
+                    : bd.stripTrailingZeros().toPlainString();
+        }
+        return String.valueOf(value);
+    }
+
+    private static String quoteCsvIfNeeded(String s) {
+        if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    static byte[] utf8BomCsv(String csv) {
+        byte[] content = csv.getBytes(StandardCharsets.UTF_8);
+        byte[] out = new byte[UTF8_BOM.length + content.length];
+        System.arraycopy(UTF8_BOM, 0, out, 0, UTF8_BOM.length);
+        System.arraycopy(content, 0, out, UTF8_BOM.length, content.length);
+        return out;
+    }
+
+    private static ResponseEntity<byte[]> csvResponse(String filename, byte[] bytes) {
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
+                .body(bytes);
     }
 }
