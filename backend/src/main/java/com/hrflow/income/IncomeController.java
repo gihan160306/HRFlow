@@ -152,6 +152,7 @@ public class IncomeController {
                 && (r.evidence() == null || r.evidence().isBlank() || r.decisionRef() == null || r.decisionRef().isBlank())) {
             throw BusinessException.unprocessable("DEDUCTION_BASIS_REQUIRED", "Khấu trừ/thu hồi phải có chứng từ và căn cứ (quyết định)");
         }
+        DeductionPolicy.assertAllowed(r.itemType(), r.name(), r.evidence(), r.decisionRef(), r.note());
         LocalDate start = LocalDate.of(r.periodYear(), r.periodMonth(), 1);
         guard.assertOpen(start, start.plusMonths(1).minusDays(1));
         Long id = jdbc.queryForObject("""
@@ -175,6 +176,9 @@ public class IncomeController {
         if (!"DRAFT".equals(m.get("status"))) {
             throw BusinessException.conflict("INVALID_STATE", "Chỉ phân loại được khoản DRAFT");
         }
+        String effectiveNote = r.note() != null ? r.note() : (String) m.get("note");
+        DeductionPolicy.assertAllowed((String) m.get("itemType"), (String) m.get("name"),
+                (String) m.get("evidence"), (String) m.get("decisionRef"), effectiveNote);
         jdbc.update("UPDATE income_item SET tax_class = ?, note = COALESCE(?, note) WHERE id = ?", r.taxClass(), r.note(), id);
         audit.success("CLASSIFY_INCOME_ITEM", "income_item", id, r.note(), Map.of("taxClass", m.get("taxClass")), Map.of("taxClass", r.taxClass()));
         return item(id);
@@ -197,6 +201,9 @@ public class IncomeController {
         if ("NEEDS_REVIEW".equals(m.get("taxClass"))) {
             throw BusinessException.unprocessable("TAX_CLASS_REQUIRED", "Phải phân loại thuế trước khi xác nhận");
         }
+        String confirmNote = b != null && b.note() != null ? b.note() : (String) m.get("note");
+        DeductionPolicy.assertAllowed((String) m.get("itemType"), (String) m.get("name"),
+                (String) m.get("evidence"), (String) m.get("decisionRef"), confirmNote);
         LocalDate start = LocalDate.of(((Number) m.get("periodYear")).intValue(), ((Number) m.get("periodMonth")).intValue(), 1);
         guard.assertOpen(start, start.plusMonths(1).minusDays(1));
         jdbc.update("UPDATE income_item SET status = 'CONFIRMED', confirmed_by = ?, confirmed_at = now(), note = COALESCE(?, note) WHERE id = ?",
