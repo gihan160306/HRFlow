@@ -1,6 +1,7 @@
 package com.hrflow.payroll;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -10,13 +11,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.hrflow.common.audit.AuditService;
 import com.hrflow.common.audit.NotificationService;
@@ -64,9 +69,11 @@ public class PayrollService {
     private final NotificationService notifications;
     private final Json json;
     private final PayslipService payslips;
+    private final TransactionTemplate adjustmentTransactions;
 
     public PayrollService(JdbcTemplate jdbc, ParameterService params, SnapshotBuilder snapshots, PayrollAccess access,
-                          AuditService audit, NotificationService notifications, Json json, PayslipService payslips) {
+                          AuditService audit, NotificationService notifications, Json json, PayslipService payslips,
+                          PlatformTransactionManager transactions) {
         this.jdbc = jdbc;
         this.params = params;
         this.snapshots = snapshots;
@@ -75,9 +82,38 @@ public class PayrollService {
         this.notifications = notifications;
         this.json = json;
         this.payslips = payslips;
+        this.adjustmentTransactions = new TransactionTemplate(transactions);
+        this.adjustmentTransactions.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
     }
 
     // ---------------- helpers ----------------
+
+    // Include commit in the retry boundary. A new month or an approval can change the
+    // first open period even when the two requests do not update the same period row.
+    private <T> T adjustmentTransaction(Supplier<T> work) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return adjustmentTransactions.execute(status -> work.get());
+            } catch (RuntimeException ex) {
+                if (!isTransactionConflict(ex)) {
+                    throw ex;
+                }
+                if (attempt == 3) {
+                    throw BusinessException.conflict("VERSION_CONFLICT", "Dữ liệu kỳ lương vừa thay đổi, hãy thử lại");
+                }
+            }
+        }
+    }
+
+    private static boolean isTransactionConflict(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sql
+                    && ("40001".equals(sql.getSQLState()) || "40P01".equals(sql.getSQLState()))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private void trail(long periodId, String action, String from, String to, String detail) {
         AuthUser u = Principals.currentOrNull();
@@ -188,8 +224,11 @@ public class PayrollService {
 
     // ---------------- tạo kỳ ----------------
 
-    @Transactional
     public Map<String, Object> createPeriod(int year, int month, LocalDate payDate) {
+        return adjustmentTransaction(() -> createPeriodInTransaction(year, month, payDate));
+    }
+
+    private Map<String, Object> createPeriodInTransaction(int year, int month, LocalDate payDate) {
         AuthUser u = access.require("PREPARE", null);
         if (month < 1 || month > 12) {
             throw BusinessException.unprocessable("VALIDATION_ERROR", "Tháng không hợp lệ");
@@ -432,8 +471,11 @@ public class PayrollService {
         return baseParams(end, pay, in.wageRegion(), in, flat, nonRes);
     }
 
-    @Transactional
     public Map<String, Object> calculate(long id) {
+        return adjustmentTransaction(() -> calculateInTransaction(id));
+    }
+
+    private Map<String, Object> calculateInTransaction(long id) {
         AuthUser u = access.require("PREPARE", id);
         Map<String, Object> p = lockPeriod(id);
         String status = (String) p.get("status");
@@ -452,12 +494,15 @@ public class PayrollService {
         if (snaps.isEmpty()) {
             throw BusinessException.unprocessable("TIMESHEET_NOT_CLOSED", "Không có snapshot công để tính");
         }
+        checkAdjustmentSet(id, false);
         // Ghi đè trọn bộ trong một giao dịch: lỗi giữa chừng rollback cả batch, chạy lại cho cùng kết quả (idempotent).
         jdbc.update("DELETE FROM payroll_line_item WHERE line_id IN (SELECT id FROM payroll_line WHERE period_id = ?)", id);
         jdbc.update("DELETE FROM payroll_line WHERE period_id = ?", id);
-        jdbc.update("UPDATE payroll_adjustment SET applied_period_id = NULL WHERE applied_period_id = ? AND status = 'APPROVED'", id);
         for (Map<String, Object> s : snaps) {
             Input in = json.read(String.valueOf(s.get("data")), Input.class);
+            if (!in.adjustments().isEmpty() && in.employeeId() != asLong(s.get("employee_id")).longValue()) {
+                throw adjustmentMismatch(id, in.employeeId(), in.adjustments().getFirst().sourceRef());
+            }
             Params pr = paramsFor(in, end, pay);
             Result r = PayrollEngine.calculate(in, pr);
             Long lineId = jdbc.queryForObject("""
@@ -479,7 +524,13 @@ public class PayrollService {
                         lineId, i.seq(), i.category(), i.code(), i.name(), i.amountRaw(), i.amount(), i.sourceRef(), i.rule());
             }
             for (PayrollEngine.AdjIn adj : in.adjustments()) {
-                jdbc.update("UPDATE payroll_adjustment SET applied_period_id = ? WHERE id = ? AND status = 'APPROVED'", id, adj.id());
+                int assigned = jdbc.update("""
+                        UPDATE payroll_adjustment SET applied_period_id = ?
+                        WHERE id = ? AND status = 'APPROVED' AND (applied_period_id IS NULL OR applied_period_id = ?)
+                        """, id, adj.id(), id);
+                if (assigned != 1) {
+                    throw adjustmentMismatch(id, in.employeeId(), adj.sourceRef());
+                }
             }
         }
         jdbc.update("""
@@ -490,6 +541,48 @@ public class PayrollService {
         return getPeriod(id);
     }
 
+    private static BusinessException adjustmentMismatch(long periodId, long employeeId, String sourceRef) {
+        return BusinessException.conflict("ADJUSTMENT_MISMATCH", "Kỳ #" + periodId + ", nhân viên #" + employeeId
+                + ", nguồn " + sourceRef + ": điều chỉnh không khớp. Kiểm tra nguồn, mở lại có lý do và chốt lại trước khi tính.");
+    }
+
+    private void checkAdjustmentSet(long periodId, boolean checkCalculatedLines) {
+        String actual = checkCalculatedLines ? """
+                SELECT l.employee_id, a.id, i.source_ref, i.code, i.amount, a.tax_class
+                FROM payroll_line l JOIN payroll_line_item i ON i.line_id = l.id
+                LEFT JOIN payroll_adjustment a ON a.source_ref = i.source_ref
+                    AND a.applied_period_id = l.period_id AND a.status = 'APPROVED'
+                WHERE l.period_id = ? AND i.category = 'ADJUSTMENT'
+                """ : """
+                SELECT s.employee_id, j.id, j."sourceRef", 'ADJ_' || j."adjType", j.amount, j."taxClass"
+                FROM timesheet_snapshot s JOIN payroll_period p ON p.id = s.period_id
+                CROSS JOIN LATERAL jsonb_to_recordset(s.data->'adjustments')
+                    AS j(id bigint, "sourceRef" text, "adjType" text, amount numeric, "taxClass" text)
+                WHERE p.id = ? AND s.snapshot_version = p.snapshot_version
+                """;
+        // EXCEPT ALL preserves duplicate occurrences and compares nullable tax classes.
+        String sql = "WITH due AS (" + SnapshotBuilder.DUE_ADJUSTMENTS + "), actual AS (" + actual + """
+                ), expected AS (
+                    SELECT employee_id, id, source_ref, 'ADJ_' || adj_type, amount, tax_class FROM due
+                ), differences AS (
+                    (SELECT * FROM expected EXCEPT ALL SELECT * FROM actual)
+                    UNION ALL
+                    (SELECT * FROM actual EXCEPT ALL SELECT * FROM expected)
+                )
+                SELECT employee_id, source_ref FROM differences
+                UNION ALL
+                SELECT a.employee_id, a.source_ref FROM payroll_adjustment a
+                WHERE a.applied_period_id = ? AND a.status = 'APPROVED'
+                  AND NOT EXISTS (SELECT 1 FROM due WHERE due.id = a.id)
+                LIMIT 1
+                """;
+        List<Map<String, Object>> mismatches = jdbc.queryForList(sql, periodId, periodId, periodId);
+        if (!mismatches.isEmpty()) {
+            Map<String, Object> mismatch = mismatches.get(0);
+            throw adjustmentMismatch(periodId, asLong(mismatch.get("employee_id")), (String) mismatch.get("source_ref"));
+        }
+    }
+
     private Map<String, Object> paramSnapshot(Params p, Input in) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("policy", "payroll_rules v3.0");
@@ -498,8 +591,11 @@ public class PayrollService {
         return m;
     }
 
-    @Transactional
     public Map<String, Object> reopen(long id, String reason) {
+        return adjustmentTransaction(() -> reopenInTransaction(id, reason));
+    }
+
+    private Map<String, Object> reopenInTransaction(long id, String reason) {
         access.require("PREPARE", id);
         Map<String, Object> p = lockPeriod(id);
         if (!"CALCULATED".equals(p.get("status"))) {
@@ -597,8 +693,11 @@ public class PayrollService {
         return getPeriod(id);
     }
 
-    @Transactional
     public Map<String, Object> approve(long id) {
+        return adjustmentTransaction(() -> approveInTransaction(id));
+    }
+
+    private Map<String, Object> approveInTransaction(long id) {
         AuthUser u = access.require("APPROVE", id);
         Map<String, Object> p = lockPeriod(id);
         if (!"CALCULATED".equals(p.get("status"))) {
@@ -626,6 +725,7 @@ public class PayrollService {
             throw BusinessException.conflict("CONFLICT_OF_INTEREST",
                     "Kỳ lương có phần lương của Giám đốc/người duyệt: cần quyết định xử lý xung đột được HNQ xác nhận trước khi duyệt");
         }
+        checkAdjustmentSet(id, true);
         int n = jdbc.update("UPDATE payroll_period SET status = 'APPROVED', approved_by = ?, approved_at = now(), version = version + 1 WHERE id = ? AND status = 'CALCULATED' AND calc_version = ?",
                 u.userId(), id, p.get("calc_version"));
         if (n == 0) {
@@ -828,9 +928,23 @@ public class PayrollService {
         return adjView(Sql.one(jdbc, "Không tìm thấy adjustment", ADJ_SELECT + " WHERE a.id = ?", id));
     }
 
-    @Transactional
     public Map<String, Object> decideAdjustment(long id, boolean approve, String note) {
+        return adjustmentTransaction(() -> decideAdjustmentInTransaction(id, approve, note));
+    }
+
+    private Map<String, Object> decideAdjustmentInTransaction(long id, boolean approve, String note) {
         AuthUser u = access.require("APPROVE", null);
+        if (approve) {
+            // Take the period lock before the adjustment lock, as calculate/approve do.
+            // SSI also covers the empty result and a closer month inserted concurrently.
+            jdbc.queryForList("""
+                    SELECT p.id FROM payroll_adjustment a
+                    JOIN payroll_period origin ON origin.id = a.origin_period_id
+                    JOIN payroll_period p ON p.start_date > origin.end_date
+                    WHERE a.id = ? AND a.status = 'PENDING' AND p.status IN ('DRAFT', 'CALCULATED')
+                    ORDER BY p.start_date LIMIT 1 FOR SHARE OF p
+                    """, Long.class, id);
+        }
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM payroll_adjustment WHERE id = ? FOR UPDATE", id);
         if (rows.isEmpty()) {
             throw new ResourceNotFoundException("Không tìm thấy adjustment");

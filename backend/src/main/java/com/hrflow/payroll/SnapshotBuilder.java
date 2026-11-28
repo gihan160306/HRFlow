@@ -38,6 +38,22 @@ import com.hrflow.payroll.PayrollEngine.TaxIn;
 @Service
 public class SnapshotBuilder {
 
+    // A successful calculation owns its adjustments until that period is reopened.
+    // For unassigned sources the earliest open calendar period takes precedence.
+    static final String DUE_ADJUSTMENTS = """
+            SELECT a.id, a.employee_id, a.adj_type, a.amount, a.tax_class, a.source_ref, a.applied_period_id
+            FROM payroll_adjustment a
+            JOIN payroll_period origin ON origin.id = a.origin_period_id
+            JOIN payroll_period target ON target.id = ?
+            WHERE a.status = 'APPROVED' AND target.status IN ('DRAFT', 'CALCULATED')
+              AND target.start_date > origin.end_date
+              AND target.id = COALESCE(a.applied_period_id, (
+                  SELECT p.id FROM payroll_period p
+                  WHERE p.start_date > origin.end_date AND p.status IN ('DRAFT', 'CALCULATED')
+                  ORDER BY p.start_date LIMIT 1
+              ))
+            """;
+
     private final JdbcTemplate jdbc;
     private final WorkCalendar calendar;
     private final TimesheetService timesheets;
@@ -233,11 +249,9 @@ public class SnapshotBuilder {
                 WHERE employee_id = ? AND period_year = ? AND period_month = ? AND status = 'CONFIRMED' ORDER BY id
                 """, (rs, i) -> new ItemIn(rs.getString(1), rs.getString(2), rs.getBigDecimal(3), rs.getString(4), rs.getString(5)),
                 employeeId, year, month);
-        List<AdjIn> adjs = jdbc.query("""
-                SELECT id, adj_type, amount, tax_class, source_ref FROM payroll_adjustment
-                WHERE employee_id = ? AND status = 'APPROVED' AND (applied_period_id IS NULL OR applied_period_id = ?) ORDER BY id
-                """, (rs, i) -> new AdjIn(rs.getLong(1), rs.getString(2), rs.getBigDecimal(3), rs.getString(4), rs.getString(5)),
-                employeeId, periodId);
+        List<AdjIn> adjs = jdbc.query(DUE_ADJUSTMENTS + " AND a.employee_id = ? ORDER BY a.id",
+                (rs, i) -> new AdjIn(rs.getLong("id"), rs.getString("adj_type"), rs.getBigDecimal("amount"),
+                        rs.getString("tax_class"), rs.getString("source_ref")), periodId, employeeId);
 
         List<Map<String, Object>> dayRows = new ArrayList<>();
         for (TimesheetService.Day d : days) {
